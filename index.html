@@ -1,0 +1,1931 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>Global Portfolio Engine v48.3 — Liquid Alpha Edition (Full Docs)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Advanced Quant Portfolio Backtesting Engine - Liquid Alpha Edition (Volume Filter Integrated)">
+
+<!-- ================= LIBRARIES ================= -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+<!-- KaTeX for Math Formula -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ['Sarabun','sans-serif'],
+        mono: ['JetBrains Mono','monospace']
+      },
+      colors: {
+        brand: { 500:'#FCD535', 600:'#E5B80B', 400:'#FDE06D' },
+        stock: { 500:'#3b82f6', 600:'#2563eb', 400:'#60a5fa' },
+        dark: { 900:'#181A20', 800:'#1E2329', 700:'#2B3139', 600:'#474D57' },
+        acc: { green:'#0ECB81', red:'#F6465D', blue:'#3b82f6', orange: '#F59E0B', purple: '#8b5cf6' }
+      }
+    }
+  }
+}
+</script>
+
+<style>
+body { transition: background-color .3s, color .3s; }
+.glass { background: rgba(255,255,255,.98); backdrop-filter: blur(20px); border: 1px solid rgba(0,0,0,.05); }
+.dark .glass { background: rgba(30,35,41,.98); border-color: #2B3139; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+.custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #555; }
+
+/* Status Indicators */
+.status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.status-dot.ready { background-color: #0ECB81; box-shadow: 0 0 5px #0ECB81; }
+.status-dot.empty { background-color: #F6465D; }
+.status-dot.loading { background-color: #FCD535; animation: pulse 1s infinite; }
+@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+.opt-group { border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; margin-bottom: 12px; position: relative; }
+.dark .opt-group { border-color: #2B3139; }
+.opt-group-label { position: absolute; top: -7px; left: 8px; background: #fff; padding: 0 4px; font-size: 9px; font-weight: 700; color: #848E9C; text-transform: uppercase; letter-spacing: 0.5px; }
+.dark .opt-group-label { background: #1E2329; color: #94a3b8; }
+
+.opt-input { background: transparent; border: 1px solid #ddd; border-radius: 6px; padding: 4px 8px; font-family: 'JetBrains Mono'; font-size: 10px; outline: none; transition: all 0.2s; width: 100%; color: inherit; }
+.dark .opt-input { border-color: #444; }
+.opt-input:focus { border-color: #3b82f6; background: rgba(59, 130, 246, 0.05); }
+.opt-label-mini { font-size: 9px; color: #848E9C; display: flex; align-items: center; gap: 4px; margin-bottom: 2px; font-weight: 600; }
+
+.mc-stat-box { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px; text-align: center; }
+.dark .mc-stat-box { background: rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.05); }
+
+.range-group { display: flex; gap: 2px; align-items: center; }
+.range-input { text-align: center; padding: 2px 0; }
+.range-sep { font-size: 8px; color: #cbd5e1; }
+
+.help-icon { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; background: #e2e8f0; color: #64748b; font-size: 10px; margin-left: 6px; cursor: help; transition: all 0.2s; }
+.dark .help-icon { background: #334155; color: #94a3b8; }
+.help-icon:hover { background: #3b82f6; color: white; transform: scale(1.1); }
+.has-tooltip { position: relative; display: inline-flex; align-items: center; }
+.tooltip-source { display: none; }
+
+#global-tooltip { position: fixed; visibility: hidden; opacity: 0; width: 320px; background: #111827; color: #f3f4f6; padding: 16px; border-radius: 8px; font-size: 11px; line-height: 1.6; border: 1px solid #374151; border-top: 3px solid #3b82f6; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); pointer-events: none; z-index: 999999; transition: opacity 0.15s ease-out; }
+#global-tooltip h4 { color: #3b82f6; font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+#global-tooltip p { margin-bottom: 8px; color: #d1d5db; }
+#global-tooltip .formula-box { background: rgba(59, 130, 246, 0.1); border: 1px dashed rgba(59, 130, 246, 0.3); padding: 6px; border-radius: 4px; font-family: 'JetBrains Mono'; color: #93c5fd; margin-bottom: 8px; text-align: center; }
+
+.health-monitor { font-size: 9px; margin-top: 4px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.health-item { background: rgba(0,0,0,0.03); padding: 2px 4px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
+.dark .health-item { background: rgba(255,255,255,0.05); }
+
+th.sortable { cursor: pointer; user-select: none; }
+th.sortable:hover { color: #3b82f6; }
+.filter-row th { padding: 4px; background: rgba(0,0,0,0.02); }
+.dark .filter-row th { background: rgba(255,255,255,0.02); }
+.filter-input { width: 100%; background: transparent; border: 1px solid #ddd; border-radius: 4px; padding: 2px 4px; font-size: 9px; font-family: 'JetBrains Mono'; outline: none; text-align: center; }
+.dark .filter-input { border-color: #444; color: #eee; }
+.filter-input:focus { border-color: #3b82f6; }
+
+.robust-pagination { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.05); }
+.dark .robust-pagination { border-color: rgba(255,255,255,0.05); }
+.pg-btn { font-size: 9px; padding: 2px 8px; border-radius: 4px; background: rgba(0,0,0,0.05); transition: all 0.2s; }
+.dark .pg-btn { background: rgba(255,255,255,0.1); color: #fff; }
+.pg-btn:hover:not(:disabled) { background: #3b82f6; color: white; }
+.pg-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.step-card { transition: transform 0.3s ease; }
+.step-card:hover { transform: translateY(-3px); }
+.connector { height: 40px; width: 2px; background: #e2e8f0; margin: 0 auto; position: relative; }
+.dark .connector { background: #334155; }
+.connector::after { content: '▼'; position: absolute; bottom: -8px; left: -5px; font-size: 10px; color: #94a3b8; }
+.strat-box { border-left: 3px solid #3b82f6; padding-left: 12px; margin-bottom: 24px; position: relative; }
+.formula { font-family: 'JetBrains Mono'; background: rgba(0,0,0,0.05); padding: 4px 8px; border-radius: 4px; font-size: 10px; display: inline-block; margin-top: 4px; color: #d97706; }
+.dark .formula { background: rgba(255,255,255,0.1); color: #fbbf24; }
+.example-box { margin-top: 8px; padding: 8px; background: rgba(59, 130, 246, 0.05); border: 1px dashed rgba(59, 130, 246, 0.2); border-radius: 6px; font-size: 10px; color: #64748b; font-family: 'Sarabun'; line-height: 1.5; }
+.dark .example-box { color: #94a3b8; border-color: rgba(59, 130, 246, 0.4); background: rgba(59, 130, 246, 0.1); }
+.calc-step { margin-bottom: 4px; display: block; }
+.calc-val { font-family: 'JetBrains Mono'; font-weight: bold; color: #3b82f6; }
+</style>
+</head>
+
+<body class="bg-[#F0F3F5] dark:bg-[#0B0E11] text-[#1E2329] dark:text-[#EAECEF] min-h-screen font-sans">
+
+<!-- GLOBAL TOOLTIP -->
+<div id="global-tooltip"></div>
+
+<!-- HEADER -->
+<header class="glass sticky top-0 z-40 border-b shadow-sm">
+  <div class="max-w-[1800px] mx-auto px-4 h-14 flex justify-between items-center">
+    <div class="flex items-center gap-3">
+      <h1 class="font-bold text-base flex items-center gap-2 text-dark-900 dark:text-white">
+        <span class="text-xl">💧</span> GPE <span class="text-[9px] bg-gradient-to-r from-blue-500 to-purple-500 text-white px-1.5 py-0.5 rounded font-bold mono">v48.3 (Full Docs)</span>
+      </h1>
+      <nav class="hidden md:flex gap-1 ml-4">
+          <button id="btn-tab-dashboard" onclick="UI.switchTab('dashboard')" class="px-3 py-1 text-[10px] font-bold rounded bg-white dark:bg-dark-800 shadow-sm text-stock-600 transition-all">DASHBOARD</button>
+          <button id="btn-tab-docs" onclick="UI.switchTab('docs')" class="px-3 py-1 text-[10px] font-bold rounded text-gray-400 hover:text-stock-500 transition-all">DOCS & STRATEGIES (THAI)</button>
+      </nav>
+    </div>
+    <div class="flex items-center gap-2">
+        <span id="system-status" class="text-[9px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+            <span class="status-dot empty" id="main-status-dot"></span> System Idle
+        </span>
+    </div>
+    <div class="flex items-center gap-3">
+        <div class="hidden md:flex flex-col items-end mr-2">
+            <span class="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Market Data</span>
+            <span id="market-source-badge" class="text-[9px] font-bold text-stock-500 bg-stock-500/10 px-1 rounded animate-pulse">YAHOO (PRICE+VOL)</span>
+        </div>
+        <button onclick="UI.exportToCSV()" class="text-[10px] font-bold uppercase tracking-wider bg-green-500/10 text-green-600 px-3 py-1 rounded hover:bg-green-500 hover:text-white transition-all"><i class="fas fa-file-csv"></i> CSV</button>
+        <button onclick="UI.toggleTheme()" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-dark-800 hover:text-stock-500"><i class="fas fa-adjust"></i></button>
+    </div>
+  </div>
+</header>
+
+<div class="max-w-[1800px] mx-auto px-4 py-6 grid grid-cols-12 gap-6">
+
+<!-- SIDEBAR -->
+<aside class="col-span-12 xl:col-span-2 space-y-3">
+<div class="glass rounded-xl p-4 border-t-4 border-t-stock-500 sticky top-20 shadow-lg z-30">
+  <div class="mb-3 flex items-center justify-between">
+    <h3 class="text-[10px] font-black uppercase text-gray-500 tracking-widest">Config</h3>
+    <span class="text-[8px] bg-stock-500/20 text-stock-600 px-1.5 py-0.5 rounded font-bold">PORTFOLIO</span>
+  </div>
+
+  <div class="opt-group bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800">
+      <span class="opt-group-label text-blue-500">Step 1: Data Setup</span>
+      <div class="mb-1">
+          <label class="opt-label-mini">Asset Class Source</label>
+          <select id="cfg-market-type" onchange="UI.changeMarketMode(this.value)" class="opt-input font-bold text-stock-600 dark:text-stock-400 cursor-pointer bg-white dark:bg-dark-900">
+            <option value="ETF" selected>Global ETF (Yahoo)</option>
+            <option value="CRYPTO">Crypto (Binance)</option>
+          </select>
+          <div class="text-[8px] text-gray-400 font-bold mt-1 tracking-tighter" id="trading-days-info">* 252 Trading Days/Year</div>
+      </div>
+      <div class="mt-2">
+           <label class="opt-label-mini">Add Assets</label>
+           <div class="flex gap-1 mb-1">
+            <input id="cfg-add" placeholder="SYMBOL" class="opt-input flex-1 uppercase">
+            <button onclick="UI.addAsset()" class="w-6 h-6 rounded bg-gray-200 dark:bg-dark-700 hover:bg-stock-500 hover:text-white transition-all text-[10px]"><i class="fas fa-plus"></i></button>
+           </div>
+           <select id="quick-add-select" onchange="UI.suggestAsset(this.value); this.value='';" class="opt-input cursor-pointer mb-2 text-gray-500">
+             <!-- Populated by JS -->
+           </select>
+           <div id="asset-list" class="flex flex-wrap gap-1 max-h-[100px] overflow-y-auto custom-scrollbar content-start mb-2"></div>
+           
+           <button onclick="Engine.fetchData()" id="btn-fetch" class="w-full bg-stock-500 hover:bg-stock-600 text-white py-1.5 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow">
+               <i class="fas fa-cloud-download-alt mr-1"></i> Fetch Market Data
+           </button>
+           
+           <div id="data-health" class="health-monitor mt-2 border-t dark:border-dark-700 pt-2">
+               <span class="text-[8px] text-gray-400 col-span-2 text-center italic">No data loaded yet.</span>
+           </div>
+      </div>
+  </div>
+
+  <!-- LIQUIDITY FILTER (IMPROVED) -->
+  <div class="opt-group bg-purple-50/50 dark:bg-purple-900/10 border-purple-200 dark:border-purple-800">
+    <span class="opt-group-label text-purple-500">Step 1.5: Liquidity Filter</span>
+    <div class="mb-2">
+        <label class="opt-label-mini justify-between text-purple-600">
+            ADV Lookback (Days)
+            <span class="has-tooltip"><i class="fas fa-question-circle help-icon"></i><span class="tooltip-source">
+                <h4>Dynamic ADV Window</h4>
+                <p>กำหนดช่วงเวลาในการคำนวณค่าเฉลี่ยปริมาณการซื้อขาย (Avg Daily Value) ย้อนหลัง</p>
+                <div class="formula-box">Range: [Start, Start+Step, ..., End]</div>
+                <div class="example-text">เช่น ทดสอบใช้ค่าเฉลี่ย 30 วัน, 60 วัน, 90 วัน เพื่อดูว่ากรองแบบไหนดีที่สุด</div>
+            </span></span>
+        </label>
+        <div class="range-group">
+            <input id="cfg-liq-start" value="30" type="number" class="opt-input range-input" placeholder="Start">
+            <span class="range-sep">~</span>
+            <input id="cfg-liq-end" value="30" type="number" class="opt-input range-input" placeholder="End">
+            <span class="range-sep">+</span>
+            <input id="cfg-liq-step" value="10" type="number" class="opt-input range-input" placeholder="Step">
+        </div>
+    </div>
+    <div>
+        <label class="opt-label-mini justify-between text-purple-600">
+            Select Top N
+        </label>
+        <div class="flex items-center gap-2">
+            <input id="cfg-liq-top" value="5" type="number" min="1" class="opt-input text-center font-bold text-purple-500">
+            <span class="text-[9px] text-gray-400">Assets</span>
+        </div>
+    </div>
+  </div>
+
+  <div class="opt-group border-l-4 border-l-brand-500">
+      <span class="opt-group-label text-brand-600">Step 2: Strategy</span>
+      <div class="mb-2">
+          <label class="opt-label-mini">Algorithm</label>
+          <select id="cfg-strategy" class="opt-input font-bold text-stock-600 dark:text-stock-400 cursor-pointer">
+            <option value="ALL" selected>★ RUN ALL (Tournament)</option>
+            <option value="Equal">1. Equal Weight (1/N)</option>
+            <option value="Rank">2. Rank All (Score)</option>
+            <option value="Top3">3. Top 3 Leader (Equal)</option>
+            <option value="Top3Rank">4. Top 3 Leader (Ranked)</option>
+            <option value="Top50">5. Top 50% Filtered</option>
+            <option value="AbsMom">6. Absolute Mom (Trend)</option>
+            <option value="DualMom">7. Dual Momentum</option>
+            <option value="InvVol">8. Inverse Volatility</option>
+            <option value="AAA">9. Adaptive Aggressive</option>
+          </select>
+      </div>
+      <div>
+          <label class="opt-label-mini">Benchmark</label>
+          <input id="cfg-bench" value="SPY" class="opt-input uppercase text-center font-bold text-stock-500">
+      </div>
+  </div>
+
+  <div class="opt-group">
+      <span class="opt-group-label">Time & Params</span>
+      <div class="grid grid-cols-2 gap-2 mb-2">
+          <div>
+              <label class="opt-label-mini">Start</label>
+              <input type="date" id="cfg-start" class="opt-input px-0 text-center">
+          </div>
+          <div>
+              <label class="opt-label-mini">End</label>
+              <input type="date" id="cfg-end" class="opt-input px-0 text-center">
+          </div>
+      </div>
+      
+      <!-- Lookback Generator -->
+      <div class="mb-2">
+          <label class="opt-label-mini justify-between">
+              Lookback (Days)
+              <span class="has-tooltip"><i class="fas fa-question-circle"></i><span class="tooltip-source">
+                  <h4>Parameter Generator</h4>
+                  <p>กำหนดช่วงค่าที่จะทดสอบแบบอัตโนมัติ</p>
+                  <div class="formula-box">[Start, Start+Step, ... , End]</div>
+              </span></span>
+          </label>
+          <div class="range-group">
+              <input id="cfg-lb-start" value="60" type="number" class="opt-input range-input" placeholder="Start">
+              <span class="range-sep">~</span>
+              <input id="cfg-lb-end" value="120" type="number" class="opt-input range-input" placeholder="End">
+              <span class="range-sep">+</span>
+              <input id="cfg-lb-step" value="30" type="number" class="opt-input range-input" placeholder="Step">
+          </div>
+      </div>
+
+      <!-- Rebal Generator -->
+      <div>
+          <label class="opt-label-mini justify-between">
+              Rebal (Days)
+          </label>
+          <div class="range-group">
+              <input id="cfg-rb-start" value="20" type="number" class="opt-input range-input" placeholder="Start">
+              <span class="range-sep">~</span>
+              <input id="cfg-rb-end" value="60" type="number" class="opt-input range-input" placeholder="End">
+              <span class="range-sep">+</span>
+              <input id="cfg-rb-step" value="20" type="number" class="opt-input range-input" placeholder="Step">
+          </div>
+      </div>
+
+      <div class="mt-2">
+          <label class="opt-label-mini">Risk Free (%)</label>
+          <input id="cfg-rf" value="3.0" type="number" step="0.1" class="opt-input text-center">
+      </div>
+  </div>
+
+  <div class="opt-group">
+      <span class="opt-group-label">Money Management</span>
+      <div class="grid grid-cols-2 gap-2 mb-2">
+          <div>
+              <label class="opt-label-mini text-stock-600">Initial ($)</label>
+              <input id="cfg-initial" value="10000" type="number" class="opt-input text-center font-bold">
+          </div>
+          <div>
+              <label class="opt-label-mini text-acc-green">DCA ($)</label>
+              <input id="cfg-dca" value="0" type="number" class="opt-input text-center font-bold text-acc-green">
+          </div>
+      </div>
+      <div class="grid grid-cols-3 gap-1">
+          <div>
+              <label class="opt-label-mini text-red-500">Front%</label>
+              <input id="cfg-frontend-fee" value="0.00" type="number" step="0.01" class="opt-input text-red-500 font-bold text-center">
+          </div>
+          <div>
+              <label class="opt-label-mini text-blue-500">Mgmt%</label>
+              <input id="cfg-mgmt-fee" value="0.00" type="number" step="0.01" class="opt-input text-blue-500 font-bold text-center">
+          </div>
+          <div>
+              <label class="opt-label-mini text-gray-500">Trade%</label>
+              <input id="cfg-fee" value="0.10" type="number" step="0.01" class="opt-input text-gray-500 text-center">
+          </div>
+      </div>
+  </div>
+
+  <button onclick="Engine.runSimulation()" id="btn-run" class="w-full bg-gradient-to-r from-brand-500 to-brand-600 py-3 mt-1 rounded-lg font-bold text-dark-900 shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-xs tracking-wide uppercase opacity-50 cursor-not-allowed" disabled>
+    <i class="fas fa-play"></i> <span>Run (Liquid Filtered)</span>
+  </button>
+   
+  <div id="status-log" class="mt-2 text-[9px] font-mono text-gray-400 h-[100px] overflow-y-auto bg-black/10 rounded p-2 hidden"></div>
+</div>
+</aside>
+
+<!-- MAIN CONTENT -->
+<div class="col-span-12 xl:col-span-10 space-y-6">
+
+    <!-- DASHBOARD TAB -->
+    <div id="view-dashboard" class="space-y-6 animate-fade-in">
+        <!-- KPIs -->
+        <div class="relative">
+            <div class="absolute -top-3 right-0 text-[9px] text-gray-400 flex items-center gap-1">
+                KEY PERFORMANCE INDICATORS
+                <span class="has-tooltip"><i class="fas fa-question-circle help-icon"></i><span class="tooltip-source">
+                    <h4>Performance Metrics</h4>
+                    <p>ดัชนีชี้วัดประสิทธิภาพการลงทุน</p>
+                </span></span>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+              <!-- Cards -->
+              <div class="glass p-4 rounded-xl border-l-4 border-l-acc-green shadow-sm kpi-card">
+                <div class="text-[9px] uppercase font-bold text-gray-400 mb-1">Net CAGR</div>
+                <div id="kpi-cagr" class="text-xl font-bold mono text-dark-900 dark:text-white">-</div>
+                <div id="bench-cagr" class="text-[9px] text-gray-400 mt-1">Bench: -</div>
+              </div>
+
+              <div class="glass p-4 rounded-xl border-l-4 border-l-stock-500 shadow-sm kpi-card">
+                <div class="text-[9px] uppercase font-bold text-gray-400 mb-1">Sharpe Ratio</div>
+                <div id="kpi-sharpe" class="text-xl font-bold mono text-dark-900 dark:text-white">-</div>
+                <div id="bench-sharpe" class="text-[9px] text-gray-400 mt-1">Bench: -</div>
+              </div>
+
+              <div class="glass p-4 rounded-xl border-l-4 border-l-blue-500 shadow-sm kpi-card">
+                <div class="text-[9px] uppercase font-bold text-gray-400 mb-1">Sortino Ratio</div>
+                <div id="kpi-sortino" class="text-xl font-bold mono text-blue-500">-</div>
+                <div id="bench-sortino" class="text-[9px] text-gray-400 mt-1">Bench: -</div>
+              </div>
+
+              <div class="glass p-4 rounded-xl border-l-4 border-l-purple-500 shadow-sm kpi-card">
+                <div class="text-[9px] uppercase font-bold text-gray-400 mb-1">Calmar Ratio</div>
+                <div id="kpi-calmar" class="text-xl font-bold mono text-purple-500">-</div>
+                <div id="bench-calmar" class="text-[9px] text-gray-400 mt-1">Bench: -</div>
+              </div>
+
+              <div class="glass p-4 rounded-xl border-l-4 border-l-acc-red shadow-sm kpi-card">
+                <div class="text-[9px] uppercase font-bold text-gray-400 mb-1">Max Drawdown</div>
+                <div id="kpi-mdd" class="text-xl font-bold mono text-acc-red">-</div>
+                <div id="bench-mdd" class="text-[9px] text-gray-400 mt-1">Bench: -</div>
+              </div>
+
+              <div class="glass p-4 rounded-xl border-l-4 border-l-gray-400 shadow-sm kpi-card">
+                <div class="text-[9px] uppercase font-bold text-gray-400 mb-1">Win Rate</div>
+                <div id="kpi-winrate" class="text-xl font-bold mono text-gray-500 dark:text-gray-300">-</div>
+                <div id="bench-winrate" class="text-[9px] text-gray-400 mt-1">Bench: -</div>
+              </div>
+            </div>
+        </div>
+
+        <!-- Main Chart -->
+        <div class="glass p-6 rounded-2xl shadow-xl space-y-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <h3 class="text-xs font-bold uppercase text-gray-500 tracking-widest">Growth Analysis</h3>
+                    <p class="text-[9px] text-gray-400 mono mt-0.5 ml-2" id="chart-subtitle">Waiting for simulation...</p>
+                </div>
+                <button onclick="UI.toggleLog()" class="text-[9px] font-bold bg-gray-100 dark:bg-dark-800 px-3 py-1 rounded border dark:border-dark-700 mono">LOG SCALE</button>
+            </div>
+            <div class="h-[320px] w-full"><canvas id="chart-equity"></canvas></div>
+            <div class="h-[100px] w-full border-t dark:border-dark-700 pt-2"><canvas id="chart-drawdown"></canvas></div>
+        </div>
+
+        <!-- Matrix Table -->
+        <div class="glass rounded-2xl overflow-hidden shadow-lg border border-gray-100 dark:border-dark-700 flex flex-col min-h-[500px]">
+            <div class="px-6 py-4 border-b dark:border-dark-700 bg-gray-50/50 dark:bg-dark-800/50 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <h3 class="text-xs font-black uppercase text-gray-600 dark:text-gray-300 tracking-widest">Strategy Matrix</h3>
+                </div>
+                <button onclick="UI.clearFilters()" class="text-[9px] bg-white dark:bg-dark-700 px-3 py-1 rounded border dark:border-dark-600 font-bold hover:text-stock-500">RESET</button>
+            </div>
+            <div class="overflow-x-auto custom-scrollbar flex-1">
+              <table class="w-full text-[10px] mono border-collapse" id="batch-matrix-table">
+                <thead class="bg-gray-100 dark:bg-dark-900 text-gray-400 text-right sticky top-0 z-10 shadow-sm">
+                  <tr>
+                    <th class="text-left p-3 sortable" onclick="UI.sortBatch('stratFull')">Strategy <i class="fas fa-sort"></i></th>
+                    <th class="p-3 sortable" onclick="UI.sortBatch('liqLB')">Liq.W <i class="fas fa-sort"></i></th>
+                    <th class="p-3 sortable" onclick="UI.sortBatch('lb')">LB <i class="fas fa-sort"></i></th>
+                    <th class="p-3 sortable" onclick="UI.sortBatch('rb')">RB <i class="fas fa-sort"></i></th>
+                    <th class="p-3 sortable" onclick="UI.sortBatch('cagr')">CAGR <i class="fas fa-sort"></i></th>
+                    <th class="p-3 sortable" onclick="UI.sortBatch('sharpe')">Sharpe <i class="fas fa-sort"></i></th>
+                    <th class="p-3 sortable" onclick="UI.sortBatch('sortino')">Sortino <i class="fas fa-sort"></i></th>
+                    <th class="p-3 sortable" onclick="UI.sortBatch('calmar')">Calmar <i class="fas fa-sort"></i></th>
+                    <th class="p-3 sortable" onclick="UI.sortBatch('mdd')">MDD <i class="fas fa-sort"></i></th>
+                  </tr>
+                  <!-- Filter Row -->
+                  <tr class="filter-row">
+                      <th><select id="f-strat" onchange="UI.applyBatchFilters()" class="filter-input text-left"><option value="">All</option></select></th>
+                      <th><input id="f-liqlb" onkeyup="UI.applyBatchFilters()" class="filter-input" placeholder=">="></th>
+                      <th><input id="f-lb" onkeyup="UI.applyBatchFilters()" class="filter-input" placeholder=">="></th>
+                      <th><input id="f-rb" onkeyup="UI.applyBatchFilters()" class="filter-input" placeholder=">="></th>
+                      <th><input id="f-cagr" onkeyup="UI.applyBatchFilters()" class="filter-input" placeholder=">="></th>
+                      <th><input id="f-sharpe" onkeyup="UI.applyBatchFilters()" class="filter-input" placeholder=">="></th>
+                      <th><input id="f-sortino" onkeyup="UI.applyBatchFilters()" class="filter-input" placeholder=">="></th>
+                      <th><input id="f-calmar" onkeyup="UI.applyBatchFilters()" class="filter-input" placeholder=">="></th>
+                      <th><input id="f-mdd" onkeyup="UI.applyBatchFilters()" class="filter-input" placeholder="<="></th>
+                  </tr>
+                </thead>
+                <tbody id="batch-table-body" class="divide-y dark:divide-dark-700 text-right font-medium"></tbody>
+                <tfoot id="batch-table-foot" class="bg-gray-50 dark:bg-dark-800 font-bold text-gray-500 border-t-2 border-gray-200 dark:border-dark-600 sticky bottom-0 z-10"></tfoot>
+              </table>
+            </div>
+             <div class="px-4 py-2 border-t dark:border-dark-700 bg-gray-50 dark:bg-dark-800 flex justify-between items-center text-[9px] text-gray-500 font-bold">
+                <span id="pagination-info">0-0 of 0</span>
+                <div class="flex gap-1"><button onclick="UI.prevPage()" id="btn-prev" class="pagination-btn" disabled>Prev</button><button onclick="UI.nextPage()" id="btn-next" class="pagination-btn" disabled>Next</button></div>
+            </div>
+        </div>
+        
+        <!-- Surface & Distribution Row -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- 4D Surface -->
+            <div class="glass p-6 rounded-2xl shadow-xl h-[500px] flex flex-col relative overflow-hidden">
+                <div class="flex justify-between items-center mb-2 z-10 border-b dark:border-dark-700 pb-2">
+                    <div class="flex items-center gap-2">
+                        <h3 class="font-bold text-xs flex items-center gap-2"><span>4D Hyper-Parameter</span><span class="text-[8px] bg-indigo-500 text-white px-1.5 rounded font-mono shadow">Rolling Metric</span></h3>
+                    </div>
+                    <div class="flex gap-2">
+                        <select id="surface-metric" onchange="UI.renderSurface()" class="bg-gray-100 dark:bg-dark-700 text-[9px] rounded px-2 py-1 font-bold outline-none"><option value="sharpe">Sharpe</option><option value="cagr">CAGR</option><option value="mdd">MDD</option><option value="vol">Vol</option></select>
+                        <select id="surface-sd" onchange="UI.renderSurface()" class="bg-gray-100 dark:bg-dark-700 text-[9px] rounded px-2 py-1 font-bold outline-none"><option value="0">SD: Off</option><option value="1">Mean ± 1SD</option><option value="2">Mean ± 2SD</option></select>
+                    </div>
+                </div>
+                <div id="viz-surface" class="flex-1 z-10"></div>
+                <div class="z-20 mt-2 bg-gray-50 dark:bg-dark-800/80 p-3 rounded-xl border dark:border-dark-700 backdrop-blur-sm">
+                    <div class="flex justify-between items-center mb-1"><span class="text-[9px] font-bold uppercase text-gray-500">Timeline Control (Dynamic)</span><span id="surface-date-display" class="text-[9px] font-mono text-stock-600">Full</span></div>
+                    <div class="flex items-center gap-2"><button id="btn-play-surface" onclick="UI.toggleSurfaceAnim()" class="w-6 h-6 flex items-center justify-center rounded-full bg-stock-500 hover:scale-110 text-white shadow"><i class="fas fa-play text-[8px]"></i></button><input type="range" id="surface-slider" min="0" max="100" value="100" step="1" oninput="UI.updateSurfaceFromSlider(this.value)" class="accent-stock-500 flex-1"></div>
+                </div>
+            </div>
+
+            <!-- Distribution & Robustness Analysis -->
+            <div class="glass p-6 rounded-2xl shadow-xl h-[500px] flex flex-col relative overflow-hidden">
+                <div class="flex justify-between items-center mb-2 z-10 border-b dark:border-dark-700 pb-2">
+                    <div class="flex items-center gap-2">
+                        <h3 class="font-bold text-xs">📊 Grid Distribution & Robustness</h3>
+                    </div>
+                    <div class="text-[8px] text-gray-400">Metric: <span id="dist-metric-label" class="font-bold text-stock-600 uppercase">SHARPE</span></div>
+                </div>
+                <div class="flex flex-col h-full gap-4">
+                    <div id="viz-dist" class="h-[55%] z-10"></div>
+                    
+                    <!-- Robustness Table -->
+                    <div class="flex-1 overflow-hidden border-t dark:border-dark-700 pt-2 flex flex-col">
+                        <div class="flex justify-between items-center mb-2 px-2">
+                            <div class="flex items-center gap-1">
+                                <h4 class="text-[9px] font-bold uppercase text-acc-orange"><i class="fas fa-shield-alt"></i> Top 20 Robust Clusters</h4>
+                            </div>
+                        </div>
+                        <div class="overflow-y-auto flex-1 custom-scrollbar">
+                            <table class="w-full text-[9px] mono">
+                                <thead class="bg-gray-100 dark:bg-dark-800 text-gray-500">
+                                    <tr><th class="text-left p-1">Rank</th><th>LB</th><th>RB</th><th class="text-right text-acc-orange">Robust Score</th><th class="text-right text-gray-400">Raw Value</th></tr>
+                                </thead>
+                                <tbody id="robustness-table-body" class="divide-y dark:divide-dark-700"></tbody>
+                            </table>
+                        </div>
+                        <!-- Pagination Controls -->
+                        <div class="robust-pagination px-2">
+                            <button class="pg-btn" id="btn-robust-prev" onclick="UI.prevRobustPage()"><i class="fas fa-chevron-left"></i></button>
+                            <span class="text-[8px] font-bold text-gray-500" id="robust-page-info">1 / 5</span>
+                            <button class="pg-btn" id="btn-robust-next" onclick="UI.nextRobustPage()"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monte Carlo & Logs -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="glass p-6 rounded-2xl shadow-xl h-[400px] flex flex-col relative overflow-hidden">
+                <div class="flex justify-between items-center mb-2 z-10 border-b dark:border-dark-700 pb-2">
+                    <div class="flex items-center gap-2">
+                        <h3 class="font-bold text-xs">🎲 Monte Carlo Forecast</h3>
+                    </div>
+                    <div class="flex items-center gap-1"><span class="text-[9px] text-gray-400">Years:</span><input type="number" id="cfg-mc-years" value="1" min="1" max="5" class="w-8 text-center text-[9px] bg-gray-100 dark:bg-dark-700 rounded border dark:border-dark-600"><button onclick="UI.runMonteCarlo()" class="text-[9px] bg-stock-500 text-white px-2 py-0.5 rounded font-bold hover:scale-105 shadow">Sim</button></div>
+                </div>
+                <div class="grid grid-cols-4 gap-2 mb-2 z-10">
+                    <div class="mc-stat-box"><div class="text-[8px] text-gray-400 uppercase">Avg Sharpe</div><div id="mc-avg-sharpe" class="text-[10px] font-bold text-stock-600">-</div></div>
+                    <div class="mc-stat-box"><div class="text-[8px] text-gray-400 uppercase">Avg CAGR</div><div id="mc-avg-cagr" class="text-[10px] font-bold text-acc-green">-</div></div>
+                    <div class="mc-stat-box"><div class="text-[8px] text-gray-400 uppercase">Avg Vol</div><div id="mc-avg-vol" class="text-[10px] font-bold text-gray-300">-</div></div>
+                    <div class="mc-stat-box"><div class="text-[8px] text-gray-400 uppercase">Avg MDD</div><div id="mc-avg-mdd" class="text-[10px] font-bold text-acc-red">-</div></div>
+                </div>
+                <div id="viz-monte-dashboard" class="flex-1 z-10"></div>
+            </div>
+
+            <div class="glass rounded-2xl overflow-hidden shadow-lg border border-gray-100 dark:border-dark-700 h-[400px] flex flex-col">
+                <div class="px-6 py-4 border-b dark:border-dark-700 bg-gray-50/30 flex items-center gap-2">
+                    <h3 class="text-xs font-bold uppercase text-gray-500 tracking-widest">Transaction Logs</h3>
+                </div>
+                <div class="overflow-x-auto custom-scrollbar flex-1"><table class="w-full text-[10px] mono"><tbody id="log-table" class="divide-y dark:divide-dark-700"></tbody></table></div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- DOCS TAB -->
+    <div id="view-docs" class="space-y-8 animate-fade-in hidden">
+        <div class="text-center mb-8">
+            <span class="bg-stock-500 text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest">Education</span>
+            <h1 class="text-2xl font-bold text-dark-900 dark:text-white mt-2">คู่มือการคำนวณและกลยุทธ์ (Calculation Step-by-Step)</h1>
+            <p class="text-gray-500 text-sm">อธิบายขั้นตอนการทำงานอย่างละเอียดพร้อมสูตรคณิตศาสตร์และตัวอย่างตัวเลข</p>
+        </div>
+
+        <div class="grid grid-cols-1 gap-6">
+            <!-- Part 1: Liquidity Filter -->
+            <div class="glass p-6 rounded-2xl step-card border-l-4 border-l-purple-500">
+                <h3 class="font-bold text-lg mb-3 flex items-center gap-2"><span class="bg-purple-100 text-purple-600 w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span> Liquidity Filter Calculation (การคัดกรองสภาพคล่อง)</h3>
+                <div class="text-sm text-gray-600 dark:text-gray-300 space-y-4">
+                    <p>ก่อนเริ่ม Backtest ระบบจะทำการคัดเลือก Asset ที่มีมูลค่าการซื้อขายเฉลี่ยสูงสุด $N$ อันดับแรก โดยใช้สูตร Average Daily Value (ADV)</p>
+                    
+                    <div class="strat-box bg-gray-50 dark:bg-dark-800 p-4 rounded-lg">
+                        <h4 class="font-bold text-stock-600 mb-2">สูตรคำนวณ (Formula):</h4>
+                        <div class="text-center my-2">
+                            $$ ADV_i = \frac{1}{W} \sum_{t=1}^{W} (Price_{i,t} \times Volume_{i,t}) $$
+                        </div>
+                        <ul class="list-disc ml-5 text-xs text-gray-500">
+                            <li>$ADV_i$: มูลค่าการซื้อขายเฉลี่ยต่อวันของสินทรัพย์ $i$</li>
+                            <li>$W$: Window Period (จำนวนวันที่ใช้คำนวณย้อนหลัง เช่น 30 วัน)</li>
+                            <li>$Price_{i,t}$: ราคาปิดของสินทรัพย์ $i$ ณ วันที่ $t$</li>
+                            <li>$Volume_{i,t}$: ปริมาณการซื้อขายของสินทรัพย์ $i$ ณ วันที่ $t$</li>
+                        </ul>
+                    </div>
+
+                    <div class="example-box">
+                        <span class="text-purple-600 font-bold block mb-2">ตัวอย่างการคำนวณ (Numeric Example):</span>
+                        สมมติ $W = 3$ วัน (เพื่อความง่าย) และต้องการคัด Top 1
+                        <br><br>
+                        <strong>Asset A:</strong><br>
+                        <span class="calc-step">Day 1: Price $100, Vol 1,000 -> Value $100,000</span>
+                        <span class="calc-step">Day 2: Price $102, Vol 1,200 -> Value $122,400</span>
+                        <span class="calc-step">Day 3: Price $101, Vol 800  -> Value $80,800</span>
+                        <span class="calc-val">ADV(A) = (100,000 + 122,400 + 80,800) / 3 = $101,066.67</span>
+                        <br>
+                        <strong>Asset B:</strong><br>
+                        <span class="calc-step">Day 1: Price $50, Vol 5,000 -> Value $250,000</span>
+                        <span class="calc-step">Day 2: Price $52, Vol 4,000 -> Value $208,000</span>
+                        <span class="calc-step">Day 3: Price $51, Vol 4,500 -> Value $229,500</span>
+                        <span class="calc-val">ADV(B) = (250,000 + 208,000 + 229,500) / 3 = $229,166.67</span>
+                        <br><br>
+                        <span class="text-acc-green font-bold">สรุป:</span> ระบบจะเลือก <strong>Asset B</strong> เข้าพอร์ต เพราะมี ADV สูงกว่า
+                    </div>
+                </div>
+            </div>
+
+            <!-- Part 2: Strategy Allocation -->
+            <div class="glass p-6 rounded-2xl step-card border-l-4 border-l-brand-500">
+                <h3 class="font-bold text-lg mb-3 flex items-center gap-2"><span class="bg-yellow-100 text-yellow-600 w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span> Strategy Allocation Logic (ตรรกะการจัดพอร์ต)</h3>
+                <div class="text-sm text-gray-600 dark:text-gray-300 space-y-6">
+                    
+                    <!-- Strat 1: Equal Weight -->
+                    <div class="strat-box">
+                        <h4 class="font-bold text-stock-600">1. Equal Weight (1/N)</h4>
+                        <p class="text-xs mb-2">แบ่งเงินลงทุนเท่ากันทุกตัว โดยไม่สนใจผลตอบแทนหรือความเสี่ยง</p>
+                        <div class="text-center my-2">$$ w_i = \frac{1}{N} $$</div>
+                        <div class="example-box">
+                            Asset A, B, C, D (N=4)<br>
+                            <span class="calc-val">Weight = 1/4 = 25% ต่อตัว</span>
+                        </div>
+                    </div>
+
+                    <!-- Strat 2: Rank Score -->
+                    <div class="strat-box">
+                        <h4 class="font-bold text-stock-600">2. Rank All (Score Based)</h4>
+                        <p class="text-xs mb-2">ให้น้ำหนักตามอันดับความแรง (Momentum Score) ยิ่งอยู่อันดับสูง ยิ่งได้น้ำหนักมาก</p>
+                        <div class="text-center my-2">$$ w_i = \frac{Score_i}{\sum Score} $$ โดยที่ $$ Score_i = N - Rank_i + 1 $$</div>
+                        <div class="example-box">
+                            มี 3 Assets (N=3) เรียงตาม Momentum:<br>
+                            1. Asset A (Rank 1) -> Score = 3<br>
+                            2. Asset B (Rank 2) -> Score = 2<br>
+                            3. Asset C (Rank 3) -> Score = 1<br>
+                            Sum Score = 3+2+1 = 6<br>
+                            <span class="calc-val">Weight A = 3/6 (50%), Weight B = 2/6 (33.3%), Weight C = 1/6 (16.7%)</span>
+                        </div>
+                    </div>
+
+                    <!-- Strat 3: Top 3 Leader (Equal) -->
+                    <div class="strat-box">
+                        <h4 class="font-bold text-stock-600">3. Top 3 Leader (Equal)</h4>
+                        <p class="text-xs mb-2">เลือกเฉพาะ 3 ตัวท็อปที่มีโมเมนตัมสูงสุด แล้วแบ่งเงินเท่ากัน (ตัดตัวที่เหลือทิ้ง)</p>
+                        <div class="text-center my-2">$$ w_i = \begin{cases} 1/3 & \text{if Rank} \le 3 \\ 0 & \text{otherwise} \end{cases} $$</div>
+                        <div class="example-box">
+                            เรียงลำดับ: A(1), B(2), C(3), D(4), E(5)<br>
+                            เลือก: A, B, C<br>
+                            <span class="calc-val">Weight A=33.3%, B=33.3%, C=33.3% (D, E = 0%)</span>
+                        </div>
+                    </div>
+
+                    <!-- Strat 4: Top 3 Leader (Ranked) -->
+                    <div class="strat-box">
+                        <h4 class="font-bold text-stock-600">4. Top 3 Leader (Ranked)</h4>
+                        <p class="text-xs mb-2">เลือกเฉพาะ 3 ตัวท็อป แต่ให้น้ำหนักตามลำดับคะแนน (คล้ายข้อ 2 แต่คิดแค่ 3 ตัวแรก)</p>
+                        <div class="text-center my-2">$$ w_i = \frac{K - Rank_i + 1}{\sum_{j=1}^{K} j} $$ โดยที่ $K=3$, Sum=6</div>
+                        <div class="example-box">
+                            เรียงลำดับ: A(1), B(2), C(3), D(4)<br>
+                            <span class="calc-val">Weight A = 3/6 (50%)</span><br>
+                            <span class="calc-val">Weight B = 2/6 (33.3%)</span><br>
+                            <span class="calc-val">Weight C = 1/6 (16.7%)</span>
+                        </div>
+                    </div>
+
+                    <!-- Strat 5: Top 50% Filtered -->
+                    <div class="strat-box">
+                        <h4 class="font-bold text-stock-600">5. Top 50% Filtered</h4>
+                        <p class="text-xs mb-2">ตัดหางแถวทิ้งครึ่งล่าง ลงทุนเฉพาะครึ่งบนแบบ Equal Weight</p>
+                        <div class="text-center my-2">$$ K = \lceil N/2 \rceil, \quad w_i = 1/K $$</div>
+                        <div class="example-box">
+                            มี 10 Assets (N=10) -> เลือก Top 5 (K=5)<br>
+                            <span class="calc-val">ลงทุน 5 ตัวแรก ตัวละ 20% (1/5)</span>
+                        </div>
+                    </div>
+
+                    <!-- Strat 6: Absolute Momentum -->
+                    <div class="strat-box">
+                        <h4 class="font-bold text-stock-600">6. Absolute Momentum (Trend Filter)</h4>
+                        <p class="text-xs mb-2">ถือเฉพาะตัวที่เป็นขาขึ้น ($Return > 0$) เท่านั้น ถ้าไม่มีให้ถือเงินสด</p>
+                        <div class="text-center my-2">$$ w_i = \frac{1}{\text{Count}(Return > 0)} $$</div>
+                        <div class="example-box">
+                            Lookback Return:<br>
+                            Asset A: +5% (Buy)<br>
+                            Asset B: -2% (Cash)<br>
+                            Asset C: +1% (Buy)<br>
+                            <span class="calc-val">Portfolio: 50% Asset A, 50% Asset C (Asset B ถูกตัดออก)</span>
+                        </div>
+                    </div>
+
+                    <!-- Strat 7: Dual Momentum -->
+                    <div class="strat-box">
+                        <h4 class="font-bold text-stock-600">7. Dual Momentum</h4>
+                        <p class="text-xs mb-2">ต้องผ่าน 2 เงื่อนไข: 1. เป็นขาขึ้น (Absolute > 0) และ 2. เก่งกว่าตัวอื่น (Relative Top 3)</p>
+                        <div class="text-center my-2">Select Top 3 where $Return > 0$, then Equal Weight</div>
+                        <div class="example-box">
+                            Ranking:<br>
+                            1. A (+10%) -> Pass<br>
+                            2. B (+5%) -> Pass<br>
+                            3. C (-2%) -> Fail (Negative)<br>
+                            4. D (-5%) -> Fail (Negative)<br>
+                            <span class="calc-val">Result: ซื้อเฉพาะ A และ B อย่างละ 50% (C ไม่ถูกซื้อแม้จะติด Top 3 เพราะติดลบ)</span>
+                        </div>
+                    </div>
+
+                    <!-- Strat 8: Inverse Volatility -->
+                    <div class="strat-box">
+                        <h4 class="font-bold text-stock-600">8. Inverse Volatility</h4>
+                        <p class="text-xs mb-2">ความผันผวนต่ำ ถือเยอะ / ความผันผวนสูง ถือน้อย (Risk Parity Concept)</p>
+                        <div class="text-center my-2">$$ w_i = \frac{\frac{1}{\sigma_i}}{\sum \frac{1}{\sigma_j}} $$</div>
+                        <div class="example-box">
+                            <strong>Asset A:</strong> Volatility ($\sigma$) = 10% (0.1) -> Inv = 10<br>
+                            <strong>Asset B:</strong> Volatility ($\sigma$) = 20% (0.2) -> Inv = 5<br>
+                            Sum Inv = 15<br>
+                            <span class="calc-val">Weight A = 10/15 (66.6%), Weight B = 5/15 (33.3%)</span>
+                        </div>
+                    </div>
+
+                    <!-- Strat 9: Adaptive Aggressive -->
+                    <div class="strat-box">
+                        <h4 class="font-bold text-stock-600">9. Adaptive Aggressive</h4>
+                        <p class="text-xs mb-2">ผสมผสาน: กรองตัวที่เป็นขาขึ้นก่อน (Trend) แล้วจัดพอร์ตตัวที่เหลือด้วย Inverse Volatility เพื่อลดความเสี่ยง</p>
+                        <div class="text-center my-2">Filter $Return > 0$, then $w_i \propto 1/\sigma_i$</div>
+                        <div class="example-box">
+                            A: Ret +10%, Vol 10% (Pass)<br>
+                            B: Ret +5%, Vol 5% (Pass)<br>
+                            C: Ret -2%, Vol 20% (Fail)<br>
+                            <br>
+                            คำนวณ InvVol เฉพาะ A กับ B:<br>
+                            Inv A = 10, Inv B = 20, Sum = 30<br>
+                            <span class="calc-val">Weight A = 10/30 (33%), Weight B = 20/30 (66%)</span><br>
+                            <span class="text-xs italic">*สังเกตว่า B ได้เยอะกว่าเพราะนิ่งกว่า แม้ A จะกำไรเยอะกว่า (ปลอดภัยไว้ก่อน)</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ================= LOADER ================= -->
+<div id="loader" class="fixed inset-0 bg-white/95 dark:bg-dark-900/95 z-[100] hidden flex flex-col items-center justify-center backdrop-blur-md">
+    <div class="w-16 h-16 border-4 border-stock-500 border-t-transparent rounded-full animate-spin"></div>
+    <p class="mt-6 font-bold mono text-sm tracking-[0.3em] animate-pulse uppercase" id="loader-text">Fetching Market Data...</p>
+</div>
+
+<script>
+/* =========================================================
+   QUANT ENGINE CORE V48.2 (LIQUID ALPHA + SPEED FIX)
+========================================================= */
+
+const CRYPTO_UNIVERSE = ["BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "DOGE", "DOT", "AVAX", "LINK", "UNI", "MATIC", "LTC", "ATOM"];
+const ETF_UNIVERSE = ["SPY", "QQQ", "IWM", "EFA", "EEM", "GLD", "TLT", "VNQ", "LQD", "HYG", "XLE", "XLF", "XLK", "XLV"];
+
+const STRAT_NAMES = {
+    Equal: "1. Equal Weight (1/N)",
+    Rank: "2. Rank All (Momentum)",
+    Top3: "3. Top 3 Leader (Equal)",
+    Top3Rank: "4. Top 3 Leader (Ranked)",
+    Top50: "5. Top 50% Selection",
+    AbsMom: "6. Absolute Mom (Trend)",
+    DualMom: "7. Dual Momentum",
+    InvVol: "8. Inverse Volatility",
+    AAA: "9. Adaptive Aggressive"
+};
+
+const PROXIES = [
+    url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    url => `https://corsproxy.io/?${encodeURIComponent(url)}`
+];
+
+class QuantEngine {
+  constructor(){
+    this.universe = [...ETF_UNIVERSE];
+    this.marketMode = "ETF"; 
+    this.marketData = {}; // { SYMBOL: { prices: [], volumes: [] } }
+    this.dates = [];
+    this.results = [];
+    this.tradingDays = 252;
+    this.benchStats = { cagr: 0, sharpe: 0, mdd: 0, sortino: 0, calmar: 0, winrate: 0 };
+    this.dataStatus = {}; 
+  }
+
+  setMarketMode(mode){
+      this.marketMode = mode;
+      if(mode === "ETF") {
+          this.universe = [...ETF_UNIVERSE];
+          this.tradingDays = 252;
+          document.getElementById('cfg-bench').value = 'SPY';
+          document.getElementById('trading-days-info').innerText = "* 252 Trading Days/Year";
+      } else {
+          this.universe = [...CRYPTO_UNIVERSE];
+          this.tradingDays = 365;
+          document.getElementById('cfg-bench').value = 'BTC';
+          document.getElementById('trading-days-info').innerText = "* 365 Trading Days/Year";
+      }
+      this.dataStatus = {};
+      UI.renderAssets();
+      UI.renderQuickAddOptions();
+      UI.renderHealthMonitor();
+      UI.setSystemStatus('idle');
+      this.resetData();
+  }
+
+  resetData() {
+      this.marketData = {};
+      this.dates = [];
+      this.dataStatus = {};
+  }
+
+  // --- NEW: Fetch with Timeout ---
+  async fetchWithTimeout(resource, options = {}) {
+      const { timeout = 8000 } = options; // 8 Seconds timeout
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeout);
+      const response = await fetch(resource, {
+        ...options,
+        signal: controller.signal  
+      });
+      clearTimeout(id);
+      return response;
+  }
+
+  async fetchAssetData(symbol){
+    const logEl = document.getElementById('status-log');
+    logEl.classList.remove('hidden');
+    
+    let result = null;
+    if(this.marketMode === "CRYPTO") result = await this.fetchBinanceData(symbol);
+    else result = await this.fetchYahooDataRecursive(symbol, 0);
+
+    if (result && result.length > 50) {
+        logEl.innerHTML += `<span class="text-acc-green">> ✅ ${symbol} OK (${result.length} Days)</span><br>`;
+        this.dataStatus[symbol] = { status: 'ok', days: result.length };
+    } else {
+        logEl.innerHTML += `<span class="text-acc-red">> ❌ ${symbol} FAILED</span><br>`;
+        this.dataStatus[symbol] = { status: 'error', days: 0 };
+        return null; 
+    }
+    return result;
+  }
+
+  async fetchBinanceData(symbol){
+    try {
+        const pair = `${symbol.toUpperCase()}USDT`;
+        const response = await this.fetchWithTimeout(`https://api.binance.com/api/v3/klines?symbol=${pair}&interval=1d&limit=1000`);
+        if(!response.ok) throw new Error(`Fetch failed`);
+        const data = await response.json();
+        return data.map(d => ({ 
+            date: new Date(d[0]).toISOString().slice(0, 10), 
+            price: parseFloat(d[4]),
+            volume: parseFloat(d[5])
+        }));
+    } catch(e) { return null; }
+  }
+
+  async fetchYahooDataRecursive(symbol, proxyIdx){
+      if(proxyIdx >= PROXIES.length) return null;
+      try {
+          const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol.toUpperCase()}?interval=1d&range=5y`;
+          const proxyUrl = PROXIES[proxyIdx](yahooUrl);
+          const response = await this.fetchWithTimeout(proxyUrl);
+          if(!response.ok) throw new Error(`Proxy ${proxyIdx} failed`);
+          const data = await response.json();
+          const result = data.chart.result[0];
+          if(!result || !result.timestamp) throw new Error(`No data`);
+          const timestamps = result.timestamp;
+          const prices = result.indicators.quote[0].close;
+          const volumes = result.indicators.quote[0].volume; 
+          
+          const history = [];
+          for(let i=0; i<timestamps.length; i++){
+              if(prices[i] !== null && prices[i] !== undefined){
+                  const d = new Date(timestamps[i] * 1000).toISOString().slice(0, 10);
+                  history.push({ 
+                      date: d, 
+                      price: prices[i],
+                      volume: volumes[i] || 0
+                  });
+              }
+          }
+          return history;
+      } catch(e) { return await this.fetchYahooDataRecursive(symbol, proxyIdx + 1); }
+  }
+
+  async fetchData() {
+      UI.loading(true, "INITIALIZING...");
+      document.getElementById('status-log').innerHTML = '';
+      UI.setSystemStatus('loading');
+      
+      const cfg = UI.getParams();
+      let desiredTickers = [...new Set([...this.universe, cfg.bench])];
+      
+      // --- NEW: Batch Processing to prevent UI Freeze ---
+      const batchSize = 3; 
+      const availableTickers = [];
+      const availableData = [];
+      
+      for (let i = 0; i < desiredTickers.length; i += batchSize) {
+          const batch = desiredTickers.slice(i, i + batchSize);
+          UI.loading(true, `FETCHING ${i + 1}/${desiredTickers.length}...`);
+          
+          // Yield to UI thread
+          await new Promise(r => setTimeout(r, 50)); 
+
+          const results = await Promise.all(batch.map(s => this.fetchAssetData(s)));
+          
+          results.forEach((res, idx) => {
+              if (res && res.length > 50) {
+                  availableTickers.push(batch[idx]);
+                  availableData.push(res);
+              }
+          });
+      }
+
+      if(availableData.length < 2) {
+          alert("Not enough data loaded. Please add more valid assets.");
+          UI.loading(false);
+          UI.setSystemStatus('error');
+          UI.renderHealthMonitor();
+          return;
+      }
+
+      const dateSet = new Set(); 
+      availableData.forEach(r => r.forEach(x => dateSet.add(x.date)));
+      this.dates = [...dateSet].sort();
+      
+      this.marketData = {};
+      availableTickers.forEach((s, idx) => {
+          const pLookup = {}; 
+          const vLookup = {};
+          availableData[idx].forEach(h => { pLookup[h.date] = h.price; vLookup[h.date] = h.volume; });
+          
+          let lastP = availableData[idx][0]?.price || 100;
+          let lastV = 0;
+
+          const alignedPrices = [];
+          const alignedVolumes = [];
+
+          this.dates.forEach(d => { 
+              if(pLookup[d] !== undefined) lastP = pLookup[d]; 
+              if(vLookup[d] !== undefined) lastV = vLookup[d]; else lastV = 0;
+              
+              alignedPrices.push(lastP);
+              alignedVolumes.push(lastV);
+          });
+          
+          this.marketData[s] = { prices: alignedPrices, volumes: alignedVolumes };
+      });
+
+      UI.renderHealthMonitor();
+      UI.loading(false);
+      UI.setSystemStatus('ready');
+      UI.enableRunButton(true);
+  }
+
+  runSimulation() {
+      if (Object.keys(this.marketData).length === 0) {
+          alert("Please Fetch Data first!");
+          return;
+      }
+
+      UI.loading(true, "FILTERING LIQUIDITY & BACKTESTING...");
+      const cfg = UI.getParams();
+      
+      const allAssets = this.universe.filter(u => this.marketData[u]);
+      
+      if(allAssets.length === 0) {
+          alert("No valid assets in portfolio to run.");
+          UI.loading(false); return;
+      }
+
+      let startIdx = this.dates.findIndex(d => d >= cfg.start);
+      let endIdx = this.dates.findIndex(d => d > cfg.end);
+      if (startIdx === -1) startIdx = 0;
+      if (endIdx === -1) endIdx = this.dates.length;
+      const sliceEnd = endIdx;
+      
+      if(sliceEnd <= startIdx + 30) { 
+          alert(`Insufficient data in selected range.`); 
+          UI.loading(false); return; 
+      }
+
+      this.results = [];
+      const dailyMgmtFee = (cfg.mgmtFee / 100) / this.tradingDays;
+
+      setTimeout(() => {
+          // --- Outer Loop: Dynamic Liquidity Lookback ---
+          for(const liqLB of cfg.liqLookbacks) {
+              
+              // 1. Calculate Liquidity Scores based on CURRENT liqLB
+              const liquidityScores = [];
+              const liqStartIdx = Math.max(0, startIdx - liqLB);
+              const liqEndIdx = startIdx; 
+
+              allAssets.forEach(sym => {
+                let sumVal = 0;
+                let count = 0;
+                for(let i=liqStartIdx; i<liqEndIdx; i++) {
+                    const val = this.marketData[sym].prices[i] * this.marketData[sym].volumes[i];
+                    if(!isNaN(val)) { sumVal += val; count++; }
+                }
+                const adv = count > 0 ? sumVal / count : 0;
+                liquidityScores.push({ sym, adv });
+              });
+
+              // 2. Sort & Select Top N
+              liquidityScores.sort((a,b) => b.adv - a.adv);
+              const topN = Math.min(liquidityScores.length, cfg.liqTopN);
+              const activeUniverse = liquidityScores.slice(0, topN).map(x => x.sym);
+              
+              // Pre-calculate returns for this universe
+              const returns = {}; 
+              activeUniverse.forEach(s => { 
+                  const p = this.marketData[s].prices; returns[s] = [0]; 
+                  for(let i=1; i<p.length; i++) returns[s].push(p[i]/p[i-1]-1); 
+              });
+
+              // --- Inner Loops: Strategy / LB / RB ---
+              const stratsToRun = cfg.strategy === "ALL" ? Object.keys(STRAT_NAMES) : [cfg.strategy];
+
+              for(const stratKey of stratsToRun){
+                for(const lb of cfg.lookbacks){
+                  for(const rb of cfg.rebals){
+                    
+                    let cash = cfg.initial * (1 - cfg.frontEndFee / 100);
+                    let shares = {}; activeUniverse.forEach(k => shares[k] = 0);
+                    let curve = [], logs = [], totalTO = 0, rebCount = 0;
+                    
+                    const t0 = startIdx;
+                    let initWeights = {};
+                    const sigs = {}, vols = {};
+                    const needsVol = ["InvVol", "AAA"].includes(stratKey);
+
+                    activeUniverse.forEach(k => {
+                       const pNow = this.marketData[k].prices[t0];
+                       const pastIdx = Math.max(0, t0-lb);
+                       const pPast = this.marketData[k].prices[pastIdx];
+                       sigs[k] = pNow / pPast - 1;
+                       if(needsVol || lb <= 30) {
+                           const volSlice = returns[k].slice(Math.max(0, t0-30), t0+1);
+                           vols[k] = math.std(volSlice) || 0.01;
+                       } else { vols[k] = 1; }
+                    });
+
+                    initWeights = this.getWeights(stratKey, sigs, vols, activeUniverse);
+                    activeUniverse.forEach(k => {
+                        if(initWeights[k] > 0) {
+                            const amt = cash * initWeights[k];
+                            const netAmt = amt * (1 - cfg.fee/100);
+                            shares[k] = netAmt / this.marketData[k].prices[t0];
+                        }
+                    });
+                    cash = 0;
+
+                    for(let t = startIdx; t < sliceEnd; t++){
+                      let equityValue = 0;
+                      activeUniverse.forEach(k => equityValue += shares[k] * this.marketData[k].prices[t]);
+                      let nav = cash + equityValue;
+                      nav -= nav * dailyMgmtFee;
+                      const factor = 1 - dailyMgmtFee;
+                      activeUniverse.forEach(k => shares[k] *= factor);
+                      
+                      if((t - startIdx) > 0 && (t - startIdx) % rb === 0){
+                          const sigs = {}, vols = {};
+                          activeUniverse.forEach(k => {
+                              const pNow = this.marketData[k].prices[t];
+                              const pastIdx = Math.max(0, t-lb);
+                              const pPast = this.marketData[k].prices[pastIdx];
+                              sigs[k] = pNow / pPast - 1;
+                              if(needsVol) {
+                                  const volSlice = returns[k].slice(Math.max(0, t-30), t+1);
+                                  vols[k] = math.std(volSlice) || 0.01; 
+                              } else { vols[k] = 1; }
+                          });
+                          const targetWeights = this.getWeights(stratKey, sigs, vols, activeUniverse);
+
+                          let currentVal = {}; activeUniverse.forEach(k => currentVal[k] = shares[k] * this.marketData[k].prices[t]);
+                          let totalNav = nav;
+                          
+                          if (cfg.dca > 0) {
+                               let inflow = cfg.dca;
+                               let currentTotal = totalNav;
+                               let deficits = {}, totalDeficit = 0;
+                               
+                               activeUniverse.forEach(k => {
+                                   let ideal = (currentTotal + inflow) * targetWeights[k];
+                                   let diff = ideal - currentVal[k];
+                                   if (diff > 0) { deficits[k] = diff; totalDeficit += diff; } else { deficits[k] = 0; }
+                               });
+
+                               let buyAmounts = {}, allocationPcts = {};
+                               activeUniverse.forEach(k => {
+                                   let amount = totalDeficit > 0 ? inflow * (deficits[k] / totalDeficit) : inflow * targetWeights[k];
+                                   buyAmounts[k] = amount;
+                                   allocationPcts[k] = (amount / inflow) * 100;
+                               });
+
+                               activeUniverse.forEach(k => {
+                                   if(buyAmounts[k] > 0.01){
+                                       let netBuy = buyAmounts[k] * (1 - cfg.fee / 100);
+                                       shares[k] += netBuy / this.marketData[k].prices[t];
+                                   }
+                               });
+                               rebCount++;
+                               logs.push({ date: this.dates[t], type: 'DCA', inflow: inflow, allocation: allocationPcts, nav: currentTotal + inflow });
+
+                          } else {
+                              let newShares = {}, diffPct = {}, realTO = 0;
+                              activeUniverse.forEach(k => {
+                                  const targetVal = totalNav * targetWeights[k];
+                                  const diff = targetVal - currentVal[k];
+                                  diffPct[k] = (diff / totalNav) * 100;
+                                  realTO += Math.abs(diff);
+                              });
+                              
+                              let netNav = totalNav - (realTO * (cfg.fee/100));
+                              activeUniverse.forEach(k => {
+                                  newShares[k] = (netNav * targetWeights[k]) / this.marketData[k].prices[t];
+                              });
+                              
+                              if(realTO > 1) { 
+                                  totalTO += realTO; rebCount++; 
+                                  logs.push({ date: this.dates[t], type: 'REBAL', diff: diffPct, nav: netNav }); 
+                                  shares = newShares; 
+                              }
+                          }
+                      }
+                      
+                      let finalDailyEq = cash;
+                      activeUniverse.forEach(k => finalDailyEq += shares[k] * this.marketData[k].prices[t]);
+                      curve.push(finalDailyEq);
+                    }
+                    
+                    this.results.push({ 
+                      strat: stratKey, stratFull: STRAT_NAMES[stratKey], lb, rb, liqLB, // Add liqLB to result
+                      curve, logs, dates: this.dates.slice(startIdx, sliceEnd), 
+                      avgTO: (rebCount ? (totalTO/rebCount)/curve[0]*100 : 0).toFixed(1),
+                      activeUniverse: activeUniverse,
+                      ...this.calcStats(curve, cfg.rf) 
+                    });
+                  }
+                }
+              }
+          } // End liqLB loop
+          
+          const bPriceRaw = this.marketData[cfg.bench]?.prices;
+          if (bPriceRaw) {
+              const bPriceSliced = bPriceRaw.slice(startIdx, sliceEnd);
+              const startCap = cfg.initial;
+              const bNorm = bPriceSliced.map(v => (v / bPriceSliced[0]) * startCap);
+              this.benchStats = this.calcStats(bNorm, cfg.rf);
+          } else {
+              this.benchStats = { cagr: 0, sharpe: 0, mdd: 0, sortino: 0, calmar: 0, winrate: 0 };
+          }
+          
+          this.results.sort((a,b) => b.sharpe - a.sharpe);
+          
+          UI.currentPage = 1;
+          UI.populateStrategyFilter(); 
+          UI.renderBatchTable();
+          UI.selectResult(0);
+          setTimeout(() => UI.initSurfaceControls(), 200);
+          UI.loading(false);
+
+      }, 50);
+  }
+
+  getWeights(type, sig, vol, keys){
+    let items = keys.map(k => ({k, val: sig[k], vol: vol[k]})).filter(x => !isNaN(x.val));
+    items.sort((a,b) => b.val - a.val);
+    let w = {}; keys.forEach(k => w[k] = 0);
+    if(type === "Equal") items.forEach(x => w[x.k] = 1/items.length);
+    else if(type === "Rank") { const N = items.length, S = (N*(N+1))/2; items.forEach((x,i) => w[x.k] = (N-i)/S); }
+    else if(type === "Top3") { const K = Math.min(3, items.length); items.slice(0, K).forEach(x => w[x.k] = 1/K); }
+    else if(type === "Top3Rank") { const K = Math.min(3, items.length), S = K*(K+1)/2; items.slice(0, K).forEach((x,i) => w[x.k] = (K-i)/S); }
+    else if(type === "Top50") { const K = Math.ceil(items.length/2); items.slice(0, K).forEach(x => w[x.k] = 1/K); }
+    else if(type === "AbsMom") { const act = items.filter(x => x.val > 0); if(act.length) act.forEach(x => w[x.k] = 1/act.length); }
+    else if(type === "DualMom") { const act = items.filter(x => x.val > 0); const K = Math.min(act.length, 3); if(act.length) act.slice(0, K).forEach(x => w[x.k] = 1/K); }
+    else if(type === "InvVol") { let S = 0; items.forEach(x => S += 1/(x.vol <= 0.0001 ? 0.0001 : x.vol)); items.forEach(x => w[x.k] = (1/(x.vol <= 0.0001 ? 0.0001 : x.vol))/S); }
+    else if(type === "AAA") { const pos = items.filter(x => x.val > 0); let target = pos.length ? pos : items.slice(0, 3); let S = 0; target.forEach(x => S += 1/(x.vol <= 0.0001 ? 0.0001 : x.vol)); target.forEach(x => w[x.k] = (1/(x.vol <= 0.0001 ? 0.0001 : x.vol))/S); }
+    return w;
+  }
+
+  calcStats(curve, rfPct = 2.0){
+    if(!curve.length) return {cagr:0, sharpe:0, mdd:0, sortino:0, calmar:0, winrate:0};
+    const rets = []; let posDays = 0;
+    for(let i=1; i<curve.length; i++) { const r = curve[i]/curve[i-1]-1; rets.push(r); if(r > 0) posDays++; }
+    const N = rets.length;
+    const rfDaily = (rfPct/100)/this.tradingDays; 
+    const excessRets = rets.map(r => r - rfDaily);
+    const totalRet = curve[curve.length-1]/curve[0];
+    const years = Math.max(curve.length / this.tradingDays, 0.1); 
+    const cagr = (Math.pow(totalRet, 1/years) - 1) * 100;
+    const stdDev = math.std(rets); 
+    const annVol = stdDev * Math.sqrt(this.tradingDays);
+    const avgExcess = math.mean(excessRets);
+    const sharpe = annVol === 0 ? 0 : (avgExcess * this.tradingDays) / annVol;
+    let pk = -Infinity, mdd = 0; curve.forEach(v => { if(v > pk) pk = v; const dd = (v - pk)/pk; if(dd < mdd) mdd = dd; });
+    const downsideSqSum = excessRets.reduce((acc, r) => acc + (r < 0 ? r**2 : 0), 0);
+    const downsideDevDaily = Math.sqrt(downsideSqSum / N); 
+    const downsideDevAnn = downsideDevDaily * Math.sqrt(this.tradingDays);
+    const sortino = downsideDevAnn === 0 ? 0 : (avgExcess * this.tradingDays) / downsideDevAnn;
+    const absMDD = Math.abs(mdd);
+    const calmar = absMDD === 0 ? 0 : cagr / (absMDD * 100);
+    return { cagr: cagr.toFixed(2), sharpe: sharpe.toFixed(2), mdd: (mdd * 100).toFixed(2), sortino: sortino.toFixed(2), calmar: calmar.toFixed(2), winrate: ((posDays / N) * 100).toFixed(1) };
+  }
+}
+
+/* =========================================================
+   UI CONTROLLER
+========================================================= */
+
+const UI = {
+    chartEq: null, chartDD: null, isLog: false, selectedIdx: 0,
+    sortCol: 'sharpe', sortDir: 'desc',
+    surfaceTimer: null, surfaceFrame: 100,
+    currentPage: 1, rowsPerPage: 10, filteredData: [],
+    robustData: [], robustPage: 1, robustPerPage: 4,
+
+    init(){
+        this.renderQuickAddOptions();
+        this.renderAssets(); 
+        this.switchTab('dashboard');
+        this.initTooltips();
+        const end = new Date(); const start = new Date(); start.setFullYear(end.getFullYear() - 5); 
+        document.getElementById('cfg-start').value = start.toISOString().slice(0,10);
+        document.getElementById('cfg-end').value = end.toISOString().slice(0,10);
+        this.renderHealthMonitor();
+        if(typeof renderMathInElement !== 'undefined') renderMathInElement(document.body);
+    },
+
+    changeMarketMode(mode){
+        Engine.setMarketMode(mode);
+        const badge = document.getElementById('market-source-badge');
+        if(mode === "ETF"){
+            badge.innerText = "YAHOO (PRICE+VOL)";
+            badge.className = "text-[9px] font-bold text-stock-500 bg-stock-500/10 px-1 rounded animate-pulse";
+        } else {
+            badge.innerText = "BINANCE (PRICE+VOL)";
+            badge.className = "text-[9px] font-bold text-acc-green bg-acc-green/10 px-1 rounded animate-pulse";
+        }
+    },
+
+    renderQuickAddOptions(){
+        const sel = document.getElementById('quick-add-select');
+        if(Engine.marketMode === "ETF"){
+            sel.innerHTML = `
+            <option value="">+ Quick Add (ETF)</option>
+            <optgroup label="US Equity">
+                <option value="SPY">SPY (S&P 500)</option>
+                <option value="QQQ">QQQ (Nasdaq 100)</option>
+                <option value="VTI">VTI (Total US)</option>
+                <option value="IWM">IWM (Russell 2000)</option>
+            </optgroup>
+            <optgroup label="Global & Emerging">
+                <option value="VT">VT (Total World)</option>
+                <option value="EFA">EFA (Developed)</option>
+                <option value="EEM">EEM (Emerging)</option>
+            </optgroup>
+            <optgroup label="Bonds & Alt">
+                <option value="TLT">TLT (20y Treasury)</option>
+                <option value="IEF">IEF (7-10y Treasury)</option>
+                <option value="GLD">GLD (Gold)</option>
+                <option value="VNQ">VNQ (Real Estate)</option>
+            </optgroup>`;
+        } else {
+            sel.innerHTML = `
+            <option value="">+ Quick Add (Crypto)</option>
+            <optgroup label="Blue Chips">
+                <option value="BTC">BTC (Bitcoin)</option>
+                <option value="ETH">ETH (Ethereum)</option>
+                <option value="BNB">BNB (Binance)</option>
+            </optgroup>
+            <optgroup label="Layer 1">
+                <option value="SOL">SOL (Solana)</option>
+                <option value="ADA">ADA (Cardano)</option>
+                <option value="AVAX">AVAX (Avalanche)</option>
+                <option value="DOT">DOT (Polkadot)</option>
+            </optgroup>
+            <optgroup label="DeFi/Meme/Others">
+                <option value="LINK">LINK (Chainlink)</option>
+                <option value="UNI">UNI (Uniswap)</option>
+                <option value="DOGE">DOGE (Dogecoin)</option>
+                <option value="XRP">XRP (Ripple)</option>
+            </optgroup>`;
+        }
+    },
+    
+    renderHealthMonitor(){
+        const container = document.getElementById('data-health');
+        const assets = [...Engine.universe];
+        if (document.getElementById('cfg-bench').value) assets.push(document.getElementById('cfg-bench').value);
+        const uniqueAssets = [...new Set(assets)];
+
+        if(uniqueAssets.length === 0) { container.innerHTML = '<span class="text-[8px] text-gray-400 col-span-2 text-center">No assets selected</span>'; return; }
+        
+        let html = '';
+        uniqueAssets.forEach(s => {
+            const status = Engine.dataStatus[s] || { status: 'empty', days: 0 };
+            let dotClass = 'empty';
+            let text = 'Empty';
+            let textColor = 'text-gray-400';
+
+            if(status.status === 'ok') { dotClass = 'ready'; text = `${status.days}D`; textColor = 'text-stock-600 font-bold'; }
+            else if(status.status === 'error') { text = 'Error'; textColor = 'text-red-500 font-bold'; }
+            
+            html += `
+            <div class="health-item">
+                <span class="font-bold text-gray-500">${s}</span>
+                <span class="flex items-center gap-1 text-[8px] ${textColor}">
+                    ${text} <div class="status-dot ${dotClass}"></div>
+                </span>
+            </div>`;
+        });
+        container.innerHTML = html;
+    },
+    
+    setSystemStatus(state){
+        const text = document.getElementById('system-status');
+        if(!text) return;
+        let html = '';
+        if(state === 'idle') html = '<span class="status-dot empty" id="main-status-dot"></span> System Idle';
+        else if(state === 'loading') html = '<span class="status-dot loading" id="main-status-dot"></span> Processing...';
+        else if(state === 'ready') html = '<span class="status-dot ready" id="main-status-dot"></span> Data Ready';
+        else if(state === 'error') html = '<span class="status-dot empty bg-red-500" id="main-status-dot"></span> Error';
+        text.innerHTML = html;
+    },
+    
+    enableRunButton(enable){
+        const btn = document.getElementById('btn-run');
+        if(enable){
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            btn.classList.add('animate-pulse'); 
+            setTimeout(() => btn.classList.remove('animate-pulse'), 1000);
+        } else {
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+    },
+    
+    initTooltips() {
+        const tooltip = document.getElementById('global-tooltip');
+        document.body.addEventListener('mouseover', (e) => {
+            const target = e.target.closest('.has-tooltip');
+            if (!target) return;
+            const source = target.querySelector('.tooltip-source');
+            if (source) {
+                tooltip.innerHTML = source.innerHTML;
+                tooltip.style.visibility = 'visible';
+                tooltip.style.opacity = '1';
+                this.updateTooltipPosition(e, tooltip);
+            }
+        });
+        document.body.addEventListener('mouseout', (e) => {
+            const target = e.target.closest('.has-tooltip');
+            if (target) {
+                tooltip.style.visibility = 'hidden';
+                tooltip.style.opacity = '0';
+            }
+        });
+    },
+    
+    updateTooltipPosition(e, tooltip) {
+        const target = e.target.closest('.has-tooltip');
+        if(!target) return;
+        const rect = target.getBoundingClientRect();
+        let top = rect.top - tooltip.offsetHeight - 10;
+        let left = rect.left + (rect.width / 2) - (tooltip.offsetWidth / 2);
+        const bodyRect = document.body.getBoundingClientRect();
+        if (left < 10) left = 10;
+        if (left + tooltip.offsetWidth > bodyRect.width) left = bodyRect.width - tooltip.offsetWidth - 10;
+        if (top < 10) top = rect.bottom + 10;
+        tooltip.style.top = `${top}px`;
+        tooltip.style.left = `${left}px`;
+    },
+
+    getParams(){
+        const p = {}; ['cfg-strategy', 'cfg-start', 'cfg-end', 'cfg-bench', 'cfg-fee', 'cfg-frontend-fee', 'cfg-mgmt-fee', 'cfg-rf', 'cfg-initial', 'cfg-dca', 'cfg-liq-top'].forEach(id => { const el = document.getElementById(id); p[id.replace('cfg-','')] = el ? el.value : null; });
+        
+        const lbs = parseInt(document.getElementById('cfg-lb-start').value) || 1;
+        const lbe = parseInt(document.getElementById('cfg-lb-end').value) || 50;
+        const lbst = parseInt(document.getElementById('cfg-lb-step').value) || 2;
+        const lookbacks = []; for(let i=lbs; i<=lbe; i+=lbst) lookbacks.push(i);
+
+        const rbs = parseInt(document.getElementById('cfg-rb-start').value) || 1;
+        const rbe = parseInt(document.getElementById('cfg-rb-end').value) || 50;
+        const rbst = parseInt(document.getElementById('cfg-rb-step').value) || 2;
+        const rebals = []; for(let i=rbs; i<=rbe; i+=rbst) rebals.push(i);
+
+        const liqs = parseInt(document.getElementById('cfg-liq-start').value) || 30;
+        const liqe = parseInt(document.getElementById('cfg-liq-end').value) || 30;
+        const liqst = parseInt(document.getElementById('cfg-liq-step').value) || 10;
+        const liqLookbacks = []; for(let i=liqs; i<=liqe; i+=liqst) liqLookbacks.push(i);
+
+        return {
+            ...p, bench: (p.bench || "SPY").toUpperCase().trim(),
+            lookbacks: lookbacks, 
+            rebals: rebals,
+            liqLookbacks: liqLookbacks, // NEW: Liquidity Lookback Range
+            fee: parseFloat(p.fee || 0.1), 
+            frontEndFee: parseFloat(p['frontend-fee'] || 0),
+            mgmtFee: parseFloat(p['mgmt-fee'] || 0),
+            rf: parseFloat(p['rf'] || 2.0),
+            initial: parseFloat(p.initial || 1000),
+            dca: parseFloat(p.dca || 0),
+            liqTopN: parseInt(p['liq-top'] || 5)
+        };
+    },
+
+    switchTab(id){
+        ['dashboard', 'docs'].forEach(v => {
+            const view = document.getElementById(`view-${v}`); const btn = document.getElementById(`btn-tab-${v}`);
+            if(view) view.classList.add('hidden'); if(btn) btn.className = "px-3 py-1 text-[10px] font-bold rounded text-gray-400 hover:text-stock-500 transition-all";
+        });
+        const tv = document.getElementById(`view-${id}`); const tb = document.getElementById(`btn-tab-${id}`);
+        if(tv) tv.classList.remove('hidden'); if(tb) tb.className = "px-3 py-1 text-[10px] font-bold rounded bg-white dark:bg-dark-800 shadow-sm text-stock-600 transition-all";
+        if(id === 'docs' && typeof renderMathInElement !== 'undefined') renderMathInElement(document.body);
+    },
+
+    suggestAsset(s){ if(!s) return; document.getElementById('cfg-add').value = s; this.addAsset(); },
+    addAsset(){ 
+        const i = document.getElementById('cfg-add'); if(!i) return; 
+        const v = i.value.trim().toUpperCase(); 
+        if(v && !Engine.universe.includes(v)){ 
+            Engine.universe.push(v); 
+            this.renderAssets(); 
+            this.renderHealthMonitor(); 
+            this.enableRunButton(false); 
+        } 
+        i.value = ''; 
+    },
+    removeAsset(s){ 
+        Engine.universe = Engine.universe.filter(u => u !== s); 
+        this.renderAssets(); 
+        this.renderHealthMonitor();
+    },
+    renderAssets(){ const l = document.getElementById('asset-list'); if(l) l.innerHTML = Engine.universe.map(a => `<span class="bg-white dark:bg-dark-800 border dark:border-dark-700 px-1.5 py-0.5 rounded text-[9px] mono font-bold flex items-center gap-1 shadow-sm transition-transform hover:scale-105">${a} <button onclick="UI.removeAsset('${a}')" class="text-red-500 hover:text-red-700 font-bold ml-1">×</button></span>`).join(''); },
+    loading(s, t="..."){ const elT = document.getElementById('loader-text'); const elL = document.getElementById('loader'); if(elT) elT.innerText = t; if(elL) s ? elL.classList.remove('hidden') : elL.classList.add('hidden'); },
+    toggleTheme(){ document.body.classList.toggle('dark'); if(Engine.results.length) this.selectResult(this.selectedIdx); },
+    toggleLog(){ this.isLog = !this.isLog; if(Engine.results[this.selectedIdx]) this.renderEquity(Engine.results[this.selectedIdx]); },
+
+    sortBatch(col){
+        if(this.sortCol === col) this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+        else { this.sortCol = col; this.sortDir = 'desc'; }
+        this.renderBatchTable();
+    },
+
+    populateStrategyFilter(){
+        const sel = document.getElementById('f-strat');
+        if(!sel) return;
+        let html = '<option value="">All</option>';
+        Object.values(STRAT_NAMES).forEach(n => {
+            html += `<option value="${n}">${n}</option>`;
+        });
+        sel.innerHTML = html;
+    },
+
+    applyBatchFilters(){ this.currentPage = 1; this.renderBatchTable(); },
+    clearFilters(){ 
+        ['f-strat', 'f-liqlb', 'f-lb', 'f-rb', 'f-cagr', 'f-sharpe', 'f-mdd', 'f-sortino', 'f-calmar'].forEach(id => { 
+            const el = document.getElementById(id); 
+            if(el) el.value = ''; 
+        }); 
+        this.applyBatchFilters(); 
+    },
+
+    renderBatchTable(){
+        const b = document.getElementById('batch-table-body'); 
+        if(!b || !Engine.results.length) return;
+        
+        const elStrat = document.getElementById('f-strat');
+        const elLiqLB = document.getElementById('f-liqlb'); // NEW
+        const elLb = document.getElementById('f-lb');
+        const elRb = document.getElementById('f-rb');
+        const elCagr = document.getElementById('f-cagr');
+        const elSharpe = document.getElementById('f-sharpe');
+        const elSortino = document.getElementById('f-sortino');
+        const elCalmar = document.getElementById('f-calmar');
+        const elMdd = document.getElementById('f-mdd');
+
+        const fs = elStrat ? elStrat.value : '';
+        const fliqlb = elLiqLB ? (parseFloat(elLiqLB.value) || -Infinity) : -Infinity;
+        const flb = elLb ? (parseFloat(elLb.value) || -Infinity) : -Infinity;
+        const frb = elRb ? (parseFloat(elRb.value) || -Infinity) : -Infinity;
+        const fcagr = elCagr ? (parseFloat(elCagr.value) || -Infinity) : -Infinity;
+        const fsharpe = elSharpe ? (parseFloat(elSharpe.value) || -Infinity) : -Infinity;
+        const fsortino = elSortino ? (parseFloat(elSortino.value) || -Infinity) : -Infinity;
+        const fcalmar = elCalmar ? (parseFloat(elCalmar.value) || -Infinity) : -Infinity;
+        const fmdd = elMdd ? (parseFloat(elMdd.value) || Infinity) : Infinity;
+
+        this.filteredData = Engine.results.filter(r => {
+            const matchStrat = fs === '' ? true : r.stratFull === fs;
+            const matchLiqLB = isFinite(fliqlb) ? r.liqLB >= fliqlb : true;
+            const matchLb = isFinite(flb) ? r.lb >= flb : true;
+            const matchRb = isFinite(frb) ? r.rb >= frb : true;
+            const matchCagr = isFinite(fcagr) ? parseFloat(r.cagr) >= fcagr : true;
+            const matchSharpe = isFinite(fsharpe) ? parseFloat(r.sharpe) >= fsharpe : true;
+            const matchSortino = isFinite(fsortino) ? parseFloat(r.sortino) >= fsortino : true;
+            const matchCalmar = isFinite(fcalmar) ? parseFloat(r.calmar) >= fcalmar : true;
+            
+            let matchMdd = true;
+            if (isFinite(fmdd)) {
+                matchMdd = Math.abs(parseFloat(r.mdd)) <= Math.abs(fmdd);
+            }
+
+            const isSafe = (val) => {
+                const num = parseFloat(val);
+                return !isNaN(num) && Number.isFinite(num);
+            };
+            const validData = isSafe(r.cagr) && isSafe(r.sharpe) && isSafe(r.sortino) && isSafe(r.calmar) && isSafe(r.mdd);
+
+            return matchStrat && matchLiqLB && matchLb && matchRb && matchCagr && matchSharpe && matchSortino && matchCalmar && matchMdd && validData;
+        });
+
+        this.filteredData.sort((a,b) => {
+            let v1 = a[this.sortCol], v2 = b[this.sortCol];
+            if(['cagr', 'sharpe', 'mdd', 'sortino', 'calmar', 'lb', 'rb', 'liqLB'].includes(this.sortCol)){ v1 = parseFloat(v1); v2 = parseFloat(v2); }
+            if(this.sortDir === 'asc') return v1 > v2 ? 1 : -1;
+            return v1 < v2 ? 1 : -1;
+        });
+
+        const start = (this.currentPage - 1) * this.rowsPerPage;
+        const end = start + this.rowsPerPage;
+        const paginatedData = this.filteredData.slice(start, end);
+
+        document.getElementById('pagination-info').innerText = `${Math.min(start+1, this.filteredData.length)}-${Math.min(end, this.filteredData.length)} of ${this.filteredData.length}`;
+        document.getElementById('btn-prev').disabled = this.currentPage === 1;
+        document.getElementById('btn-next').disabled = end >= this.filteredData.length;
+
+        let sumCagr=0, cCagr=0;
+        let sumSharpe=0, cSharpe=0;
+        let sumSortino=0, cSortino=0;
+        let sumCalmar=0, cCalmar=0;
+        let sumMdd=0, cMdd=0;
+        
+        const n = this.filteredData.length; 
+        
+        if(n > 0) {
+            this.filteredData.forEach(r => {
+                const vCagr = parseFloat(r.cagr);
+                if(Number.isFinite(vCagr)) { sumCagr += vCagr; cCagr++; }
+
+                const vSharpe = parseFloat(r.sharpe);
+                if(Number.isFinite(vSharpe)) { sumSharpe += vSharpe; cSharpe++; }
+
+                const vSortino = parseFloat(r.sortino);
+                if(Number.isFinite(vSortino)) { sumSortino += vSortino; cSortino++; }
+
+                const vCalmar = parseFloat(r.calmar);
+                if(Number.isFinite(vCalmar)) { sumCalmar += vCalmar; cCalmar++; }
+
+                const vMdd = parseFloat(r.mdd);
+                if(Number.isFinite(vMdd)) { sumMdd += vMdd; cMdd++; }
+            });
+        }
+
+        const avgHtml = n > 0 ? `
+            <tr>
+                <td class="p-3 text-left border-t-2 border-gray-300 dark:border-dark-600 bg-gray-50 dark:bg-dark-800 font-bold text-stock-600">AVERAGE (N=${n})</td>
+                <td class="p-3 text-center border-t-2 border-gray-300 dark:border-dark-600 bg-gray-50 dark:bg-dark-800">-</td>
+                <td class="p-3 text-center border-t-2 border-gray-300 dark:border-dark-600 bg-gray-50 dark:bg-dark-800">-</td>
+                <td class="p-3 text-center border-t-2 border-gray-300 dark:border-dark-600 bg-gray-50 dark:bg-dark-800">-</td>
+                <td class="p-3 text-right border-t-2 border-gray-300 dark:border-dark-600 bg-gray-50 dark:bg-dark-800 font-bold text-acc-green">${cCagr ? (sumCagr/cCagr).toFixed(2) : '-'}%</td>
+                <td class="p-3 text-right border-t-2 border-gray-300 dark:border-dark-600 bg-gray-50 dark:bg-dark-800 font-bold text-stock-600">${cSharpe ? (sumSharpe/cSharpe).toFixed(2) : '-'}</td>
+                <td class="p-3 text-right border-t-2 border-gray-300 dark:border-dark-600 bg-gray-50 dark:bg-dark-800 font-bold text-blue-500">${cSortino ? (sumSortino/cSortino).toFixed(2) : '-'}</td>
+                <td class="p-3 text-right border-t-2 border-gray-300 dark:border-dark-600 bg-gray-50 dark:bg-dark-800 font-bold text-purple-500">${cCalmar ? (sumCalmar/cCalmar).toFixed(2) : '-'}</td>
+                <td class="p-3 text-right border-t-2 border-gray-300 dark:border-dark-600 bg-gray-50 dark:bg-dark-800 font-bold text-acc-red">${cMdd ? (sumMdd/cMdd).toFixed(2) : '-'}%</td>
+            </tr>
+        ` : '';
+
+        const footer = document.getElementById('batch-table-foot');
+        if(footer) footer.innerHTML = avgHtml;
+
+        if(!paginatedData.length){ b.innerHTML = '<tr><td colspan="9" class="py-20 text-center text-gray-400 italic">No matches found.</td></tr>'; return; }
+        b.innerHTML = paginatedData.map((r) => {
+            const origIdx = Engine.results.findIndex(orig => orig === r);
+            return `<tr onclick="UI.selectResult(${origIdx})" class="cursor-pointer hover:bg-stock-500/10 transition-colors ${origIdx===this.selectedIdx?'bg-stock-500/15 font-bold border-l-4 border-l-stock-500':''}">
+                <td class="text-left p-3 text-dark-900 dark:text-white">${r.stratFull}</td>
+                <td class="p-3 text-purple-500 font-bold">${r.liqLB}</td>
+                <td class="p-3">${r.lb}</td><td class="p-3">${r.rb}</td>
+                <td class="p-3 text-acc-green">${r.cagr}%</td><td class="p-3 text-stock-600 font-bold">${r.sharpe}</td>
+                <td class="p-3 text-blue-500">${r.sortino}</td><td class="p-3 text-purple-500">${r.calmar}</td><td class="p-3 text-acc-red">${r.mdd}%</td></tr>`;
+        }).join('');
+    },
+
+    nextPage() { if((this.currentPage * this.rowsPerPage) < this.filteredData.length) { this.currentPage++; this.renderBatchTable(); } },
+    prevPage() { if(this.currentPage > 1) { this.currentPage--; this.renderBatchTable(); } },
+
+    selectResult(idx){
+        this.selectedIdx = idx; const res = Engine.results[idx]; if(!res) return;
+        const metrics = { 'kpi-cagr': res.cagr+"%", 'kpi-sharpe': res.sharpe, 'kpi-mdd': res.mdd+"%", 'kpi-sortino': res.sortino, 'kpi-calmar': res.calmar, 'kpi-winrate': res.winrate+"%" };
+        Object.entries(metrics).forEach(([id, v]) => { const el = document.getElementById(id); if(el) el.innerText = v; });
+        const benches = { 'bench-cagr': `Bench: ${Engine.benchStats.cagr}%`, 'bench-sharpe': `Bench: ${Engine.benchStats.sharpe}`, 'bench-mdd': `Bench: ${Engine.benchStats.mdd}%`, 'bench-sortino': `Bench: ${Engine.benchStats.sortino}`, 'bench-calmar': `Bench: ${Engine.benchStats.calmar}`, 'bench-winrate': `Bench: ${Engine.benchStats.winrate}%` };
+        Object.entries(benches).forEach(([id, v]) => { const el = document.getElementById(id); if(el) el.innerText = v; });
+        document.getElementById('chart-subtitle').innerText = `${res.stratFull} [Liq.W: ${res.liqLB}d] (Active: ${res.activeUniverse.length}) vs ${document.getElementById('cfg-bench').value}`;
+        this.renderEquity(res); this.renderLogs(res.logs);
+        this.renderDrawdownChart(res);
+        this.renderBatchTable(); UI.renderSurface(); UI.runMonteCarlo();
+    },
+
+    renderLogs(logs){
+        const b = document.getElementById('log-table'); if(!b) return;
+        
+        b.innerHTML = logs.slice().reverse().map(l => {
+            let html = '';
+            
+            if (l.type === 'DCA') {
+                const dcaItems = Object.entries(l.allocation).filter(([k,v]) => v > 0.1); 
+                dcaItems.sort((a,b) => b[1] - a[1]);
+                const badges = dcaItems.map(([k,v]) => 
+                    `<span class="inline-block px-1.5 py-0.5 rounded border border-stock-500/30 bg-stock-500/10 text-stock-600 text-[9px] font-bold mr-1 mb-1">Buy ${k}: ${v.toFixed(1)}%</span>`
+                ).join('');
+                html = `
+                <tr>
+                    <td class="p-3 text-gray-400 font-bold border-b dark:border-dark-700 align-top">${l.date}</td>
+                    <td class="p-3 font-bold text-acc-green border-b dark:border-dark-700 align-top">Injection: +$${l.inflow.toFixed(0)}</td>
+                    <td class="p-3 border-b dark:border-dark-700 align-top">
+                        <div class="mb-1 text-[9px] text-gray-500 font-bold uppercase">Smart Allocation</div>
+                        <div class="flex flex-wrap">${badges}</div>
+                    </td>
+                    <td class="p-3 border-b dark:border-dark-700 align-top text-gray-500 text-[9px] font-mono">NAV: $${l.nav.toFixed(0)}</td>
+                </tr>`;
+                
+            } else {
+                const diffs = Object.entries(l.diff).filter(([k,v]) => Math.abs(v) > 0.1); 
+                diffs.sort((a,b) => b[1] - a[1]);
+                const badges = diffs.map(([k,v]) => {
+                    const isBuy = v > 0;
+                    const color = isBuy ? 'text-acc-green bg-acc-green/10 border-acc-green/20' : 'text-acc-red bg-acc-red/10 border-acc-red/20';
+                    const sign = isBuy ? 'Buy' : 'Sell';
+                    return `<span class="inline-block px-1.5 py-0.5 rounded border text-[9px] font-bold mr-1 mb-1 ${color}">${sign} ${k}: ${Math.abs(v).toFixed(2)}%</span>`;
+                }).join('');
+                html = `
+                <tr>
+                    <td class="p-3 text-gray-400 font-bold border-b dark:border-dark-700 align-top">${l.date}</td>
+                    <td class="p-3 font-bold text-blue-500 border-b dark:border-dark-700 align-top">Rebalance</td>
+                    <td class="p-3 border-b dark:border-dark-700 align-top">
+                        <div class="mb-1 text-[9px] text-gray-500 font-bold uppercase">% of Portfolio</div>
+                        <div class="flex flex-wrap">${badges}</div>
+                    </td>
+                    <td class="p-3 border-b dark:border-dark-700 align-top text-gray-500 text-[9px] font-mono">NAV: $${l.nav.toFixed(0)}</td>
+                </tr>`;
+            }
+            return html;
+        }).join('');
+    },
+
+    renderEquity(res){
+        const ctx = document.getElementById('chart-equity').getContext('2d'); if(this.chartEq) this.chartEq.destroy();
+        const cfg = UI.getParams(); 
+        const bAll = Engine.marketData[cfg.bench]?.prices; 
+        const sIdx = Engine.dates.findIndex(d => d === res.dates[0]);
+        let bench = [];
+        if (bAll) {
+            const benchRaw = bAll.slice(sIdx, sIdx + res.curve.length);
+            const startVal = res.curve[0];
+            bench = benchRaw.map(v => (v / benchRaw[0]) * startVal);
+        }
+
+        const grad = ctx.createLinearGradient(0, 0, 0, 400); grad.addColorStop(0, 'rgba(59, 130, 246, 0.2)'); grad.addColorStop(1, 'rgba(59, 130, 246, 0)');
+        this.chartEq = new Chart(ctx, { type: 'line', data: { labels: res.dates, datasets: [{ label: 'Selected Strategy', data: res.curve, borderColor: '#3b82f6', backgroundColor: grad, borderWidth: 2, fill: true, pointRadius: 0, tension: 0.1 }, { label: `Benchmark (${cfg.bench})`, data: bench, borderColor: '#64748b', borderDash: [4,4], borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.1 }] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { y: { type: this.isLog ? 'logarithmic' : 'linear', grid: { color: document.body.classList.contains('dark') ? '#2B3139' : '#e2e8f0' }, ticks: { color: '#94a3b8' } }, x: { display: false } }, plugins: { legend: { labels: { color: document.body.classList.contains('dark') ? '#EAECEF' : '#1E2329' } }, tooltip: { backgroundColor: 'rgba(0,0,0,0.8)', titleFont: { family: 'JetBrains Mono' }, bodyFont: { family: 'JetBrains Mono' }, padding: 10, cornerRadius: 8, displayColors: true } } } });
+    },
+
+    renderDrawdownChart(res){
+        const ctx = document.getElementById('chart-drawdown').getContext('2d'); if(this.chartDD) this.chartDD.destroy();
+        let pk = 0; const dd = res.curve.map(v => { if(v > pk) pk = v; return (v - pk)/pk * 100; });
+        const grad = ctx.createLinearGradient(0, 0, 0, 140); grad.addColorStop(0, 'rgba(246, 70, 93, 0.1)'); grad.addColorStop(1, 'rgba(246, 70, 93, 0.4)');
+        this.chartDD = new Chart(ctx, { type: 'line', data: { labels: res.dates, datasets: [{ data: dd, borderColor: '#F6465D', backgroundColor: grad, fill: true, pointRadius: 0, borderWidth: 1 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } }, scales: { y: { max: 0, ticks: { callback: v => v + '%' }, grid: { display: false } }, x: { ticks: { color: '#94a3b8', maxTicksLimit: 8 }, grid: { display: false } } } } });
+    },
+
+    initSurfaceControls(){
+        this.surfaceFrame = 100;
+        document.getElementById('surface-slider').value = 100;
+        document.getElementById('surface-date-display').innerText = "Full History";
+        this.renderSurface();
+    },
+
+    toggleSurfaceAnim(){
+        if(this.surfaceTimer) { clearInterval(this.surfaceTimer); this.surfaceTimer = null; document.getElementById('btn-play-surface').innerHTML = '<i class="fas fa-play text-[10px]"></i>'; }
+        else {
+            document.getElementById('btn-play-surface').innerHTML = '<i class="fas fa-pause text-[10px]"></i>';
+            if(this.surfaceFrame >= 100) this.surfaceFrame = 0; 
+            this.surfaceTimer = setInterval(() => {
+                this.surfaceFrame += 1; 
+                if(this.surfaceFrame > 100) {
+                    this.surfaceFrame = 100;
+                    this.renderSurface();
+                    this.toggleSurfaceAnim(); 
+                    return;
+                }
+                document.getElementById('surface-slider').value = this.surfaceFrame;
+                this.updateSurfaceFromSlider(this.surfaceFrame);
+            }, 50); 
+        }
+    },
+
+    updateSurfaceFromSlider(val){
+        this.surfaceFrame = parseInt(val);
+        this.renderSurface();
+    },
+
+    renderSurface(){
+        if(!Engine.results.length) return;
+        const currentStrat = Engine.results[this.selectedIdx].strat;
+        const filtered = Engine.results.filter(r => r.strat === currentStrat);
+        
+        const refResult = filtered[0]; 
+        if(!refResult) return;
+
+        const totalSimDays = refResult.dates.length;
+        const slicePct = Math.max(0.05, this.surfaceFrame / 100); 
+        const sliceIndex = Math.floor(Math.max(20, totalSimDays * slicePct)); 
+
+        const lbs = [...new Set(filtered.map(r => r.lb))].sort((a,b)=>a-b);
+        const rbs = [...new Set(filtered.map(r => r.rb))].sort((a,b)=>a-b);
+        
+        const metric = document.getElementById('surface-metric').value; 
+        const sdLayer = parseInt(document.getElementById('surface-sd').value);
+        
+        document.getElementById('surface-date-display').innerText = refResult.dates[sliceIndex-1] ? `Horizon: ${refResult.dates[sliceIndex-1]}` : 'Full History';
+        document.getElementById('dist-metric-label').innerText = metric;
+
+        const z = rbs.map(rb => lbs.map(lb => {
+            const m = filtered.find(r => r.lb === lb && r.rb === rb);
+            if(!m) return null;
+            
+            let val = 0;
+            const subCurve = m.curve.slice(0, sliceIndex);
+            
+            if(this.surfaceFrame === 100) {
+                if(metric === 'sharpe') val = parseFloat(m.sharpe);
+                if(metric === 'cagr') val = parseFloat(m.cagr);
+                if(metric === 'mdd') val = Math.abs(parseFloat(m.mdd));
+                if(metric === 'vol') {
+                    const rets = []; for(let i=1; i<subCurve.length; i++) rets.push(subCurve[i]/subCurve[i-1]-1);
+                    val = (math.std(rets) * Math.sqrt(Engine.tradingDays)) * 100;
+                }
+            } else {
+                if(subCurve.length < 50) return 0;
+                if(metric === 'sharpe') {
+                      const rets = []; for(let i=1; i<subCurve.length; i++) rets.push(subCurve[i]/subCurve[i-1]-1);
+                      const vol = math.std(rets) * Math.sqrt(Engine.tradingDays);
+                      const cagr = Math.pow(subCurve[subCurve.length-1]/subCurve[0], Engine.tradingDays/subCurve.length) - 1;
+                      val = vol === 0 ? 0 : (cagr - 0.02) / vol; 
+                }
+                if(metric === 'cagr') {
+                    val = (Math.pow(subCurve[subCurve.length-1]/subCurve[0], Engine.tradingDays/subCurve.length)-1) * 100;
+                }
+                if(metric === 'mdd') {
+                    let pk = -Infinity, mdd = 0; subCurve.forEach(v => { if(v>pk) pk=v; const d=(v-pk)/pk; if(d<mdd) mdd=d; });
+                    val = Math.abs(mdd) * 100;
+                }
+                if(metric === 'vol') {
+                    const rets = []; for(let i=1; i<subCurve.length; i++) rets.push(subCurve[i]/subCurve[i-1]-1);
+                    val = (math.std(rets) * Math.sqrt(Engine.tradingDays)) * 100;
+                }
+            }
+            return val;
+        }));
+
+        const flatZ = z.flat().filter(v => v !== null && !isNaN(v));
+        const mean = math.mean(flatZ);
+        const std = math.std(flatZ);
+
+        const data = [{
+            z: z, x: lbs, y: rbs, type: 'surface', 
+            colorscale: 'Plasma', opacity: 0.9,
+            contours: { z: { show: true, usecolormap: true, highlightcolor: "#42f5e6", project: { z: true } } },
+            colorbar: { title: metric.toUpperCase(), tickfont: { color: document.body.classList.contains('dark') ? '#EAECEF' : '#1E2329' } }
+        }];
+
+        if(sdLayer > 0){
+            for(let i=1; i<=sdLayer; i++){
+                const planeUp = rbs.map(() => lbs.map(() => mean + (std * i)));
+                const planeDown = rbs.map(() => lbs.map(() => mean - (std * i)));
+                data.push({ z: planeUp, x: lbs, y: rbs, type: 'surface', showscale: false, opacity: 0.1, colorscale: [[0, 'green'], [1, 'green']], name: `+${i}SD` });
+                data.push({ z: planeDown, x: lbs, y: rbs, type: 'surface', showscale: false, opacity: 0.1, colorscale: [[0, 'red'], [1, 'red']], name: `-${i}SD` });
+            }
+        }
+
+        const isDark = document.body.classList.contains('dark');
+        const layoutCommon = { margin: { l: 0, r: 0, b: 0, t: 0 }, paper_bgcolor: 'rgba(0,0,0,0)', font: { color: isDark ? '#EAECEF' : '#1E2329' } };
+        
+        Plotly.newPlot('viz-surface', data, {
+            ...layoutCommon,
+            scene: { 
+                xaxis: { title: 'Lookback (D)', color: isDark ? '#848E9C' : '#1E2329' }, 
+                yaxis: { title: 'Rebal (D)', color: isDark ? '#848E9C' : '#1E2329' }, 
+                zaxis: { title: metric.toUpperCase(), color: isDark ? '#848E9C' : '#1E2329' }, 
+                camera: { eye: {x: 1.5, y: 1.5, z: 1.2} }
+            }
+        }, { displayModeBar: false });
+
+        const distTrace = {
+            x: flatZ, type: 'histogram', histnorm: 'probability density',
+            marker: { color: 'rgba(59, 130, 246, 0.6)', line: { color: 'rgba(59, 130, 246, 1)', width: 1 } },
+            name: 'Distribution'
+        };
+        
+        const xMin = Math.min(...flatZ), xMax = Math.max(...flatZ);
+        const xRange = xMax - xMin || 1;
+        const xStep = xRange / 100;
+        const xCurve = []; const yCurve = [];
+        for(let x = xMin - xRange*0.2; x <= xMax + xRange*0.2; x += xStep) {
+            xCurve.push(x);
+            yCurve.push((1 / (std * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mean) / std, 2)));
+        }
+        
+        const curveTrace = {
+            x: xCurve, y: yCurve, type: 'scatter', mode: 'lines',
+            line: { color: '#F6465D', width: 2 }, name: 'Normal Dist.'
+        };
+        const meanTrace = {
+            x: [mean, mean], y: [0, Math.max(...yCurve)*1.1], type: 'scatter', mode: 'lines',
+            line: { color: '#0ECB81', width: 2, dash: 'dot' }, name: 'Mean'
+        };
+
+        const distLayout = {
+            ...layoutCommon, margin: { l: 40, r: 10, b: 30, t: 10 },
+            xaxis: { title: metric.toUpperCase(), gridcolor: isDark ? '#334155' : '#e2e8f0', zeroline: false },
+            yaxis: { showgrid: false },
+            showlegend: false,
+            shapes: [
+                { type: 'rect', xref: 'x', yref: 'paper', x0: mean - std, x1: mean + std, y0: 0, y1: 1, fillcolor: 'rgba(14, 203, 129, 0.1)', line: { width: 0 } },
+                { type: 'rect', xref: 'x', yref: 'paper', x0: mean - 2*std, x1: mean - std, y0: 0, y1: 1, fillcolor: 'rgba(252, 213, 53, 0.1)', line: { width: 0 } },
+                { type: 'rect', xref: 'x', yref: 'paper', x0: mean + std, x1: mean + 2*std, y0: 0, y1: 1, fillcolor: 'rgba(252, 213, 53, 0.1)', line: { width: 0 } },
+                { type: 'rect', xref: 'x', yref: 'paper', x0: mean - 3*std, x1: mean - 2*std, y0: 0, y1: 1, fillcolor: 'rgba(246, 70, 93, 0.1)', line: { width: 0 } },
+                { type: 'rect', xref: 'x', yref: 'paper', x0: mean + 2*std, x1: mean + 3*std, y0: 0, y1: 1, fillcolor: 'rgba(246, 70, 93, 0.1)', line: { width: 0 } }
+            ]
+        };
+
+        Plotly.newPlot('viz-dist', [distTrace, curveTrace, meanTrace], distLayout, { displayModeBar: false });
+        this.renderRobustnessTable(filtered, z, lbs, rbs, metric);
+    },
+    
+    renderRobustnessTable(filtered, zGrid, lbs, rbs, metric) {
+        const scores = [];
+        const isMinimization = ['mdd', 'vol'].includes(metric);
+
+        for (let r = 0; r < rbs.length; r++) {
+            for (let l = 0; l < lbs.length; l++) {
+                const val = zGrid[r][l];
+                if (val === null || isNaN(val)) continue;
+                
+                const RADIUS = 12;      
+                const SIGMA  = RADIUS / 2; 
+                let sumWeighted = 0, sumWeight = 0;
+                
+                for (let dr = -RADIUS; dr <= RADIUS; dr++) {
+                    for (let dl = -RADIUS; dl <= RADIUS; dl++) {
+                        const rr = r + dr;
+                        const ll = l + dl;
+                        if (rr >= 0 && rr < rbs.length && ll >= 0 && ll < lbs.length) {
+                            const v = zGrid[rr][ll];
+                            if (v !== null && !isNaN(v)) {
+                                const dist2  = dr * dr + dl * dl;
+                                const weight = Math.exp(-dist2 / (2 * SIGMA * SIGMA));
+                                sumWeighted += v * weight;
+                                sumWeight    += weight;
+                            }
+                        }
+                    }
+                }
+                const robustScore = sumWeight > 0 ? sumWeighted / sumWeight : null;
+                scores.push({ lb: lbs[l], rb: rbs[r], score: robustScore, raw: val });
+            }
+        }
+        
+        if (isMinimization) scores.sort((a, b) => a.score - b.score);
+        else scores.sort((a, b) => b.score - a.score);
+        
+        this.robustData = scores.slice(0, 20);
+        this.robustPage = 1;
+        this.renderRobustnessView();
+    },
+
+    renderRobustnessView() {
+        const tbody = document.getElementById('robustness-table-body');
+        if (!tbody) return;
+
+        const start = (this.robustPage - 1) * this.robustPerPage;
+        const end = start + this.robustPerPage;
+        const pageData = this.robustData.slice(start, end);
+        const totalPages = Math.ceil(this.robustData.length / this.robustPerPage);
+
+        tbody.innerHTML = pageData.map((s, i) => `
+            <tr class="hover:bg-stock-500/10 transition-colors cursor-pointer" onclick="alert('Configuration: Lookback ${s.lb}, Rebal ${s.rb} days')">
+                <td class="p-1 border-b dark:border-dark-700 font-bold text-center">${start + i + 1}</td>
+                <td class="p-1 border-b dark:border-dark-700 text-center font-mono text-stock-500">${s.lb}</td>
+                <td class="p-1 border-b dark:border-dark-700 text-center font-mono text-stock-500">${s.rb}</td>
+                <td class="p-1 border-b dark:border-dark-700 text-right font-bold text-acc-green">${s.score.toFixed(2)}</td>
+                <td class="p-1 border-b dark:border-dark-700 text-right text-gray-400 text-[8px]">(${s.raw.toFixed(2)})</td>
+            </tr>
+        `).join('');
+
+        document.getElementById('robust-page-info').innerText = `${this.robustPage} / ${totalPages}`;
+        document.getElementById('btn-robust-prev').disabled = this.robustPage === 1;
+        document.getElementById('btn-robust-next').disabled = this.robustPage >= totalPages;
+    },
+
+    nextRobustPage() {
+        const totalPages = Math.ceil(this.robustData.length / this.robustPerPage);
+        if (this.robustPage < totalPages) { this.robustPage++; this.renderRobustnessView(); }
+    },
+    prevRobustPage() {
+        if (this.robustPage > 1) { this.robustPage--; this.renderRobustnessView(); }
+    },
+
+    exportToCSV() {
+        if (!Engine.results.length) return alert("Run a backtest first!");
+        const res = Engine.results[this.selectedIdx];
+        let csv = "Date,PortfolioNAV,DrawdownPct,LiqWindow\n";
+        let pk = 0;
+        res.dates.forEach((d, i) => { const nav = res.curve[i].toFixed(2); if(res.curve[i] > pk) pk = res.curve[i]; const dd = ((res.curve[i] - pk) / pk * 100).toFixed(2); csv += `${d},${nav},${dd},${res.liqLB}\n`; });
+        const blob = new Blob([csv], { type: 'text/csv' }); const url = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.setAttribute('hidden', ''); a.setAttribute('href', url); a.setAttribute('download', `GPE_${res.strat}_Liq${res.liqLB}_Backtest.csv`); document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    },
+    
+    runMonteCarlo(){
+        const res = Engine.results[this.selectedIdx]; if(!res) return;
+        const years = parseInt(document.getElementById('cfg-mc-years').value) || 1;
+        const days = years * Engine.tradingDays; 
+        const rets = []; for(let i=1; i<res.curve.length; i++) rets.push(res.curve[i]/res.curve[i-1]-1);
+        const mu = math.mean(rets), sig = math.std(rets); const paths = [];
+        let sumSharpe = 0, sumCAGR = 0, sumMDD = 0, sumVol = 0; const rfDaily = (0.02)/Engine.tradingDays;
+        
+        for(let s=0; s<50; s++){ 
+            let cur = res.curve[res.curve.length-1], p = [cur], simRets = [], pk = -Infinity, mdd = 0;
+            for(let d=0; d<days; d++){ 
+                const u1 = Math.random(), u2 = Math.random(); const z = Math.sqrt(-2.0 * Math.log(u1 || 1e-9)) * Math.cos(2.0 * Math.PI * (u2 || 1e-9)); const nextVal = cur * Math.exp((mu - 0.5 * sig**2) + sig * z);
+                if(nextVal > pk) pk = nextVal; const dd = (nextVal - pk)/pk; if(dd < mdd) mdd = dd;
+                simRets.push(nextVal/cur - 1); cur = nextVal; p.push(cur); 
+            } 
+            paths.push(p); 
+            const simVol = math.std(simRets) * Math.sqrt(Engine.tradingDays);
+            const simTotalRet = p[p.length-1]/p[0];
+            const simCAGR = (Math.pow(simTotalRet, 1/years) - 1);
+            const simExcess = math.mean(simRets.map(r => r - rfDaily));
+            const simSharpe = simVol === 0 ? 0 : (simExcess * Engine.tradingDays) / simVol;
+            sumVol += simVol; sumCAGR += simCAGR; sumMDD += mdd; sumSharpe += simSharpe;
+        }
+        document.getElementById('mc-avg-sharpe').innerText = (sumSharpe/50).toFixed(2);
+        document.getElementById('mc-avg-cagr').innerText = ((sumCAGR/50)*100).toFixed(1) + "%";
+        document.getElementById('mc-avg-vol').innerText = ((sumVol/50)*100).toFixed(1) + "%";
+        document.getElementById('mc-avg-mdd').innerText = ((sumMDD/50)*100).toFixed(1) + "%";
+        Plotly.newPlot('viz-monte-dashboard', paths.map(p => ({ y: p, type: 'scatter', mode: 'lines', line: { width: 1, color: 'rgba(59, 130, 246, 0.2)' }, showlegend: false })), { margin: { l: 40, r: 10, b: 30, t: 10 }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: { color: document.body.classList.contains('dark') ? '#EAECEF' : '#1E2329' }, xaxis: { title: 'Projection Days' } }, { displayModeBar: false });
+    }
+};
+
+const Engine = new QuantEngine();
+window.onload = () => UI.init();
+</script>
+</body>
+</html>
