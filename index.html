@@ -1072,14 +1072,21 @@ class QuantEngine {
                                    allocationPcts[k] = (amount / inflow) * 100;
                                });
 
+                               let sharesBefore = {};
+                               activeUniverse.forEach(k => sharesBefore[k] = shares[k]);
+                               
                                activeUniverse.forEach(k => {
                                    if(buyAmounts[k] > 0.01){
                                        let netBuy = buyAmounts[k] * (1 - cfg.fee / 100);
                                        shares[k] += netBuy / this.marketData[k].prices[t];
                                    }
                                });
+                               
+                               let sharesChange = {};
+                               activeUniverse.forEach(k => sharesChange[k] = shares[k] - sharesBefore[k]);
+                               
                                rebCount++;
-                               logs.push({ date: this.dates[t], type: 'DCA', inflow: inflow, allocation: allocationPcts, nav: currentTotal + inflow });
+                               logs.push({ date: this.dates[t], type: 'DCA', inflow: inflow, allocation: allocationPcts, nav: currentTotal + inflow, shares: {...shares}, sharesChange: sharesChange });
 
                           } else {
                               let newShares = {}, diffPct = {}, realTO = 0;
@@ -1096,8 +1103,10 @@ class QuantEngine {
                               });
                               
                               if(realTO > 1) { 
+                                  let sharesChange = {};
+                                  activeUniverse.forEach(k => sharesChange[k] = newShares[k] - shares[k]);
                                   totalTO += realTO; rebCount++; 
-                                  logs.push({ date: this.dates[t], type: 'REBAL', diff: diffPct, nav: netNav }); 
+                                  logs.push({ date: this.dates[t], type: 'REBAL', diff: diffPct, nav: netNav, shares: {...newShares}, sharesChange: sharesChange }); 
                                   shares = newShares; 
                               }
                           }
@@ -1588,6 +1597,18 @@ const UI = {
                 const badges = dcaItems.map(([k,v]) => 
                     `<span class="inline-block px-1.5 py-0.5 rounded border border-stock-500/30 bg-stock-500/10 text-stock-600 text-[9px] font-bold mr-1 mb-1">Buy ${k}: ${v.toFixed(1)}%</span>`
                 ).join('');
+                
+                // Current Holdings
+                let holdingsHTML = '';
+                if (l.shares) {
+                    const holdings = Object.entries(l.shares).filter(([k,v]) => v > 0.01).sort((a,b) => b[1] - a[1]);
+                    holdingsHTML = holdings.map(([k,v]) => {
+                        const change = l.sharesChange && l.sharesChange[k] ? l.sharesChange[k] : 0;
+                        const changeHTML = Math.abs(change) > 0.01 ? `<span class="text-acc-green"> (+${change.toFixed(4)})</span>` : '';
+                        return `<div class="text-[9px] text-gray-600 dark:text-gray-400">${k}: <span class="font-bold">${v.toFixed(4)}</span>${changeHTML}</div>`;
+                    }).join('');
+                }
+                
                 html = `
                 <tr>
                     <td class="p-3 text-gray-400 font-bold border-b dark:border-dark-700 align-top">${l.date}</td>
@@ -1596,7 +1617,11 @@ const UI = {
                         <div class="mb-1 text-[9px] text-gray-500 font-bold uppercase">Smart Allocation</div>
                         <div class="flex flex-wrap">${badges}</div>
                     </td>
-                    <td class="p-3 border-b dark:border-dark-700 align-top text-gray-500 text-[9px] font-mono">NAV: $${l.nav.toFixed(0)}</td>
+                    <td class="p-3 border-b dark:border-dark-700 align-top">
+                        <div class="text-gray-500 text-[9px] font-mono mb-1">NAV: $${l.nav.toFixed(0)}</div>
+                        <div class="text-[8px] text-gray-500 font-bold uppercase mb-1">Holdings</div>
+                        ${holdingsHTML}
+                    </td>
                 </tr>`;
                 
             } else {
@@ -1608,6 +1633,20 @@ const UI = {
                     const sign = isBuy ? 'Buy' : 'Sell';
                     return `<span class="inline-block px-1.5 py-0.5 rounded border text-[9px] font-bold mr-1 mb-1 ${color}">${sign} ${k}: ${Math.abs(v).toFixed(2)}%</span>`;
                 }).join('');
+                
+                // Current Holdings
+                let holdingsHTML = '';
+                if (l.shares) {
+                    const holdings = Object.entries(l.shares).filter(([k,v]) => v > 0.01).sort((a,b) => b[1] - a[1]);
+                    holdingsHTML = holdings.map(([k,v]) => {
+                        const change = l.sharesChange && l.sharesChange[k] ? l.sharesChange[k] : 0;
+                        const changeColor = change > 0 ? 'text-acc-green' : 'text-acc-red';
+                        const changeSign = change > 0 ? '+' : '';
+                        const changeHTML = Math.abs(change) > 0.01 ? `<span class="${changeColor}"> (${changeSign}${change.toFixed(4)})</span>` : '';
+                        return `<div class="text-[9px] text-gray-600 dark:text-gray-400">${k}: <span class="font-bold">${v.toFixed(4)}</span>${changeHTML}</div>`;
+                    }).join('');
+                }
+                
                 html = `
                 <tr>
                     <td class="p-3 text-gray-400 font-bold border-b dark:border-dark-700 align-top">${l.date}</td>
@@ -1616,7 +1655,11 @@ const UI = {
                         <div class="mb-1 text-[9px] text-gray-500 font-bold uppercase">% of Portfolio</div>
                         <div class="flex flex-wrap">${badges}</div>
                     </td>
-                    <td class="p-3 border-b dark:border-dark-700 align-top text-gray-500 text-[9px] font-mono">NAV: $${l.nav.toFixed(0)}</td>
+                    <td class="p-3 border-b dark:border-dark-700 align-top">
+                        <div class="text-gray-500 text-[9px] font-mono mb-1">NAV: $${l.nav.toFixed(0)}</div>
+                        <div class="text-[8px] text-gray-500 font-bold uppercase mb-1">Holdings</div>
+                        ${holdingsHTML}
+                    </td>
                 </tr>`;
             }
             return html;
