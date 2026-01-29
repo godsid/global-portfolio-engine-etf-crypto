@@ -201,6 +201,16 @@ th.sortable:hover { color: #3b82f6; }
     <span class="text-[8px] bg-stock-500/20 text-stock-600 px-1.5 py-0.5 rounded font-bold">PORTFOLIO</span>
   </div>
 
+  <!-- Config Management Buttons -->
+  <div class="grid grid-cols-2 gap-2 mb-3">
+    <button onclick="ConfigManager.showSaveDialog()" class="bg-blue-500 hover:bg-blue-600 text-white py-2 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow flex items-center justify-center gap-1">
+      <i class="fas fa-save"></i> Save
+    </button>
+    <button onclick="ConfigManager.showLoadDialog()" class="bg-green-500 hover:bg-green-600 text-white py-2 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow flex items-center justify-center gap-1">
+      <i class="fas fa-folder-open"></i> Load
+    </button>
+  </div>
+
   <div class="opt-group bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800">
       <span class="opt-group-label text-blue-500">Step 1: Data Setup</span>
       <div class="mb-1">
@@ -224,6 +234,10 @@ th.sortable:hover { color: #3b82f6; }
            
            <button onclick="Engine.fetchData()" id="btn-fetch" class="w-full bg-stock-500 hover:bg-stock-600 text-white py-1.5 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow">
                <i class="fas fa-cloud-download-alt mr-1"></i> Fetch Market Data
+           </button>
+           
+           <button onclick="Engine.clearCache()" class="w-full bg-gray-400 hover:bg-gray-500 text-white py-1 rounded text-[9px] font-bold uppercase tracking-wider transition-all shadow mt-1">
+               <i class="fas fa-trash-alt mr-1"></i> Clear Cache
            </button>
            
            <div id="data-health" class="health-monitor mt-2 border-t dark:border-dark-700 pt-2">
@@ -370,16 +384,6 @@ th.sortable:hover { color: #3b82f6; }
   <button onclick="Engine.runSimulation()" id="btn-run" class="w-full bg-gradient-to-r from-brand-500 to-brand-600 py-3 mt-1 rounded-lg font-bold text-dark-900 shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-xs tracking-wide uppercase opacity-50 cursor-not-allowed" disabled>
     <i class="fas fa-play"></i> <span>Run (Liquid Filtered)</span>
   </button>
-  
-  <!-- Config Management Buttons -->
-  <div class="grid grid-cols-2 gap-2 mt-2">
-    <button onclick="ConfigManager.showSaveDialog()" class="bg-blue-500 hover:bg-blue-600 text-white py-2 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow flex items-center justify-center gap-1">
-      <i class="fas fa-save"></i> Save
-    </button>
-    <button onclick="ConfigManager.showLoadDialog()" class="bg-green-500 hover:bg-green-600 text-white py-2 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow flex items-center justify-center gap-1">
-      <i class="fas fa-folder-open"></i> Load
-    </button>
-  </div>
    
   <div id="status-log" class="mt-2 text-[9px] font-mono text-gray-400 h-[100px] overflow-y-auto bg-black/10 rounded p-2 hidden"></div>
 </div>
@@ -835,6 +839,63 @@ class QuantEngine {
       this.dataStatus = {};
   }
 
+  // Cache Management (1 hour)
+  getCacheKey(symbol) {
+      return `gpe_cache_${this.marketMode}_${symbol}`;
+  }
+
+  getCachedData(symbol) {
+      const cacheKey = this.getCacheKey(symbol);
+      const cached = localStorage.getItem(cacheKey);
+      if (!cached) return null;
+      
+      try {
+          const { data, timestamp } = JSON.parse(cached);
+          const now = Date.now();
+          const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
+          
+          if (now - timestamp < oneHour) {
+              return data;
+          } else {
+              // Cache expired, remove it
+              localStorage.removeItem(cacheKey);
+              return null;
+          }
+      } catch(e) {
+          return null;
+      }
+  }
+
+  setCachedData(symbol, data) {
+      const cacheKey = this.getCacheKey(symbol);
+      const cacheObj = {
+          data: data,
+          timestamp: Date.now()
+      };
+      try {
+          localStorage.setItem(cacheKey, JSON.stringify(cacheObj));
+      } catch(e) {
+          console.warn('Failed to cache data:', e);
+      }
+  }
+
+  clearCache() {
+      const keys = Object.keys(localStorage);
+      const cacheKeys = keys.filter(key => key.startsWith('gpe_cache_'));
+      let count = 0;
+      
+      cacheKeys.forEach(key => {
+          localStorage.removeItem(key);
+          count++;
+      });
+      
+      if (count > 0) {
+          alert(`Cleared ${count} cached asset(s)`);
+      } else {
+          alert('No cache to clear');
+      }
+  }
+
   // --- NEW: Fetch with Timeout ---
   async fetchWithTimeout(resource, options = {}) {
       const { timeout = 8000 } = options; // 8 Seconds timeout
@@ -852,16 +913,27 @@ class QuantEngine {
     const logEl = document.getElementById('status-log');
     logEl.classList.remove('hidden');
     
+    // Check cache first
+    const cachedData = this.getCachedData(symbol);
+    if (cachedData) {
+        logEl.innerHTML += `<span class="text-purple-500">> 💾 ${symbol} (Cached, ${cachedData.length} Days)</span><br>`;
+        this.dataStatus[symbol] = { status: 'ok', days: cachedData.length, cached: true };
+        return cachedData;
+    }
+    
+    // Fetch fresh data
     let result = null;
     if(this.marketMode === "CRYPTO") result = await this.fetchBinanceData(symbol);
     else result = await this.fetchYahooDataRecursive(symbol, 0);
 
     if (result && result.length > 50) {
         logEl.innerHTML += `<span class="text-acc-green">> ✅ ${symbol} OK (${result.length} Days)</span><br>`;
-        this.dataStatus[symbol] = { status: 'ok', days: result.length };
+        this.dataStatus[symbol] = { status: 'ok', days: result.length, cached: false };
+        // Cache the data
+        this.setCachedData(symbol, result);
     } else {
         logEl.innerHTML += `<span class="text-acc-red">> ❌ ${symbol} FAILED</span><br>`;
-        this.dataStatus[symbol] = { status: 'error', days: 0 };
+        this.dataStatus[symbol] = { status: 'error', days: 0, cached: false };
         return null; 
     }
     return result;
@@ -1339,19 +1411,25 @@ const UI = {
         
         let html = '';
         uniqueAssets.forEach(s => {
-            const status = Engine.dataStatus[s] || { status: 'empty', days: 0 };
+            const status = Engine.dataStatus[s] || { status: 'empty', days: 0, cached: false };
             let dotClass = 'empty';
             let text = 'Empty';
             let textColor = 'text-gray-400';
+            let cacheIcon = '';
 
-            if(status.status === 'ok') { dotClass = 'ready'; text = `${status.days}D`; textColor = 'text-stock-600 font-bold'; }
+            if(status.status === 'ok') { 
+                dotClass = 'ready'; 
+                text = `${status.days}D`; 
+                textColor = 'text-stock-600 font-bold'; 
+                if(status.cached) cacheIcon = '<i class="fas fa-hdd text-purple-500 text-[7px]" title="Cached"></i> ';
+            }
             else if(status.status === 'error') { text = 'Error'; textColor = 'text-red-500 font-bold'; }
             
             html += `
             <div class="health-item">
                 <span class="font-bold text-gray-500">${s}</span>
                 <span class="flex items-center gap-1 text-[8px] ${textColor}">
-                    ${text} <div class="status-dot ${dotClass}"></div>
+                    ${cacheIcon}${text} <div class="status-dot ${dotClass}"></div>
                 </span>
             </div>`;
         });
