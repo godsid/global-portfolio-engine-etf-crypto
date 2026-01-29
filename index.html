@@ -1082,11 +1082,14 @@ class QuantEngine {
                                    }
                                });
                                
-                               let sharesChange = {};
-                               activeUniverse.forEach(k => sharesChange[k] = shares[k] - sharesBefore[k]);
+                               let sharesChange = {}, prices = {};
+                               activeUniverse.forEach(k => {
+                                   sharesChange[k] = shares[k] - sharesBefore[k];
+                                   prices[k] = this.marketData[k].prices[t];
+                               });
                                
                                rebCount++;
-                               logs.push({ date: this.dates[t], type: 'DCA', inflow: inflow, allocation: allocationPcts, nav: currentTotal + inflow, shares: {...shares}, sharesChange: sharesChange });
+                               logs.push({ date: this.dates[t], type: 'DCA', inflow: inflow, allocation: allocationPcts, nav: currentTotal + inflow, shares: {...shares}, sharesChange: sharesChange, prices: prices });
 
                           } else {
                               let newShares = {}, diffPct = {}, realTO = 0;
@@ -1103,10 +1106,13 @@ class QuantEngine {
                               });
                               
                               if(realTO > 1) { 
-                                  let sharesChange = {};
-                                  activeUniverse.forEach(k => sharesChange[k] = newShares[k] - shares[k]);
+                                  let sharesChange = {}, prices = {};
+                                  activeUniverse.forEach(k => {
+                                      sharesChange[k] = newShares[k] - shares[k];
+                                      prices[k] = this.marketData[k].prices[t];
+                                  });
                                   totalTO += realTO; rebCount++; 
-                                  logs.push({ date: this.dates[t], type: 'REBAL', diff: diffPct, nav: netNav, shares: {...newShares}, sharesChange: sharesChange }); 
+                                  logs.push({ date: this.dates[t], type: 'REBAL', diff: diffPct, nav: netNav, shares: {...newShares}, sharesChange: sharesChange, prices: prices }); 
                                   shares = newShares; 
                               }
                           }
@@ -1594,17 +1600,20 @@ const UI = {
             if (l.type === 'DCA') {
                 const dcaItems = Object.entries(l.allocation).filter(([k,v]) => v > 0.1); 
                 dcaItems.sort((a,b) => b[1] - a[1]);
-                const badges = dcaItems.map(([k,v]) => 
-                    `<span class="inline-block px-1.5 py-0.5 rounded border border-stock-500/30 bg-stock-500/10 text-stock-600 text-[9px] font-bold mr-1 mb-1">Buy ${k}: ${v.toFixed(1)}%</span>`
-                ).join('');
+                const badges = dcaItems.map(([k,v]) => {
+                    const changeShares = l.sharesChange && l.sharesChange[k] ? l.sharesChange[k] : 0;
+                    const price = l.prices && l.prices[k] ? l.prices[k] : 0;
+                    const valueUSDT = changeShares * price;
+                    return `<span class="inline-block px-1.5 py-0.5 rounded border border-stock-500/30 bg-stock-500/10 text-stock-600 text-[9px] font-bold mr-1 mb-1">Buy ${k}: ${v.toFixed(1)}% <span class="text-gray-500">(${changeShares.toFixed(4)} = $${valueUSDT.toFixed(2)})</span></span>`;
+                }).join('');
                 
                 // Current Holdings
                 let holdingsHTML = '';
                 if (l.shares) {
-                    const holdings = Object.entries(l.shares).filter(([k,v]) => v > 0.01).sort((a,b) => b[1] - a[1]);
+                    const holdings = Object.entries(l.shares).filter(([k,v]) => v > 0.0001).sort((a,b) => b[1] - a[1]);
                     holdingsHTML = holdings.map(([k,v]) => {
                         const change = l.sharesChange && l.sharesChange[k] ? l.sharesChange[k] : 0;
-                        const changeHTML = Math.abs(change) > 0.01 ? `<span class="text-acc-green"> (+${change.toFixed(4)})</span>` : '';
+                        const changeHTML = Math.abs(change) > 0.0001 ? `<span class="text-acc-green"> (+${change.toFixed(4)})</span>` : '';
                         return `<div class="text-[9px] text-gray-600 dark:text-gray-400">${k}: <span class="font-bold">${v.toFixed(4)}</span>${changeHTML}</div>`;
                     }).join('');
                 }
@@ -1631,18 +1640,21 @@ const UI = {
                     const isBuy = v > 0;
                     const color = isBuy ? 'text-acc-green bg-acc-green/10 border-acc-green/20' : 'text-acc-red bg-acc-red/10 border-acc-red/20';
                     const sign = isBuy ? 'Buy' : 'Sell';
-                    return `<span class="inline-block px-1.5 py-0.5 rounded border text-[9px] font-bold mr-1 mb-1 ${color}">${sign} ${k}: ${Math.abs(v).toFixed(2)}%</span>`;
+                    const changeShares = l.sharesChange && l.sharesChange[k] ? l.sharesChange[k] : 0;
+                    const price = l.prices && l.prices[k] ? l.prices[k] : 0;
+                    const valueUSDT = Math.abs(changeShares * price);
+                    return `<span class="inline-block px-1.5 py-0.5 rounded border text-[9px] font-bold mr-1 mb-1 ${color}">${sign} ${k}: ${Math.abs(v).toFixed(2)}% <span class="opacity-75">(${Math.abs(changeShares).toFixed(4)} = $${valueUSDT.toFixed(2)})</span></span>`;
                 }).join('');
                 
                 // Current Holdings
                 let holdingsHTML = '';
                 if (l.shares) {
-                    const holdings = Object.entries(l.shares).filter(([k,v]) => v > 0.01).sort((a,b) => b[1] - a[1]);
+                    const holdings = Object.entries(l.shares).filter(([k,v]) => v > 0.0001).sort((a,b) => b[1] - a[1]);
                     holdingsHTML = holdings.map(([k,v]) => {
                         const change = l.sharesChange && l.sharesChange[k] ? l.sharesChange[k] : 0;
                         const changeColor = change > 0 ? 'text-acc-green' : 'text-acc-red';
                         const changeSign = change > 0 ? '+' : '';
-                        const changeHTML = Math.abs(change) > 0.01 ? `<span class="${changeColor}"> (${changeSign}${change.toFixed(4)})</span>` : '';
+                        const changeHTML = Math.abs(change) > 0.0001 ? `<span class="${changeColor}"> (${changeSign}${change.toFixed(4)})</span>` : '';
                         return `<div class="text-[9px] text-gray-600 dark:text-gray-400">${k}: <span class="font-bold">${v.toFixed(4)}</span>${changeHTML}</div>`;
                     }).join('');
                 }
