@@ -850,7 +850,7 @@ class QuantEngine {
       this.dataStatus = {};
   }
 
-  // Cache Management (1 hour)
+  // Cache Management (6 hours)
   getCacheKey(symbol) {
       return `gpe_cache_${this.marketMode}_${symbol}`;
   }
@@ -863,15 +863,28 @@ class QuantEngine {
       try {
           const { data, timestamp } = JSON.parse(cached);
           const now = Date.now();
-          const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
+          const sixHours = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
           
-          if (now - timestamp < oneHour) {
-              return data;
-          } else {
-              // Cache expired, remove it
+          // Check if cache is expired (older than 6 hours)
+          if (now - timestamp >= sixHours) {
               localStorage.removeItem(cacheKey);
               return null;
           }
+          
+          // Check if data is up-to-date (last date should be recent)
+          if (data && data.length > 0) {
+              const lastDate = new Date(data[data.length - 1].date);
+              const today = new Date();
+              const daysDiff = Math.floor((today - lastDate) / (1000 * 60 * 60 * 24));
+              
+              // If data is more than 2 days old, refetch
+              if (daysDiff > 2) {
+                  localStorage.removeItem(cacheKey);
+                  return null;
+              }
+          }
+          
+          return data;
       } catch(e) {
           return null;
       }
@@ -1749,20 +1762,30 @@ const UI = {
                 
                 // Current Holdings
                 let holdingsHTML = '';
-                if (l.shares) {
+                if (l.shares && l.prices) {
                     const holdings = Object.entries(l.shares).filter(([k,v]) => v > 0.0001).sort((a,b) => b[1] - a[1]);
+                    // Calculate total value for percentage
+                    let totalValue = 0;
+                    holdings.forEach(([k,v]) => {
+                        const price = l.prices[k] || 0;
+                        totalValue += v * price;
+                    });
+                    
                     holdingsHTML = holdings.map(([k,v]) => {
+                        const price = l.prices[k] || 0;
+                        const value = v * price;
+                        const percentage = totalValue > 0 ? (value / totalValue * 100) : 0;
                         const change = l.sharesChange && l.sharesChange[k] ? l.sharesChange[k] : 0;
                         const changeHTML = Math.abs(change) > 0.0001 ? `<span class="text-acc-green"> (+${change.toFixed(4)})</span>` : '';
-                        return `<div class="text-[9px] text-gray-600 dark:text-gray-400">${k}: <span class="font-bold">${v.toFixed(4)}</span>${changeHTML}</div>`;
+                        return `<div class="text-[9px] text-gray-600 dark:text-gray-400">${k}: <span class="font-bold">${v.toFixed(4)}</span>${changeHTML} <span class="text-blue-500 font-bold">[${percentage.toFixed(1)}%]</span></div>`;
                     }).join('');
                 }
                 
                 html = `
                 <tr>
-                    <td class="p-3 text-gray-400 font-bold border-b dark:border-dark-700 align-top">${l.date}</td>
-                    <td class="p-3 font-bold text-acc-green border-b dark:border-dark-700 align-top">Injection: +$${l.inflow.toFixed(0)}</td>
-                    <td class="p-3 border-b dark:border-dark-700 align-top">
+                    <td class="p-3 text-gray-400 font-bold border-b dark:border-dark-700 align-top w-[100px]">${l.date}</td>
+                    <td class="p-3 font-bold text-acc-green border-b dark:border-dark-700 align-top w-[140px]">Injection: +$${l.inflow.toFixed(0)}</td>
+                    <td class="p-3 border-b dark:border-dark-700 align-top w-[200px]">
                         <div class="mb-1 text-[9px] text-gray-500 font-bold uppercase">Smart Allocation</div>
                         <div class="flex flex-wrap">${badges}</div>
                     </td>
@@ -1788,22 +1811,32 @@ const UI = {
                 
                 // Current Holdings
                 let holdingsHTML = '';
-                if (l.shares) {
+                if (l.shares && l.prices) {
                     const holdings = Object.entries(l.shares).filter(([k,v]) => v > 0.0001).sort((a,b) => b[1] - a[1]);
+                    // Calculate total value for percentage
+                    let totalValue = 0;
+                    holdings.forEach(([k,v]) => {
+                        const price = l.prices[k] || 0;
+                        totalValue += v * price;
+                    });
+                    
                     holdingsHTML = holdings.map(([k,v]) => {
+                        const price = l.prices[k] || 0;
+                        const value = v * price;
+                        const percentage = totalValue > 0 ? (value / totalValue * 100) : 0;
                         const change = l.sharesChange && l.sharesChange[k] ? l.sharesChange[k] : 0;
                         const changeColor = change > 0 ? 'text-acc-green' : 'text-acc-red';
                         const changeSign = change > 0 ? '+' : '';
                         const changeHTML = Math.abs(change) > 0.0001 ? `<span class="${changeColor}"> (${changeSign}${change.toFixed(4)})</span>` : '';
-                        return `<div class="text-[9px] text-gray-600 dark:text-gray-400">${k}: <span class="font-bold">${v.toFixed(4)}</span>${changeHTML}</div>`;
+                        return `<div class="text-[9px] text-gray-600 dark:text-gray-400">${k}: <span class="font-bold">${v.toFixed(4)}</span>${changeHTML} <span class="text-blue-500 font-bold">[${percentage.toFixed(1)}%]</span></div>`;
                     }).join('');
                 }
                 
                 html = `
                 <tr>
-                    <td class="p-3 text-gray-400 font-bold border-b dark:border-dark-700 align-top">${l.date}</td>
-                    <td class="p-3 font-bold text-blue-500 border-b dark:border-dark-700 align-top">Rebalance</td>
-                    <td class="p-3 border-b dark:border-dark-700 align-top">
+                    <td class="p-3 text-gray-400 font-bold border-b dark:border-dark-700 align-top w-[100px]">${l.date}</td>
+                    <td class="p-3 font-bold text-blue-500 border-b dark:border-dark-700 align-top w-[140px]">Rebalance</td>
+                    <td class="p-3 border-b dark:border-dark-700 align-top w-[200px]">
                         <div class="mb-1 text-[9px] text-gray-500 font-bold uppercase">% of Portfolio</div>
                         <div class="flex flex-wrap">${badges}</div>
                     </td>
@@ -2147,6 +2180,7 @@ const ConfigManager = {
             liqEnd: parseInt(document.getElementById('cfg-liq-end').value),
             liqStep: parseInt(document.getElementById('cfg-liq-step').value),
             liqTop: parseInt(document.getElementById('cfg-liq-top').value),
+            initial: parseFloat(document.getElementById('cfg-initial').value),
             dca: parseFloat(document.getElementById('cfg-dca').value),
             rf: parseFloat(document.getElementById('cfg-rf').value),
             mgmtFee: parseFloat(document.getElementById('cfg-mgmt-fee').value),
@@ -2177,6 +2211,7 @@ const ConfigManager = {
         document.getElementById('cfg-liq-end').value = config.liqEnd || 30;
         document.getElementById('cfg-liq-step').value = config.liqStep || 10;
         document.getElementById('cfg-liq-top').value = config.liqTop || 5;
+        document.getElementById('cfg-initial').value = config.initial || 10000;
         document.getElementById('cfg-dca').value = config.dca || 0;
         document.getElementById('cfg-rf').value = config.rf || 3.0;
         document.getElementById('cfg-mgmt-fee').value = config.mgmtFee || 0.0;
