@@ -115,6 +115,12 @@ th.sortable:hover { color: #3b82f6; }
 .dark .example-box { color: #94a3b8; border-color: rgba(59, 130, 246, 0.4); background: rgba(59, 130, 246, 0.1); }
 .calc-step { margin-bottom: 4px; display: block; }
 .calc-val { font-family: 'JetBrains Mono'; font-weight: bold; color: #3b82f6; }
+
+/* Modal Styles */
+#save-config-modal, #load-config-modal { backdrop-filter: blur(4px); animation: fadeIn 0.2s ease-in-out; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+#save-config-modal > div, #load-config-modal > div { animation: slideUp 0.3s ease-out; }
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 </style>
 </head>
 
@@ -122,6 +128,51 @@ th.sortable:hover { color: #3b82f6; }
 
 <!-- GLOBAL TOOLTIP -->
 <div id="global-tooltip"></div>
+
+<!-- Config Save Modal -->
+<div id="save-config-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center" onclick="if(event.target.id==='save-config-modal') ConfigManager.closeSaveDialog()">
+  <div class="glass rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
+    <h3 class="text-lg font-bold mb-4 text-stock-600 dark:text-stock-400">Save Configuration</h3>
+    
+    <div class="mb-4">
+      <label class="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">Overwrite Existing Config</label>
+      <select id="config-select-overwrite" class="w-full px-3 py-2 rounded border border-gray-300 dark:border-dark-700 bg-white dark:bg-dark-800 text-sm" onchange="ConfigManager.onSelectChange()">
+        <option value="">-- Create New Config --</option>
+      </select>
+    </div>
+    
+    <div class="mb-4">
+      <label class="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">
+        <span id="save-label-text">New Config Name</span>
+      </label>
+      <input id="config-name-input" type="text" placeholder="e.g., Aggressive Growth" class="w-full px-3 py-2 rounded border border-gray-300 dark:border-dark-700 bg-white dark:bg-dark-800 text-sm" onkeypress="if(event.key==='Enter') ConfigManager.saveConfig()">
+    </div>
+    
+    <div class="flex gap-2">
+      <button onclick="ConfigManager.saveConfig()" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded font-bold text-sm">
+        <i class="fas fa-save mr-1"></i> <span id="save-btn-text">Save</span>
+      </button>
+      <button onclick="ConfigManager.closeSaveDialog()" class="flex-1 bg-gray-300 hover:bg-gray-400 dark:bg-dark-700 dark:hover:bg-dark-600 py-2 rounded font-bold text-sm">
+        Cancel
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Config Load Modal -->
+<div id="load-config-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center" onclick="if(event.target.id==='load-config-modal') ConfigManager.closeLoadDialog()">
+  <div class="glass rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
+    <h3 class="text-lg font-bold mb-4 text-stock-600 dark:text-stock-400">Load Configuration</h3>
+    <div id="saved-configs-list" class="mb-4 max-h-[400px] overflow-y-auto custom-scrollbar space-y-2">
+      <!-- Populated by JS -->
+    </div>
+    <div class="flex gap-2">
+      <button onclick="ConfigManager.closeLoadDialog()" class="flex-1 bg-gray-300 hover:bg-gray-400 dark:bg-dark-700 dark:hover:bg-dark-600 py-2 rounded font-bold text-sm">
+        Close
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- HEADER -->
 <header class="glass sticky top-0 z-40 border-b shadow-sm">
@@ -161,6 +212,16 @@ th.sortable:hover { color: #3b82f6; }
     <span class="text-[8px] bg-stock-500/20 text-stock-600 px-1.5 py-0.5 rounded font-bold">PORTFOLIO</span>
   </div>
 
+  <!-- Config Management Buttons -->
+  <div class="grid grid-cols-2 gap-2 mb-3">
+    <button onclick="ConfigManager.showSaveDialog()" class="bg-blue-500 hover:bg-blue-600 text-white py-2 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow flex items-center justify-center gap-1">
+      <i class="fas fa-save"></i> Save
+    </button>
+    <button onclick="ConfigManager.showLoadDialog()" class="bg-green-500 hover:bg-green-600 text-white py-2 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow flex items-center justify-center gap-1">
+      <i class="fas fa-folder-open"></i> Load
+    </button>
+  </div>
+
   <div class="opt-group bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800">
       <span class="opt-group-label text-blue-500">Step 1: Data Setup</span>
       <div class="mb-1">
@@ -184,6 +245,10 @@ th.sortable:hover { color: #3b82f6; }
            
            <button onclick="Engine.fetchData()" id="btn-fetch" class="w-full bg-stock-500 hover:bg-stock-600 text-white py-1.5 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow">
                <i class="fas fa-cloud-download-alt mr-1"></i> Fetch Market Data
+           </button>
+           
+           <button onclick="Engine.clearCache()" class="w-full bg-gray-400 hover:bg-gray-500 text-white py-1 rounded text-[9px] font-bold uppercase tracking-wider transition-all shadow mt-1">
+               <i class="fas fa-trash-alt mr-1"></i> Clear Cache
            </button>
            
            <div id="data-health" class="health-monitor mt-2 border-t dark:border-dark-700 pt-2">
@@ -232,8 +297,8 @@ th.sortable:hover { color: #3b82f6; }
             <option value="ALL" selected>★ RUN ALL (Tournament)</option>
             <option value="Equal">1. Equal Weight (1/N)</option>
             <option value="Rank">2. Rank All (Score)</option>
-            <option value="Top3">3. Top 3 Leader (Equal)</option>
-            <option value="Top3Rank">4. Top 3 Leader (Ranked)</option>
+            <option value="Top3">3. Top 5 Leader (Equal)</option>
+            <option value="Top3Rank">4. Top 5 Leader (Ranked)</option>
             <option value="Top50">5. Top 50% Filtered</option>
             <option value="AbsMom">6. Absolute Mom (Trend)</option>
             <option value="DualMom">7. Dual Momentum</option>
@@ -612,9 +677,9 @@ th.sortable:hover { color: #3b82f6; }
                         </div>
                     </div>
 
-                    <!-- Strat 3: Top 3 Leader (Equal) -->
+                    <!-- Strat 3: Top 5 Leader (Equal) -->
                     <div class="strat-box">
-                        <h4 class="font-bold text-stock-600">3. Top 3 Leader (Equal)</h4>
+                        <h4 class="font-bold text-stock-600">3. Top 5 Leader (Equal)</h4>
                         <p class="text-xs mb-2">เลือกเฉพาะ 3 ตัวท็อปที่มีโมเมนตัมสูงสุด แล้วแบ่งเงินเท่ากัน (ตัดตัวที่เหลือทิ้ง)</p>
                         <div class="text-center my-2">$$ w_i = \begin{cases} 1/3 & \text{if Rank} \le 3 \\ 0 & \text{otherwise} \end{cases} $$</div>
                         <div class="example-box">
@@ -624,9 +689,9 @@ th.sortable:hover { color: #3b82f6; }
                         </div>
                     </div>
 
-                    <!-- Strat 4: Top 3 Leader (Ranked) -->
+                    <!-- Strat 4: Top 5 Leader (Ranked) -->
                     <div class="strat-box">
-                        <h4 class="font-bold text-stock-600">4. Top 3 Leader (Ranked)</h4>
+                        <h4 class="font-bold text-stock-600">4. Top 5 Leader (Ranked)</h4>
                         <p class="text-xs mb-2">เลือกเฉพาะ 3 ตัวท็อป แต่ให้น้ำหนักตามลำดับคะแนน (คล้ายข้อ 2 แต่คิดแค่ 3 ตัวแรก)</p>
                         <div class="text-center my-2">$$ w_i = \frac{K - Rank_i + 1}{\sum_{j=1}^{K} j} $$ โดยที่ $K=3$, Sum=6</div>
                         <div class="example-box">
@@ -665,15 +730,15 @@ th.sortable:hover { color: #3b82f6; }
                     <!-- Strat 7: Dual Momentum -->
                     <div class="strat-box">
                         <h4 class="font-bold text-stock-600">7. Dual Momentum</h4>
-                        <p class="text-xs mb-2">ต้องผ่าน 2 เงื่อนไข: 1. เป็นขาขึ้น (Absolute > 0) และ 2. เก่งกว่าตัวอื่น (Relative Top 3)</p>
-                        <div class="text-center my-2">Select Top 3 where $Return > 0$, then Equal Weight</div>
+                        <p class="text-xs mb-2">ต้องผ่าน 2 เงื่อนไข: 1. เป็นขาขึ้น (Absolute > 0) และ 2. เก่งกว่าตัวอื่น (Relative Top 5)</p>
+                        <div class="text-center my-2">Select Top 5 where $Return > 0$, then Equal Weight</div>
                         <div class="example-box">
                             Ranking:<br>
                             1. A (+10%) -> Pass<br>
                             2. B (+5%) -> Pass<br>
                             3. C (-2%) -> Fail (Negative)<br>
                             4. D (-5%) -> Fail (Negative)<br>
-                            <span class="calc-val">Result: ซื้อเฉพาะ A และ B อย่างละ 50% (C ไม่ถูกซื้อแม้จะติด Top 3 เพราะติดลบ)</span>
+                            <span class="calc-val">Result: ซื้อเฉพาะ A และ B อย่างละ 50% (C ไม่ถูกซื้อแม้จะติด Top 5 เพราะติดลบ)</span>
                         </div>
                     </div>
 
@@ -731,8 +796,8 @@ const ETF_UNIVERSE = ["SPY", "QQQ", "IWM", "EFA", "EEM", "GLD", "TLT", "VNQ", "L
 const STRAT_NAMES = {
     Equal: "1. Equal Weight (1/N)",
     Rank: "2. Rank All (Momentum)",
-    Top3: "3. Top 3 Leader (Equal)",
-    Top3Rank: "4. Top 3 Leader (Ranked)",
+    Top3: "3. Top 5 Leader (Equal)",
+    Top3Rank: "4. Top 5 Leader (Ranked)",
     Top50: "5. Top 50% Selection",
     AbsMom: "6. Absolute Mom (Trend)",
     DualMom: "7. Dual Momentum",
@@ -751,6 +816,7 @@ class QuantEngine {
     this.marketMode = "ETF"; 
     this.marketData = {}; // { SYMBOL: { prices: [], volumes: [] } }
     this.dates = [];
+    this.assets = []; // Initialize assets array
     this.results = [];
     this.tradingDays = 252;
     this.benchStats = { cagr: 0, sharpe: 0, mdd: 0, sortino: 0, calmar: 0, winrate: 0 };
@@ -784,6 +850,76 @@ class QuantEngine {
       this.dataStatus = {};
   }
 
+  // Cache Management (6 hours)
+  getCacheKey(symbol) {
+      return `gpe_cache_${this.marketMode}_${symbol}`;
+  }
+
+  getCachedData(symbol) {
+      const cacheKey = this.getCacheKey(symbol);
+      const cached = localStorage.getItem(cacheKey);
+      if (!cached) return null;
+      
+      try {
+          const { data, timestamp } = JSON.parse(cached);
+          const now = Date.now();
+          const sixHours = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
+          
+          // Check if cache is expired (older than 6 hours)
+          if (now - timestamp >= sixHours) {
+              localStorage.removeItem(cacheKey);
+              return null;
+          }
+          
+          // Check if data is up-to-date (last date should be recent)
+          if (data && data.length > 0) {
+              const lastDate = new Date(data[data.length - 1].date);
+              const today = new Date();
+              const daysDiff = Math.floor((today - lastDate) / (1000 * 60 * 60 * 24));
+              
+              // If data is more than 2 days old, refetch
+              if (daysDiff > 2) {
+                  localStorage.removeItem(cacheKey);
+                  return null;
+              }
+          }
+          
+          return data;
+      } catch(e) {
+          return null;
+      }
+  }
+
+  setCachedData(symbol, data) {
+      const cacheKey = this.getCacheKey(symbol);
+      const cacheObj = {
+          data: data,
+          timestamp: Date.now()
+      };
+      try {
+          localStorage.setItem(cacheKey, JSON.stringify(cacheObj));
+      } catch(e) {
+          console.warn('Failed to cache data:', e);
+      }
+  }
+
+  clearCache() {
+      const keys = Object.keys(localStorage);
+      const cacheKeys = keys.filter(key => key.startsWith('gpe_cache_'));
+      let count = 0;
+      
+      cacheKeys.forEach(key => {
+          localStorage.removeItem(key);
+          count++;
+      });
+      
+      if (count > 0) {
+          alert(`Cleared ${count} cached asset(s)`);
+      } else {
+          alert('No cache to clear');
+      }
+  }
+
   // --- NEW: Fetch with Timeout ---
   async fetchWithTimeout(resource, options = {}) {
       const { timeout = 8000 } = options; // 8 Seconds timeout
@@ -801,16 +937,27 @@ class QuantEngine {
     const logEl = document.getElementById('status-log');
     logEl.classList.remove('hidden');
     
+    // Check cache first
+    const cachedData = this.getCachedData(symbol);
+    if (cachedData) {
+        logEl.innerHTML += `<span class="text-purple-500">> 💾 ${symbol} (Cached, ${cachedData.length} Days)</span><br>`;
+        this.dataStatus[symbol] = { status: 'ok', days: cachedData.length, cached: true };
+        return cachedData;
+    }
+    
+    // Fetch fresh data
     let result = null;
     if(this.marketMode === "CRYPTO") result = await this.fetchBinanceData(symbol);
     else result = await this.fetchYahooDataRecursive(symbol, 0);
 
     if (result && result.length > 50) {
         logEl.innerHTML += `<span class="text-acc-green">> ✅ ${symbol} OK (${result.length} Days)</span><br>`;
-        this.dataStatus[symbol] = { status: 'ok', days: result.length };
+        this.dataStatus[symbol] = { status: 'ok', days: result.length, cached: false };
+        // Cache the data
+        this.setCachedData(symbol, result);
     } else {
         logEl.innerHTML += `<span class="text-acc-red">> ❌ ${symbol} FAILED</span><br>`;
-        this.dataStatus[symbol] = { status: 'error', days: 0 };
+        this.dataStatus[symbol] = { status: 'error', days: 0, cached: false };
         return null; 
     }
     return result;
@@ -1072,14 +1219,24 @@ class QuantEngine {
                                    allocationPcts[k] = (amount / inflow) * 100;
                                });
 
+                               let sharesBefore = {};
+                               activeUniverse.forEach(k => sharesBefore[k] = shares[k]);
+                               
                                activeUniverse.forEach(k => {
                                    if(buyAmounts[k] > 0.01){
                                        let netBuy = buyAmounts[k] * (1 - cfg.fee / 100);
                                        shares[k] += netBuy / this.marketData[k].prices[t];
                                    }
                                });
+                               
+                               let sharesChange = {}, prices = {};
+                               activeUniverse.forEach(k => {
+                                   sharesChange[k] = shares[k] - sharesBefore[k];
+                                   prices[k] = this.marketData[k].prices[t];
+                               });
+                               
                                rebCount++;
-                               logs.push({ date: this.dates[t], type: 'DCA', inflow: inflow, allocation: allocationPcts, nav: currentTotal + inflow });
+                               logs.push({ date: this.dates[t], type: 'DCA', inflow: inflow, allocation: allocationPcts, nav: currentTotal + inflow, shares: {...shares}, sharesChange: sharesChange, prices: prices });
 
                           } else {
                               let newShares = {}, diffPct = {}, realTO = 0;
@@ -1096,8 +1253,13 @@ class QuantEngine {
                               });
                               
                               if(realTO > 1) { 
+                                  let sharesChange = {}, prices = {};
+                                  activeUniverse.forEach(k => {
+                                      sharesChange[k] = newShares[k] - shares[k];
+                                      prices[k] = this.marketData[k].prices[t];
+                                  });
                                   totalTO += realTO; rebCount++; 
-                                  logs.push({ date: this.dates[t], type: 'REBAL', diff: diffPct, nav: netNav }); 
+                                  logs.push({ date: this.dates[t], type: 'REBAL', diff: diffPct, nav: netNav, shares: {...newShares}, sharesChange: sharesChange, prices: prices }); 
                                   shares = newShares; 
                               }
                           }
@@ -1148,8 +1310,8 @@ class QuantEngine {
     let w = {}; keys.forEach(k => w[k] = 0);
     if(type === "Equal") items.forEach(x => w[x.k] = 1/items.length);
     else if(type === "Rank") { const N = items.length, S = (N*(N+1))/2; items.forEach((x,i) => w[x.k] = (N-i)/S); }
-    else if(type === "Top3") { const K = Math.min(3, items.length); items.slice(0, K).forEach(x => w[x.k] = 1/K); }
-    else if(type === "Top3Rank") { const K = Math.min(3, items.length), S = K*(K+1)/2; items.slice(0, K).forEach((x,i) => w[x.k] = (K-i)/S); }
+    else if(type === "Top3") { const K = Math.min(5, items.length); items.slice(0, K).forEach(x => w[x.k] = 1/K); }
+    else if(type === "Top3Rank") { const K = Math.min(5, items.length), S = K*(K+1)/2; items.slice(0, K).forEach((x,i) => w[x.k] = (K-i)/S); }
     else if(type === "Top50") { const K = Math.ceil(items.length/2); items.slice(0, K).forEach(x => w[x.k] = 1/K); }
     else if(type === "AbsMom") { const act = items.filter(x => x.val > 0); if(act.length) act.forEach(x => w[x.k] = 1/act.length); }
     else if(type === "DualMom") { const act = items.filter(x => x.val > 0); const K = Math.min(act.length, 3); if(act.length) act.slice(0, K).forEach(x => w[x.k] = 1/K); }
@@ -1273,19 +1435,25 @@ const UI = {
         
         let html = '';
         uniqueAssets.forEach(s => {
-            const status = Engine.dataStatus[s] || { status: 'empty', days: 0 };
+            const status = Engine.dataStatus[s] || { status: 'empty', days: 0, cached: false };
             let dotClass = 'empty';
             let text = 'Empty';
             let textColor = 'text-gray-400';
+            let cacheIcon = '';
 
-            if(status.status === 'ok') { dotClass = 'ready'; text = `${status.days}D`; textColor = 'text-stock-600 font-bold'; }
+            if(status.status === 'ok') { 
+                dotClass = 'ready'; 
+                text = `${status.days}D`; 
+                textColor = 'text-stock-600 font-bold'; 
+                if(status.cached) cacheIcon = '<i class="fas fa-hdd text-purple-500 text-[7px]" title="Cached"></i> ';
+            }
             else if(status.status === 'error') { text = 'Error'; textColor = 'text-red-500 font-bold'; }
             
             html += `
             <div class="health-item">
                 <span class="font-bold text-gray-500">${s}</span>
                 <span class="flex items-center gap-1 text-[8px] ${textColor}">
-                    ${text} <div class="status-dot ${dotClass}"></div>
+                    ${cacheIcon}${text} <div class="status-dot ${dotClass}"></div>
                 </span>
             </div>`;
         });
@@ -1585,18 +1753,47 @@ const UI = {
             if (l.type === 'DCA') {
                 const dcaItems = Object.entries(l.allocation).filter(([k,v]) => v > 0.1); 
                 dcaItems.sort((a,b) => b[1] - a[1]);
-                const badges = dcaItems.map(([k,v]) => 
-                    `<span class="inline-block px-1.5 py-0.5 rounded border border-stock-500/30 bg-stock-500/10 text-stock-600 text-[9px] font-bold mr-1 mb-1">Buy ${k}: ${v.toFixed(1)}%</span>`
-                ).join('');
+                const badges = dcaItems.map(([k,v]) => {
+                    const changeShares = l.sharesChange && l.sharesChange[k] ? l.sharesChange[k] : 0;
+                    const price = l.prices && l.prices[k] ? l.prices[k] : 0;
+                    const valueUSDT = changeShares * price;
+                    return `<span class="inline-block px-1.5 py-0.5 rounded border border-stock-500/30 bg-stock-500/10 text-stock-600 text-[9px] font-bold mr-1 mb-1">Buy ${k}: ${v.toFixed(1)}% <span class="text-gray-500">(${changeShares.toFixed(4)} = $${valueUSDT.toFixed(2)})</span></span>`;
+                }).join('');
+                
+                // Current Holdings
+                let holdingsHTML = '';
+                if (l.shares && l.prices) {
+                    const holdings = Object.entries(l.shares).filter(([k,v]) => v > 0.0001).sort((a,b) => b[1] - a[1]);
+                    // Calculate total value for percentage
+                    let totalValue = 0;
+                    holdings.forEach(([k,v]) => {
+                        const price = l.prices[k] || 0;
+                        totalValue += v * price;
+                    });
+                    
+                    holdingsHTML = holdings.map(([k,v]) => {
+                        const price = l.prices[k] || 0;
+                        const value = v * price;
+                        const percentage = totalValue > 0 ? (value / totalValue * 100) : 0;
+                        const change = l.sharesChange && l.sharesChange[k] ? l.sharesChange[k] : 0;
+                        const changeHTML = Math.abs(change) > 0.0001 ? `<span class="text-acc-green"> (+${change.toFixed(4)})</span>` : '';
+                        return `<div class="text-[9px] text-gray-600 dark:text-gray-400">${k}: <span class="font-bold">${v.toFixed(4)}</span>${changeHTML} <span class="text-blue-500 font-bold">[${percentage.toFixed(1)}%]</span></div>`;
+                    }).join('');
+                }
+                
                 html = `
                 <tr>
-                    <td class="p-3 text-gray-400 font-bold border-b dark:border-dark-700 align-top">${l.date}</td>
-                    <td class="p-3 font-bold text-acc-green border-b dark:border-dark-700 align-top">Injection: +$${l.inflow.toFixed(0)}</td>
-                    <td class="p-3 border-b dark:border-dark-700 align-top">
+                    <td class="p-3 text-gray-400 font-bold border-b dark:border-dark-700 align-top w-[100px]">${l.date}</td>
+                    <td class="p-3 font-bold text-acc-green border-b dark:border-dark-700 align-top w-[140px]">Injection: +$${l.inflow.toFixed(0)}</td>
+                    <td class="p-3 border-b dark:border-dark-700 align-top w-[200px]">
                         <div class="mb-1 text-[9px] text-gray-500 font-bold uppercase">Smart Allocation</div>
                         <div class="flex flex-wrap">${badges}</div>
                     </td>
-                    <td class="p-3 border-b dark:border-dark-700 align-top text-gray-500 text-[9px] font-mono">NAV: $${l.nav.toFixed(0)}</td>
+                    <td class="p-3 border-b dark:border-dark-700 align-top">
+                        <div class="text-gray-500 text-[9px] font-mono mb-1">NAV: $${l.nav.toFixed(0)}</div>
+                        <div class="text-[8px] text-gray-500 font-bold uppercase mb-1">Holdings</div>
+                        ${holdingsHTML}
+                    </td>
                 </tr>`;
                 
             } else {
@@ -1606,17 +1803,48 @@ const UI = {
                     const isBuy = v > 0;
                     const color = isBuy ? 'text-acc-green bg-acc-green/10 border-acc-green/20' : 'text-acc-red bg-acc-red/10 border-acc-red/20';
                     const sign = isBuy ? 'Buy' : 'Sell';
-                    return `<span class="inline-block px-1.5 py-0.5 rounded border text-[9px] font-bold mr-1 mb-1 ${color}">${sign} ${k}: ${Math.abs(v).toFixed(2)}%</span>`;
+                    const changeShares = l.sharesChange && l.sharesChange[k] ? l.sharesChange[k] : 0;
+                    const price = l.prices && l.prices[k] ? l.prices[k] : 0;
+                    const valueUSDT = Math.abs(changeShares * price);
+                    return `<span class="inline-block px-1.5 py-0.5 rounded border text-[9px] font-bold mr-1 mb-1 ${color}">${sign} ${k}: ${Math.abs(v).toFixed(2)}% <span class="opacity-75">(${Math.abs(changeShares).toFixed(4)} = $${valueUSDT.toFixed(2)})</span></span>`;
                 }).join('');
+                
+                // Current Holdings
+                let holdingsHTML = '';
+                if (l.shares && l.prices) {
+                    const holdings = Object.entries(l.shares).filter(([k,v]) => v > 0.0001).sort((a,b) => b[1] - a[1]);
+                    // Calculate total value for percentage
+                    let totalValue = 0;
+                    holdings.forEach(([k,v]) => {
+                        const price = l.prices[k] || 0;
+                        totalValue += v * price;
+                    });
+                    
+                    holdingsHTML = holdings.map(([k,v]) => {
+                        const price = l.prices[k] || 0;
+                        const value = v * price;
+                        const percentage = totalValue > 0 ? (value / totalValue * 100) : 0;
+                        const change = l.sharesChange && l.sharesChange[k] ? l.sharesChange[k] : 0;
+                        const changeColor = change > 0 ? 'text-acc-green' : 'text-acc-red';
+                        const changeSign = change > 0 ? '+' : '';
+                        const changeHTML = Math.abs(change) > 0.0001 ? `<span class="${changeColor}"> (${changeSign}${change.toFixed(4)})</span>` : '';
+                        return `<div class="text-[9px] text-gray-600 dark:text-gray-400">${k}: <span class="font-bold">${v.toFixed(4)}</span>${changeHTML} <span class="text-blue-500 font-bold">[${percentage.toFixed(1)}%]</span></div>`;
+                    }).join('');
+                }
+                
                 html = `
                 <tr>
-                    <td class="p-3 text-gray-400 font-bold border-b dark:border-dark-700 align-top">${l.date}</td>
-                    <td class="p-3 font-bold text-blue-500 border-b dark:border-dark-700 align-top">Rebalance</td>
-                    <td class="p-3 border-b dark:border-dark-700 align-top">
+                    <td class="p-3 text-gray-400 font-bold border-b dark:border-dark-700 align-top w-[100px]">${l.date}</td>
+                    <td class="p-3 font-bold text-blue-500 border-b dark:border-dark-700 align-top w-[140px]">Rebalance</td>
+                    <td class="p-3 border-b dark:border-dark-700 align-top w-[200px]">
                         <div class="mb-1 text-[9px] text-gray-500 font-bold uppercase">% of Portfolio</div>
                         <div class="flex flex-wrap">${badges}</div>
                     </td>
-                    <td class="p-3 border-b dark:border-dark-700 align-top text-gray-500 text-[9px] font-mono">NAV: $${l.nav.toFixed(0)}</td>
+                    <td class="p-3 border-b dark:border-dark-700 align-top">
+                        <div class="text-gray-500 text-[9px] font-mono mb-1">NAV: $${l.nav.toFixed(0)}</div>
+                        <div class="text-[8px] text-gray-500 font-bold uppercase mb-1">Holdings</div>
+                        ${holdingsHTML}
+                    </td>
                 </tr>`;
             }
             return html;
@@ -1636,7 +1864,10 @@ const UI = {
         }
 
         const grad = ctx.createLinearGradient(0, 0, 0, 400); grad.addColorStop(0, 'rgba(59, 130, 246, 0.2)'); grad.addColorStop(1, 'rgba(59, 130, 246, 0)');
-        this.chartEq = new Chart(ctx, { type: 'line', data: { labels: res.dates, datasets: [{ label: 'Selected Strategy', data: res.curve, borderColor: '#3b82f6', backgroundColor: grad, borderWidth: 2, fill: true, pointRadius: 0, tension: 0.1 }, { label: `Benchmark (${cfg.bench})`, data: bench, borderColor: '#64748b', borderDash: [4,4], borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.1 }] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { y: { type: this.isLog ? 'logarithmic' : 'linear', grid: { color: document.body.classList.contains('dark') ? '#2B3139' : '#e2e8f0' }, ticks: { color: '#94a3b8' } }, x: { display: false } }, plugins: { legend: { labels: { color: document.body.classList.contains('dark') ? '#EAECEF' : '#1E2329' } }, tooltip: { backgroundColor: 'rgba(0,0,0,0.8)', titleFont: { family: 'JetBrains Mono' }, bodyFont: { family: 'JetBrains Mono' }, padding: 10, cornerRadius: 8, displayColors: true } } } });
+        const startValue = res.curve[0];
+        const benchStartValue = bench.length > 0 ? bench[0] : startValue;
+        
+        this.chartEq = new Chart(ctx, { type: 'line', data: { labels: res.dates, datasets: [{ label: 'Selected Strategy', data: res.curve, borderColor: '#3b82f6', backgroundColor: grad, borderWidth: 2, fill: true, pointRadius: 0, tension: 0.1 }, { label: `Benchmark (${cfg.bench})`, data: bench, borderColor: '#64748b', borderDash: [4,4], borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.1 }] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { y: { type: this.isLog ? 'logarithmic' : 'linear', grid: { color: document.body.classList.contains('dark') ? '#2B3139' : '#e2e8f0' }, ticks: { color: '#94a3b8' } }, x: { display: false } }, plugins: { legend: { labels: { color: document.body.classList.contains('dark') ? '#EAECEF' : '#1E2329' } }, tooltip: { backgroundColor: 'rgba(0,0,0,0.8)', titleFont: { family: 'JetBrains Mono' }, bodyFont: { family: 'JetBrains Mono' }, padding: 10, cornerRadius: 8, displayColors: true, callbacks: { label: function(context) { const value = context.parsed.y; const datasetLabel = context.dataset.label || ''; const isStrategy = context.datasetIndex === 0; const initialValue = isStrategy ? startValue : benchStartValue; const gainPercent = ((value - initialValue) / initialValue * 100).toFixed(2); const gainText = gainPercent >= 0 ? `+${gainPercent}` : gainPercent; return `${datasetLabel}: $${value.toFixed(2)} (${gainText}%)`; } } } } } });
     },
 
     renderDrawdownChart(res){
@@ -1921,6 +2152,229 @@ const UI = {
         document.getElementById('mc-avg-vol').innerText = ((sumVol/50)*100).toFixed(1) + "%";
         document.getElementById('mc-avg-mdd').innerText = ((sumMDD/50)*100).toFixed(1) + "%";
         Plotly.newPlot('viz-monte-dashboard', paths.map(p => ({ y: p, type: 'scatter', mode: 'lines', line: { width: 1, color: 'rgba(59, 130, 246, 0.2)' }, showlegend: false })), { margin: { l: 40, r: 10, b: 30, t: 10 }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: { color: document.body.classList.contains('dark') ? '#EAECEF' : '#1E2329' }, xaxis: { title: 'Projection Days' } }, { displayModeBar: false });
+    }
+};
+
+// Config Manager
+const ConfigManager = {
+    STORAGE_KEY: 'gpe_configs',
+
+    getAllConfigs() {
+        const stored = localStorage.getItem(this.STORAGE_KEY);
+        return stored ? JSON.parse(stored) : {};
+    },
+
+    getCurrentConfig() {
+        const assets = Engine.universe ? Engine.universe.slice() : [];
+        return {
+            marketType: document.getElementById('cfg-market-type').value,
+            assets: assets,
+            strategy: document.getElementById('cfg-strategy').value,
+            bench: document.getElementById('cfg-bench').value,
+            startDate: document.getElementById('cfg-start').value,
+            endDate: document.getElementById('cfg-end').value,
+            lbStart: parseInt(document.getElementById('cfg-lb-start').value),
+            lbEnd: parseInt(document.getElementById('cfg-lb-end').value),
+            lbStep: parseInt(document.getElementById('cfg-lb-step').value),
+            rbStart: parseInt(document.getElementById('cfg-rb-start').value),
+            rbEnd: parseInt(document.getElementById('cfg-rb-end').value),
+            rbStep: parseInt(document.getElementById('cfg-rb-step').value),
+            liqStart: parseInt(document.getElementById('cfg-liq-start').value),
+            liqEnd: parseInt(document.getElementById('cfg-liq-end').value),
+            liqStep: parseInt(document.getElementById('cfg-liq-step').value),
+            liqTop: parseInt(document.getElementById('cfg-liq-top').value),
+            initial: parseFloat(document.getElementById('cfg-initial').value),
+            dca: parseFloat(document.getElementById('cfg-dca').value),
+            rf: parseFloat(document.getElementById('cfg-rf').value),
+            mgmtFee: parseFloat(document.getElementById('cfg-mgmt-fee').value),
+            fee: parseFloat(document.getElementById('cfg-fee').value),
+            savedAt: new Date().toISOString()
+        };
+    },
+
+    loadConfigData(config) {
+        document.getElementById('cfg-market-type').value = config.marketType || 'ETF';
+        UI.changeMarketMode(config.marketType || 'ETF');
+        
+        // Load assets
+        Engine.universe = config.assets || [];
+        UI.renderAssets();
+        
+        document.getElementById('cfg-strategy').value = config.strategy || 'ALL';
+        document.getElementById('cfg-bench').value = config.bench || 'SPY';
+        if (config.startDate) document.getElementById('cfg-start').value = config.startDate;
+        if (config.endDate) document.getElementById('cfg-end').value = config.endDate;
+        document.getElementById('cfg-lb-start').value = config.lbStart || 3;
+        document.getElementById('cfg-lb-end').value = config.lbEnd || 12;
+        document.getElementById('cfg-lb-step').value = config.lbStep || 3;
+        document.getElementById('cfg-rb-start').value = config.rbStart || 1;
+        document.getElementById('cfg-rb-end').value = config.rbEnd || 1;
+        document.getElementById('cfg-rb-step').value = config.rbStep || 1;
+        document.getElementById('cfg-liq-start').value = config.liqStart || 30;
+        document.getElementById('cfg-liq-end').value = config.liqEnd || 30;
+        document.getElementById('cfg-liq-step').value = config.liqStep || 10;
+        document.getElementById('cfg-liq-top').value = config.liqTop || 5;
+        document.getElementById('cfg-initial').value = config.initial || 10000;
+        document.getElementById('cfg-dca').value = config.dca || 0;
+        document.getElementById('cfg-rf').value = config.rf || 3.0;
+        document.getElementById('cfg-mgmt-fee').value = config.mgmtFee || 0.0;
+        document.getElementById('cfg-fee').value = config.fee || 0.1;
+    },
+
+    showSaveDialog() {
+        const modal = document.getElementById('save-config-modal');
+        const select = document.getElementById('config-select-overwrite');
+        const configs = this.getAllConfigs();
+        
+        // Populate dropdown with existing configs
+        select.innerHTML = '<option value="">-- Create New Config --</option>';
+        Object.keys(configs).forEach(name => {
+            const option = document.createElement('option');
+            option.value = name;
+            option.textContent = name;
+            select.appendChild(option);
+        });
+        
+        // Reset form
+        select.value = '';
+        document.getElementById('config-name-input').value = '';
+        document.getElementById('save-label-text').textContent = 'New Config Name';
+        document.getElementById('save-btn-text').textContent = 'Save';
+        
+        modal.classList.remove('hidden');
+        document.getElementById('config-name-input').focus();
+    },
+
+    onSelectChange() {
+        const select = document.getElementById('config-select-overwrite');
+        const input = document.getElementById('config-name-input');
+        const label = document.getElementById('save-label-text');
+        const btnText = document.getElementById('save-btn-text');
+        
+        if (select.value) {
+            // Overwrite mode
+            input.value = select.value;
+            input.readOnly = true;
+            input.classList.add('bg-gray-100', 'dark:bg-dark-700');
+            label.textContent = 'Overwriting Config';
+            btnText.textContent = 'Overwrite';
+        } else {
+            // New config mode
+            input.value = '';
+            input.readOnly = false;
+            input.classList.remove('bg-gray-100', 'dark:bg-dark-700');
+            label.textContent = 'New Config Name';
+            btnText.textContent = 'Save';
+            input.focus();
+        }
+    },
+
+    closeSaveDialog() {
+        document.getElementById('save-config-modal').classList.add('hidden');
+    },
+
+    saveConfig() {
+        const select = document.getElementById('config-select-overwrite');
+        const input = document.getElementById('config-name-input');
+        const name = input.value.trim();
+        
+        if (!name) {
+            alert('Please enter a config name');
+            return;
+        }
+
+        const configs = this.getAllConfigs();
+        
+        // Check if overwriting
+        if (select.value && select.value === name) {
+            if (!confirm(`Overwrite "${name}"?`)) {
+                return;
+            }
+        }
+        
+        configs[name] = this.getCurrentConfig();
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(configs));
+        
+        this.closeSaveDialog();
+        alert(`Configuration "${name}" saved successfully!`);
+    },
+
+    showLoadDialog() {
+        const modal = document.getElementById('load-config-modal');
+        const list = document.getElementById('saved-configs-list');
+        const configs = this.getAllConfigs();
+        
+        if (Object.keys(configs).length === 0) {
+            list.innerHTML = '<div class="text-center text-gray-500 py-8 text-sm">No saved configurations yet.</div>';
+        } else {
+            list.innerHTML = Object.entries(configs).map(([name, config]) => {
+                const date = new Date(config.savedAt).toLocaleString('th-TH', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                const assetList = config.assets && config.assets.length > 0 
+                    ? config.assets.slice(0, 5).join(', ') + (config.assets.length > 5 ? '...' : '')
+                    : 'No assets';
+                const dateRange = config.startDate && config.endDate 
+                    ? `${config.startDate} ~ ${config.endDate}`
+                    : 'Date not set';
+                return `
+                    <div class="bg-white dark:bg-dark-800 rounded-lg p-3 border border-gray-200 dark:border-dark-700 hover:border-stock-500 transition-all">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="flex-1">
+                                <div class="font-bold text-sm text-stock-600 dark:text-stock-400">${name}</div>
+                                <div class="text-[10px] text-gray-500 mt-1 space-y-0.5">
+                                    <div><strong>Assets:</strong> ${assetList}</div>
+                                    <div><strong>Strategy:</strong> ${config.strategy || 'N/A'} • <strong>Period:</strong> ${dateRange}</div>
+                                    <div class="text-[9px] text-gray-400">Saved: ${date}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 mt-2">
+                            <button onclick="ConfigManager.loadConfig('${name.replace(/'/g, "\\'")}'); event.stopPropagation();" class="flex-1 bg-green-500 hover:bg-green-600 text-white py-1.5 rounded text-[10px] font-bold">
+                                <i class="fas fa-download mr-1"></i> Load
+                            </button>
+                            <button onclick="ConfigManager.deleteConfig('${name.replace(/'/g, "\\'")}'); event.stopPropagation();" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded text-[10px] font-bold">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        modal.classList.remove('hidden');
+    },
+
+    closeLoadDialog() {
+        document.getElementById('load-config-modal').classList.add('hidden');
+    },
+
+    loadConfig(name) {
+        const configs = this.getAllConfigs();
+        const config = configs[name];
+        
+        if (!config) {
+            alert('Configuration not found');
+            return;
+        }
+
+        this.loadConfigData(config);
+        this.closeLoadDialog();
+        alert(`Configuration "${name}" loaded successfully!`);
+    },
+
+    deleteConfig(name) {
+        if (!confirm(`Delete configuration "${name}"?`)) return;
+        
+        const configs = this.getAllConfigs();
+        delete configs[name];
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(configs));
+        
+        this.showLoadDialog(); // Refresh the list
     }
 };
 
