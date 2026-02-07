@@ -75,5 +75,34 @@
     "mgmtFee": 0,
     "fee": 0.1,
     "savedAt": "2026-02-03T11:32:30.426Z"
+  },
+  "4-ETF": {
+    "marketType": "ETF",
+    "assets": [
+      "SPYM",
+      "QQQM",
+      "SCHD",
+      "SPMO"
+    ],
+    "strategy": "ALL",
+    "bench": "SPY",
+    "startDate": "2021-02-06",
+    "endDate": "2026-02-06",
+    "lbStart": 3,
+    "lbEnd": 120,
+    "lbStep": 3,
+    "rbStart": 3,
+    "rbEnd": 60,
+    "rbStep": 3,
+    "liqStart": 30,
+    "liqEnd": 30,
+    "liqStep": 10,
+    "liqTop": 5,
+    "initial": 1000,
+    "dca": 0,
+    "rf": 3,
+    "mgmtFee": 0,
+    "fee": 0.1,
+    "savedAt": "2026-02-06T13:04:28.992Z"
   }
 }
