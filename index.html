@@ -129,6 +129,9 @@ th.sortable:hover { color: #3b82f6; }
 <!-- GLOBAL TOOLTIP -->
 <div id="global-tooltip"></div>
 
+<!-- Hidden File Input for Import -->
+<input type="file" id="config-import-file" accept=".json" style="display: none;" onchange="ConfigManager.handleImportFile(event)">
+
 <!-- Config Save Modal -->
 <div id="save-config-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center" onclick="if(event.target.id==='save-config-modal') ConfigManager.closeSaveDialog()">
   <div class="glass rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
@@ -213,12 +216,20 @@ th.sortable:hover { color: #3b82f6; }
   </div>
 
   <!-- Config Management Buttons -->
-  <div class="grid grid-cols-2 gap-2 mb-3">
+  <div class="grid grid-cols-2 gap-2 mb-2">
     <button onclick="ConfigManager.showSaveDialog()" class="bg-blue-500 hover:bg-blue-600 text-white py-2 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow flex items-center justify-center gap-1">
       <i class="fas fa-save"></i> Save
     </button>
     <button onclick="ConfigManager.showLoadDialog()" class="bg-green-500 hover:bg-green-600 text-white py-2 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow flex items-center justify-center gap-1">
       <i class="fas fa-folder-open"></i> Load
+    </button>
+  </div>
+  <div class="grid grid-cols-2 gap-2 mb-3">
+    <button onclick="ConfigManager.exportAllConfigs()" class="bg-purple-500 hover:bg-purple-600 text-white py-2 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow flex items-center justify-center gap-1">
+      <i class="fas fa-file-export"></i> Export
+    </button>
+    <button onclick="ConfigManager.importConfigs()" class="bg-orange-500 hover:bg-orange-600 text-white py-2 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow flex items-center justify-center gap-1">
+      <i class="fas fa-file-import"></i> Import
     </button>
   </div>
 
@@ -2516,6 +2527,99 @@ const ConfigManager = {
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(configs));
         
         this.showLoadDialog(); // Refresh the list
+    },
+
+    exportAllConfigs() {
+        const configs = this.getAllConfigs();
+        
+        if (Object.keys(configs).length === 0) {
+            alert('No configurations to export. Please save at least one configuration first.');
+            return;
+        }
+        
+        // Create JSON string with pretty formatting
+        const jsonString = JSON.stringify(configs, null, 2);
+        
+        // Create blob and download
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'gpe_configs.json';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        alert(`Exported ${Object.keys(configs).length} configuration(s) to gpe_configs.json`);
+    },
+
+    importConfigs() {
+        // Trigger file input click
+        document.getElementById('config-import-file').click();
+    },
+
+    handleImportFile(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        // Validate file type
+        if (!file.name.endsWith('.json')) {
+            alert('Please select a valid JSON file');
+            event.target.value = ''; // Reset input
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const importedConfigs = JSON.parse(e.target.result);
+                
+                // Validate structure
+                if (typeof importedConfigs !== 'object' || importedConfigs === null) {
+                    throw new Error('Invalid configuration format');
+                }
+                
+                const existingConfigs = this.getAllConfigs();
+                const configNames = Object.keys(importedConfigs);
+                
+                if (configNames.length === 0) {
+                    alert('No configurations found in the file');
+                    event.target.value = '';
+                    return;
+                }
+                
+                // Check for conflicts
+                const conflicts = configNames.filter(name => existingConfigs[name]);
+                let shouldProceed = true;
+                
+                if (conflicts.length > 0) {
+                    const message = `Found ${conflicts.length} existing config(s) with same name(s):\n${conflicts.join(', ')}\n\nOverwrite them?`;
+                    shouldProceed = confirm(message);
+                }
+                
+                if (shouldProceed) {
+                    // Merge configs
+                    const mergedConfigs = { ...existingConfigs, ...importedConfigs };
+                    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(mergedConfigs));
+                    
+                    alert(`Successfully imported ${configNames.length} configuration(s)!`);
+                }
+                
+            } catch (error) {
+                alert(`Error importing configurations: ${error.message}`);
+                console.error('Import error:', error);
+            } finally {
+                event.target.value = ''; // Reset input for next import
+            }
+        };
+        
+        reader.onerror = () => {
+            alert('Error reading file. Please try again.');
+            event.target.value = '';
+        };
+        
+        reader.readAsText(file);
     }
 };
 
