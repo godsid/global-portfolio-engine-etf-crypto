@@ -1863,11 +1863,121 @@ const UI = {
             bench = benchRaw.map(v => (v / benchRaw[0]) * startVal);
         }
 
+        // Create transaction points from logs
+        const transactionPoints = [];
+        const transactionData = {};
+        if (res.logs && res.logs.length > 0) {
+            res.logs.forEach(log => {
+                // Find date index in res.dates
+                const dateIdx = res.dates.indexOf(log.date);
+                
+                if (dateIdx >= 0 && res.curve[dateIdx] !== undefined) {
+                    transactionPoints.push({
+                        x: log.date,  // Use date string instead of index
+                        y: res.curve[dateIdx],
+                        log: log
+                    });
+                    transactionData[dateIdx] = log;
+                }
+            });
+        }
+
         const grad = ctx.createLinearGradient(0, 0, 0, 400); grad.addColorStop(0, 'rgba(59, 130, 246, 0.2)'); grad.addColorStop(1, 'rgba(59, 130, 246, 0)');
         const startValue = res.curve[0];
         const benchStartValue = bench.length > 0 ? bench[0] : startValue;
         
-        this.chartEq = new Chart(ctx, { type: 'line', data: { labels: res.dates, datasets: [{ label: 'Selected Strategy', data: res.curve, borderColor: '#3b82f6', backgroundColor: grad, borderWidth: 2, fill: true, pointRadius: 0, tension: 0.1 }, { label: `Benchmark (${cfg.bench})`, data: bench, borderColor: '#64748b', borderDash: [4,4], borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.1 }] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { y: { type: this.isLog ? 'logarithmic' : 'linear', grid: { color: document.body.classList.contains('dark') ? '#2B3139' : '#e2e8f0' }, ticks: { color: '#94a3b8' } }, x: { display: false } }, plugins: { legend: { labels: { color: document.body.classList.contains('dark') ? '#EAECEF' : '#1E2329' } }, tooltip: { backgroundColor: 'rgba(0,0,0,0.8)', titleFont: { family: 'JetBrains Mono' }, bodyFont: { family: 'JetBrains Mono' }, padding: 10, cornerRadius: 8, displayColors: true, callbacks: { label: function(context) { const value = context.parsed.y; const datasetLabel = context.dataset.label || ''; const isStrategy = context.datasetIndex === 0; const initialValue = isStrategy ? startValue : benchStartValue; const gainPercent = ((value - initialValue) / initialValue * 100).toFixed(2); const gainText = gainPercent >= 0 ? `+${gainPercent}` : gainPercent; return `${datasetLabel}: $${value.toFixed(2)} (${gainText}%)`; } } } } } });
+        const datasets = [
+            { label: 'Selected Strategy', data: res.curve, borderColor: '#3b82f6', backgroundColor: grad, borderWidth: 2, fill: true, pointRadius: 0, tension: 0.1 },
+            { label: `Benchmark (${cfg.bench})`, data: bench, borderColor: '#64748b', borderDash: [4,4], borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.1 }
+        ];
+
+        // Add transaction points dataset
+        if (transactionPoints.length > 0) {
+            datasets.push({
+                label: 'Transactions',
+                data: transactionPoints,
+                type: 'scatter',
+                pointRadius: 7,
+                pointHoverRadius: 9,
+                pointBackgroundColor: transactionPoints.map(p => p.log.type === 'DCA' ? '#0ECB81' : '#FCD535'),
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2.5,
+                showLine: false,
+                order: 0  // Render on top
+            });
+        }
+        
+        this.chartEq = new Chart(ctx, { 
+            type: 'line', 
+            data: { labels: res.dates, datasets: datasets }, 
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                interaction: { mode: 'nearest', intersect: false, axis: 'x' }, 
+                scales: { 
+                    y: { type: this.isLog ? 'logarithmic' : 'linear', grid: { color: document.body.classList.contains('dark') ? '#2B3139' : '#e2e8f0' }, ticks: { color: '#94a3b8' } }, 
+                    x: { display: false } 
+                }, 
+                plugins: { 
+                    legend: { labels: { color: document.body.classList.contains('dark') ? '#EAECEF' : '#1E2329' } }, 
+                    tooltip: { 
+                        backgroundColor: 'rgba(0,0,0,0.9)', 
+                        titleFont: { family: 'JetBrains Mono', size: 11 }, 
+                        bodyFont: { family: 'JetBrains Mono', size: 10 }, 
+                        padding: 12, 
+                        cornerRadius: 8, 
+                        displayColors: true,
+                        callbacks: { 
+                            title: function(context) {
+                                // Show date for all tooltips
+                                return context[0].label || '';
+                            },
+                            label: function(context) {
+                                const value = context.parsed.y;
+                                const datasetLabel = context.dataset.label || '';
+                                
+                                // Check if this is a transaction point
+                                if (datasetLabel === 'Transactions' && context.raw.log) {
+                                    const log = context.raw.log;
+                                    const type = log.type === 'DCA' ? 'DCA Injection' : 'Rebalance';
+                                    return `${type}: $${log.nav.toFixed(0)}`;
+                                }
+                                
+                                const isStrategy = context.datasetIndex === 0;
+                                const initialValue = isStrategy ? startValue : benchStartValue;
+                                const gainPercent = ((value - initialValue) / initialValue * 100).toFixed(2);
+                                const gainText = gainPercent >= 0 ? `+${gainPercent}` : gainPercent;
+                                return `${datasetLabel}: $${value.toFixed(2)} (${gainText}%)`;
+                            },
+                            afterLabel: function(context) {
+                                // Show holdings if transaction point
+                                if (context.dataset.label === 'Transactions' && context.raw.log) {
+                                    const log = context.raw.log;
+                                    if (log.shares && log.prices) {
+                                        const holdings = Object.entries(log.shares).filter(([k,v]) => v > 0.0001).sort((a,b) => b[1] - a[1]);
+                                        let totalValue = 0;
+                                        holdings.forEach(([k,v]) => {
+                                            const price = log.prices[k] || 0;
+                                            totalValue += v * price;
+                                        });
+                                        
+                                        let lines = ['\nHoldings:'];
+                                        holdings.forEach(([k,v]) => {
+                                            const price = log.prices[k] || 0;
+                                            const value = v * price;
+                                            const percentage = totalValue > 0 ? (value / totalValue * 100) : 0;
+                                            lines.push(`  ${k}: ${v.toFixed(4)} [${percentage.toFixed(1)}%]`);
+                                        });
+                                        return lines;
+                                    }
+                                }
+                                return null;
+                            }
+                        } 
+                    } 
+                } 
+            } 
+        });
     },
 
     renderDrawdownChart(res){
