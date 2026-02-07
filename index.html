@@ -1177,12 +1177,13 @@ class QuantEngine {
                     cash = 0;
 
                     for(let t = startIdx; t < sliceEnd; t++){
+                      // Apply management fee by reducing shares (avoid double deduction)
+                      const mgmtFactor = 1 - dailyMgmtFee;
+                      activeUniverse.forEach(k => shares[k] *= mgmtFactor);
+                      
                       let equityValue = 0;
                       activeUniverse.forEach(k => equityValue += shares[k] * this.marketData[k].prices[t]);
                       let nav = cash + equityValue;
-                      nav -= nav * dailyMgmtFee;
-                      const factor = 1 - dailyMgmtFee;
-                      activeUniverse.forEach(k => shares[k] *= factor);
                       
                       if((t - startIdx) > 0 && (t - startIdx) % rb === 0){
                           const sigs = {}, vols = {};
@@ -1204,10 +1205,15 @@ class QuantEngine {
                           if (cfg.dca > 0) {
                                let inflow = cfg.dca;
                                let currentTotal = totalNav;
+                               
+                               // Update cash and nav with inflow
+                               cash += inflow;
+                               totalNav += inflow;
+                               
                                let deficits = {}, totalDeficit = 0;
                                
                                activeUniverse.forEach(k => {
-                                   let ideal = (currentTotal + inflow) * targetWeights[k];
+                                   let ideal = totalNav * targetWeights[k];
                                    let diff = ideal - currentVal[k];
                                    if (diff > 0) { deficits[k] = diff; totalDeficit += diff; } else { deficits[k] = 0; }
                                });
@@ -1226,6 +1232,7 @@ class QuantEngine {
                                    if(buyAmounts[k] > 0.01){
                                        let netBuy = buyAmounts[k] * (1 - cfg.fee / 100);
                                        shares[k] += netBuy / this.marketData[k].prices[t];
+                                       cash -= buyAmounts[k]; // Deduct gross amount from cash
                                    }
                                });
                                
@@ -1236,31 +1243,55 @@ class QuantEngine {
                                });
                                
                                rebCount++;
-                               logs.push({ date: this.dates[t], type: 'DCA', inflow: inflow, allocation: allocationPcts, nav: currentTotal + inflow, shares: {...shares}, sharesChange: sharesChange, prices: prices });
+                               logs.push({ date: this.dates[t], type: 'DCA', inflow: inflow, allocation: allocationPcts, nav: totalNav, shares: {...shares}, sharesChange: sharesChange, prices: prices });
 
                           } else {
-                              let newShares = {}, diffPct = {}, realTO = 0;
+                              let diffPct = {}, realTO = 0;
+                              let buySellAmounts = {};
+                              
+                              // Calculate buy/sell amounts for each asset
                               activeUniverse.forEach(k => {
                                   const targetVal = totalNav * targetWeights[k];
                                   const diff = targetVal - currentVal[k];
                                   diffPct[k] = (diff / totalNav) * 100;
+                                  buySellAmounts[k] = diff;
                                   realTO += Math.abs(diff);
                               });
                               
-                              let netNav = totalNav - (realTO * (cfg.fee/100));
-                              activeUniverse.forEach(k => {
-                                  newShares[k] = (netNav * targetWeights[k]) / this.marketData[k].prices[t];
-                              });
-                              
-                              if(realTO > 1) { 
+                              // Use percentage-based threshold (0.5% of portfolio)
+                              const rebalanceThresholdPct = 0.5;
+                              if(realTO > totalNav * (rebalanceThresholdPct / 100)) {
+                                  let newShares = {}, netNav = totalNav;
+                                  
+                                  // Apply transaction fee separately for each asset
+                                  activeUniverse.forEach(k => {
+                                      if (buySellAmounts[k] > 0.01) {
+                                          // BUY: deduct fee from purchase
+                                          const netBuy = buySellAmounts[k] * (1 - cfg.fee/100);
+                                          newShares[k] = shares[k] + (netBuy / this.marketData[k].prices[t]);
+                                          netNav -= buySellAmounts[k]; // Deduct from available capital
+                                      } else if (buySellAmounts[k] < -0.01) {
+                                          // SELL: deduct fee from proceeds
+                                          const grossSell = Math.abs(buySellAmounts[k]);
+                                          const sharesToSell = grossSell / this.marketData[k].prices[t];
+                                          const netSell = grossSell * (1 - cfg.fee/100);
+                                          newShares[k] = shares[k] - sharesToSell;
+                                          netNav += netSell; // Add net proceeds
+                                      } else {
+                                          // NO CHANGE (below threshold)
+                                          newShares[k] = shares[k];
+                                      }
+                                  });
+                                  
                                   let sharesChange = {}, prices = {};
                                   activeUniverse.forEach(k => {
                                       sharesChange[k] = newShares[k] - shares[k];
                                       prices[k] = this.marketData[k].prices[t];
                                   });
+                                  
                                   totalTO += realTO; rebCount++; 
                                   logs.push({ date: this.dates[t], type: 'REBAL', diff: diffPct, nav: netNav, shares: {...newShares}, sharesChange: sharesChange, prices: prices }); 
-                                  shares = newShares; 
+                                  shares = newShares;
                               }
                           }
                       }
