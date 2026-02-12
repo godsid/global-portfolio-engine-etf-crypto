@@ -177,6 +177,73 @@ th.sortable:hover { color: #3b82f6; }
   </div>
 </div>
 
+<!-- Transaction Add/Edit Modal -->
+<div id="transaction-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center" onclick="if(event.target.id==='transaction-modal') PortfolioTracker.closeDialog()">
+  <div class="glass rounded-2xl p-6 max-w-lg w-full mx-4 shadow-2xl">
+    <h3 id="transaction-modal-title" class="text-lg font-bold mb-4 text-stock-600 dark:text-stock-400">เพิ่มรายการลงทุน</h3>
+    
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">วันที่</label>
+        <input id="txn-date" type="date" class="w-full px-3 py-2 rounded border border-gray-300 dark:border-dark-700 bg-white dark:bg-dark-800 text-sm">
+      </div>
+      
+      <div>
+        <label class="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">Portfolio</label>
+        <div class="flex gap-2">
+          <select id="txn-portfolio-select" class="flex-1 px-3 py-2 rounded border border-gray-300 dark:border-dark-700 bg-white dark:bg-dark-800 text-sm" onchange="PortfolioTracker.onPortfolioSelectChange()">
+            <option value="">-- เลือก Portfolio --</option>
+            <option value="__new__">+ สร้างใหม่</option>
+          </select>
+          <input id="txn-portfolio-input" type="text" placeholder="ชื่อ Portfolio ใหม่" class="flex-1 px-3 py-2 rounded border border-gray-300 dark:border-dark-700 bg-white dark:bg-dark-800 text-sm hidden">
+        </div>
+      </div>
+      
+      <div>
+        <label class="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">Type</label>
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" id="txn-type-buy" onclick="PortfolioTracker.setType('buy')" class="px-4 py-2 rounded border-2 border-green-500 bg-green-500 text-white font-bold transition-all">
+            <i class="fas fa-plus-circle mr-1"></i> ซื้อ (Buy)
+          </button>
+          <button type="button" id="txn-type-sell" onclick="PortfolioTracker.setType('sell')" class="px-4 py-2 rounded border-2 border-gray-300 dark:border-dark-700 text-gray-600 dark:text-gray-400 font-bold transition-all">
+            <i class="fas fa-minus-circle mr-1"></i> ขาย (Sell)
+          </button>
+        </div>
+      </div>
+      
+      <div>
+        <label class="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">Asset</label>
+        <input id="txn-asset" type="text" placeholder="e.g., SPY, BTC" class="w-full px-3 py-2 rounded border border-gray-300 dark:border-dark-700 bg-white dark:bg-dark-800 text-sm">
+      </div>
+      
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">ราคา</label>
+          <input id="txn-price" type="number" step="0.01" placeholder="0.00" class="w-full px-3 py-2 rounded border border-gray-300 dark:border-dark-700 bg-white dark:bg-dark-800 text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">จำนวน</label>
+          <input id="txn-quantity" type="number" step="0.0001" placeholder="0.00" class="w-full px-3 py-2 rounded border border-gray-300 dark:border-dark-700 bg-white dark:bg-dark-800 text-sm">
+        </div>
+      </div>
+      
+      <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+        <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">มูลค่ารวม</div>
+        <div id="txn-total-preview" class="text-lg font-bold text-stock-600 dark:text-stock-400 mono">$0.00</div>
+      </div>
+    </div>
+    
+    <div class="flex gap-2 mt-6">
+      <button id="txn-save-btn" onclick="PortfolioTracker.saveTransaction()" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded font-bold text-sm">
+        <i class="fas fa-save mr-1"></i> บันทึก
+      </button>
+      <button onclick="PortfolioTracker.closeDialog()" class="flex-1 bg-gray-300 hover:bg-gray-400 dark:bg-dark-700 dark:hover:bg-dark-600 py-2 rounded font-bold text-sm">
+        ยกเลิก
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- HEADER -->
 <header class="glass sticky top-0 z-40 border-b shadow-sm">
   <div class="max-w-[1800px] mx-auto px-4 h-14 flex justify-between items-center">
@@ -186,6 +253,7 @@ th.sortable:hover { color: #3b82f6; }
       </h1>
       <nav class="hidden md:flex gap-1 ml-4">
           <button id="btn-tab-dashboard" onclick="UI.switchTab('dashboard')" class="px-3 py-1 text-[10px] font-bold rounded bg-white dark:bg-dark-800 shadow-sm text-stock-600 transition-all">DASHBOARD</button>
+          <button id="btn-tab-tracker" onclick="UI.switchTab('tracker')" class="px-3 py-1 text-[10px] font-bold rounded text-gray-400 hover:text-stock-500 transition-all">PORTFOLIO TRACKER</button>
           <button id="btn-tab-docs" onclick="UI.switchTab('docs')" class="px-3 py-1 text-[10px] font-bold rounded text-gray-400 hover:text-stock-500 transition-all">DOCS & STRATEGIES (THAI)</button>
       </nav>
     </div>
@@ -606,6 +674,105 @@ th.sortable:hover { color: #3b82f6; }
             </div>
         </div>
 
+    </div>
+
+    <!-- PORTFOLIO TRACKER TAB -->
+    <div id="view-tracker" class="space-y-6 animate-fade-in hidden">
+        <!-- Header -->
+        <div class="glass p-6 rounded-2xl">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h2 class="text-xl font-bold text-dark-900 dark:text-white flex items-center gap-2">
+                        <i class="fas fa-wallet text-stock-500"></i> Portfolio Tracker
+                    </h2>
+                    <p class="text-xs text-gray-500 mt-1">บันทึกและติดตามการลงทุนของคุณ</p>
+                </div>
+                <button onclick="PortfolioTracker.showAddDialog()" class="bg-stock-500 hover:bg-stock-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-lg">
+                    <i class="fas fa-plus mr-2"></i>เพิ่มรายการ
+                </button>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+                <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white">
+                    <div class="text-xs opacity-80 mb-1">มูลค่าลงทุันรวม</div>
+                    <div id="summary-total" class="text-2xl font-bold mono">$0.00</div>
+                </div>
+                <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-4 text-white">
+                    <div class="text-xs opacity-80 mb-1">มูลค่าตลาดปัจจุบัน</div>
+                    <div id="summary-current" class="text-2xl font-bold mono">$0.00</div>
+                </div>
+                <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white">
+                    <div class="text-xs opacity-80 mb-1">กำไร/ขาดทุน</div>
+                    <div id="summary-pnl" class="text-2xl font-bold mono">$0.00</div>
+                    <div id="summary-pnl-pct" class="text-xs opacity-90 mt-1">0.00%</div>
+                </div>
+                <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-4 text-white">
+                    <div class="text-xs opacity-80 mb-1">จำนวนรายการ</div>
+                    <div id="summary-count" class="text-2xl font-bold mono">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="glass p-4 rounded-2xl">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                    <label class="text-xs font-bold text-gray-600 dark:text-gray-400 mb-1 block">กรองตาม Portfolio</label>
+                    <select id="filter-portfolio" onchange="PortfolioTracker.filterTransactions()" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-dark-700 bg-white dark:bg-dark-800 text-sm">
+                        <option value="">ทั้งหมด</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-600 dark:text-gray-400 mb-1 block">กรองตาม Asset</label>
+                    <input id="filter-asset" type="text" placeholder="ค้นหา Asset..." onkeyup="PortfolioTracker.filterTransactions()" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-dark-700 bg-white dark:bg-dark-800 text-sm">
+                </div>
+                <div class="flex items-end">
+                    <button onclick="PortfolioTracker.clearFilters()" class="w-full bg-gray-200 hover:bg-gray-300 dark:bg-dark-700 dark:hover:bg-dark-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg text-sm font-bold transition-all">
+                        <i class="fas fa-times mr-2"></i>ล้างตัวกรอง
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transactions Table -->
+        <div class="glass p-6 rounded-2xl">
+            <h3 class="text-lg font-bold text-dark-900 dark:text-white mb-4">รายการลงทุน</h3>
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-100 dark:bg-dark-800">
+                        <tr>
+                            <th class="px-4 py-3 text-left font-bold text-gray-700 dark:text-gray-300">วันที่</th>
+                            <th class="px-4 py-3 text-left font-bold text-gray-700 dark:text-gray-300">Portfolio</th>
+                            <th class="px-4 py-3 text-center font-bold text-gray-700 dark:text-gray-300">Type</th>
+                            <th class="px-4 py-3 text-left font-bold text-gray-700 dark:text-gray-300">Asset</th>
+                            <th class="px-4 py-3 text-right font-bold text-gray-700 dark:text-gray-300">ราคา</th>
+                            <th class="px-4 py-3 text-right font-bold text-gray-700 dark:text-gray-300">จำนวน</th>
+                            <th class="px-4 py-3 text-right font-bold text-gray-700 dark:text-gray-300">มูลค่ารวม</th>
+                            <th class="px-4 py-3 text-center font-bold text-gray-700 dark:text-gray-300">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactions-table" class="divide-y divide-gray-200 dark:divide-dark-700">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+                <div id="transactions-empty" class="text-center py-12 text-gray-400 hidden">
+                    <i class="fas fa-inbox text-4xl mb-3"></i>
+                    <p>ยังไม่มีรายการลงทุน</p>
+                    <button onclick="PortfolioTracker.showAddDialog()" class="mt-4 bg-stock-500 hover:bg-stock-600 text-white px-4 py-2 rounded-lg text-sm font-bold">
+                        เพิ่มรายการแรก
+                    </button>
+                </div>
+            </div>
+
+            <!-- Portfolio Summary -->
+            <div id="portfolio-summary" class="mt-6 pt-6 border-t border-gray-200 dark:border-dark-700 hidden">
+                <h4 class="text-md font-bold text-dark-900 dark:text-white mb-3">สรุปตาม Portfolio</h4>
+                <div id="portfolio-summary-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- DOCS TAB -->
@@ -1596,13 +1763,14 @@ const UI = {
     },
 
     switchTab(id){
-        ['dashboard', 'docs'].forEach(v => {
+        ['dashboard', 'tracker', 'docs'].forEach(v => {
             const view = document.getElementById(`view-${v}`); const btn = document.getElementById(`btn-tab-${v}`);
             if(view) view.classList.add('hidden'); if(btn) btn.className = "px-3 py-1 text-[10px] font-bold rounded text-gray-400 hover:text-stock-500 transition-all";
         });
         const tv = document.getElementById(`view-${id}`); const tb = document.getElementById(`btn-tab-${id}`);
         if(tv) tv.classList.remove('hidden'); if(tb) tb.className = "px-3 py-1 text-[10px] font-bold rounded bg-white dark:bg-dark-800 shadow-sm text-stock-600 transition-all";
         if(id === 'docs' && typeof renderMathInElement !== 'undefined') renderMathInElement(document.body);
+        if(id === 'tracker') PortfolioTracker.renderTransactions();
     },
 
     suggestAsset(s){ if(!s) return; document.getElementById('cfg-add').value = s; this.addAsset(); },
@@ -2620,6 +2788,466 @@ const ConfigManager = {
         };
         
         reader.readAsText(file);
+    }
+};
+
+// Portfolio Tracker Manager
+const PortfolioTracker = {
+    STORAGE_KEY: 'gpe_transactions',
+    editingId: null,
+    currentType: 'buy',
+
+    getAllTransactions() {
+        const stored = localStorage.getItem(this.STORAGE_KEY);
+        return stored ? JSON.parse(stored) : [];
+    },
+
+    saveAllTransactions(transactions) {
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(transactions));
+    },
+
+    getConfigNames() {
+        const configs = ConfigManager.getAllConfigs();
+        return Object.keys(configs);
+    },
+
+    setType(type) {
+        this.currentType = type;
+        const buyBtn = document.getElementById('txn-type-buy');
+        const sellBtn = document.getElementById('txn-type-sell');
+        
+        if (type === 'buy') {
+            buyBtn.className = 'px-4 py-2 rounded border-2 border-green-500 bg-green-500 text-white font-bold transition-all';
+            sellBtn.className = 'px-4 py-2 rounded border-2 border-gray-300 dark:border-dark-700 text-gray-600 dark:text-gray-400 font-bold transition-all';
+        } else {
+            buyBtn.className = 'px-4 py-2 rounded border-2 border-gray-300 dark:border-dark-700 text-gray-600 dark:text-gray-400 font-bold transition-all';
+            sellBtn.className = 'px-4 py-2 rounded border-2 border-red-500 bg-red-500 text-white font-bold transition-all';
+        }
+    },
+
+    onPortfolioSelectChange() {
+        const select = document.getElementById('txn-portfolio-select');
+        const input = document.getElementById('txn-portfolio-input');
+        
+        if (select.value === '__new__') {
+            select.classList.add('hidden');
+            input.classList.remove('hidden');
+            input.focus();
+        }
+    },
+
+    showAddDialog() {
+        this.editingId = null;
+        this.currentType = 'buy';
+        document.getElementById('transaction-modal-title').textContent = 'เพิ่มรายการลงทุน';
+        document.getElementById('txn-date').value = new Date().toISOString().slice(0, 10);
+        
+        // Populate portfolio dropdown
+        const select = document.getElementById('txn-portfolio-select');
+        const input = document.getElementById('txn-portfolio-input');
+        const configNames = this.getConfigNames();
+        
+        select.innerHTML = '<option value="">-- เลือก Portfolio --</option>' + 
+            configNames.map(name => `<option value="${name}">${name}</option>`).join('') +
+            '<option value="__new__">+ สร้างใหม่</option>';
+        select.value = '';
+        select.classList.remove('hidden');
+        input.classList.add('hidden');
+        input.value = '';
+        
+        this.setType('buy');
+        document.getElementById('txn-asset').value = '';
+        document.getElementById('txn-price').value = '';
+        document.getElementById('txn-quantity').value = '';
+        document.getElementById('txn-total-preview').textContent = '$0.00';
+        document.getElementById('transaction-modal').classList.remove('hidden');
+        
+        // Add event listeners for real-time total calculation
+        const priceInput = document.getElementById('txn-price');
+        const qtyInput = document.getElementById('txn-quantity');
+        const updateTotal = () => {
+            const price = parseFloat(priceInput.value) || 0;
+            const qty = parseFloat(qtyInput.value) || 0;
+            const total = price * Math.abs(qty);
+            document.getElementById('txn-total-preview').textContent = `$${total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        };
+        priceInput.oninput = updateTotal;
+        qtyInput.oninput = updateTotal;
+    },
+
+    showEditDialog(id) {
+        const transactions = this.getAllTransactions();
+        const txn = transactions.find(t => t.id === id);
+        if (!txn) return;
+
+        this.editingId = id;
+        this.currentType = txn.type;
+        document.getElementById('transaction-modal-title').textContent = 'แก้ไขรายการลงทุน';
+        document.getElementById('txn-date').value = txn.date;
+        
+        // Setup portfolio selection
+        const select = document.getElementById('txn-portfolio-select');
+        const input = document.getElementById('txn-portfolio-input');
+        const configNames = this.getConfigNames();
+        
+        select.innerHTML = '<option value="">-- เลือก Portfolio --</option>' + 
+            configNames.map(name => `<option value="${name}">${name}</option>`).join('') +
+            '<option value="__new__">+ สร้างใหม่</option>';
+        
+        if (configNames.includes(txn.portfolio)) {
+            select.value = txn.portfolio;
+            select.classList.remove('hidden');
+            input.classList.add('hidden');
+        } else {
+            select.value = '__new__';
+            select.classList.add('hidden');
+            input.classList.remove('hidden');
+            input.value = txn.portfolio;
+        }
+        
+        this.setType(txn.type);
+        document.getElementById('txn-asset').value = txn.asset;
+        document.getElementById('txn-price').value = txn.price;
+        document.getElementById('txn-quantity').value = Math.abs(txn.quantity);
+        document.getElementById('txn-total-preview').textContent = `$${(txn.price * Math.abs(txn.quantity)).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('transaction-modal').classList.remove('hidden');
+        
+        // Add event listeners for real-time total calculation
+        const priceInput = document.getElementById('txn-price');
+        const qtyInput = document.getElementById('txn-quantity');
+        const updateTotal = () => {
+            const price = parseFloat(priceInput.value) || 0;
+            const qty = parseFloat(qtyInput.value) || 0;
+            const total = price * Math.abs(qty);
+            document.getElementById('txn-total-preview').textContent = `$${total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        };
+        priceInput.oninput = updateTotal;
+        qtyInput.oninput = updateTotal;
+    },
+
+    closeDialog() {
+        document.getElementById('transaction-modal').classList.add('hidden');
+        this.editingId = null;
+    },
+
+    saveTransaction() {
+        const date = document.getElementById('txn-date').value;
+        const select = document.getElementById('txn-portfolio-select');
+        const input = document.getElementById('txn-portfolio-input');
+        const portfolio = (select.classList.contains('hidden') ? input.value : select.value).trim();
+        const asset = document.getElementById('txn-asset').value.trim().toUpperCase();
+        const price = parseFloat(document.getElementById('txn-price').value);
+        let quantity = parseFloat(document.getElementById('txn-quantity').value);
+        const type = this.currentType;
+
+        // Validation
+        if (!date || !portfolio || portfolio === '__new__' || !asset || !price || !quantity) {
+            alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+            return;
+        }
+
+        if (price <= 0 || quantity <= 0) {
+            alert('ราคาและจำนวนต้องมากกว่า 0');
+            return;
+        }
+
+        // Apply sign based on type
+        if (type === 'sell') {
+            quantity = -Math.abs(quantity);
+        } else {
+            quantity = Math.abs(quantity);
+        }
+
+        const transactions = this.getAllTransactions();
+        
+        if (this.editingId !== null) {
+            // Edit existing
+            const index = transactions.findIndex(t => t.id === this.editingId);
+            if (index !== -1) {
+                transactions[index] = {
+                    id: this.editingId,
+                    date,
+                    portfolio,
+                    asset,
+                    type,
+                    price,
+                    quantity,
+                    total: price * Math.abs(quantity),
+                    updatedAt: new Date().toISOString()
+                };
+            }
+        } else {
+            // Add new
+            const newTxn = {
+                id: Date.now(),
+                date,
+                portfolio,
+                asset,
+                type,
+                price,
+                quantity,
+                total: price * Math.abs(quantity),
+                createdAt: new Date().toISOString()
+            };
+            transactions.push(newTxn);
+        }
+
+        this.saveAllTransactions(transactions);
+        this.closeDialog();
+        this.renderTransactions();
+        alert(this.editingId ? 'แก้ไขรายการสำเร็จ' : 'เพิ่มรายการสำเร็จ');
+    },
+
+    deleteTransaction(id) {
+        if (!confirm('ต้องการลบรายการนี้หรือไม่?')) return;
+        
+        let transactions = this.getAllTransactions();
+        transactions = transactions.filter(t => t.id !== id);
+        this.saveAllTransactions(transactions);
+        this.renderTransactions();
+        alert('ลบรายการสำเร็จ');
+    },
+
+    filterTransactions() {
+        const portfolioFilter = document.getElementById('filter-portfolio').value;
+        const assetFilter = document.getElementById('filter-asset').value.toUpperCase();
+        
+        const transactions = this.getAllTransactions();
+        const filtered = transactions.filter(t => {
+            const matchPortfolio = !portfolioFilter || t.portfolio === portfolioFilter;
+            const matchAsset = !assetFilter || t.asset.includes(assetFilter);
+            return matchPortfolio && matchAsset;
+        });
+        
+        this.renderTransactions(filtered);
+    },
+
+    clearFilters() {
+        document.getElementById('filter-portfolio').value = '';
+        document.getElementById('filter-asset').value = '';
+        this.renderTransactions();
+    },
+
+    renderTransactions(filteredTransactions = null) {
+        const transactions = filteredTransactions || this.getAllTransactions();
+        const tbody = document.getElementById('transactions-table');
+        const emptyDiv = document.getElementById('transactions-empty');
+        
+        // Update summary
+        this.updateSummary(transactions);
+        
+        // Update portfolio filter dropdown
+        this.updatePortfolioFilter();
+        
+        if (transactions.length === 0) {
+            tbody.innerHTML = '';
+            emptyDiv.classList.remove('hidden');
+            document.getElementById('portfolio-summary').classList.add('hidden');
+            return;
+        }
+        
+        emptyDiv.classList.add('hidden');
+        
+        // Sort by date descending
+        const sorted = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        tbody.innerHTML = sorted.map(txn => {
+            const typeLabel = txn.type === 'buy' ? 
+                '<span class="inline-block bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-1 rounded text-xs font-bold"><i class="fas fa-plus-circle mr-1"></i>ซื้อ</span>' :
+                '<span class="inline-block bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-1 rounded text-xs font-bold"><i class="fas fa-minus-circle mr-1"></i>ขาย</span>';
+            
+            return `
+            <tr class="hover:bg-gray-50 dark:hover:bg-dark-800 transition-colors">
+                <td class="px-4 py-3 mono text-xs">${txn.date}</td>
+                <td class="px-4 py-3">
+                    <span class="inline-block bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded text-xs font-bold">
+                        ${txn.portfolio}
+                    </span>
+                </td>
+                <td class="px-4 py-3 text-center">${typeLabel}</td>
+                <td class="px-4 py-3 font-bold">${txn.asset}</td>
+                <td class="px-4 py-3 text-right mono">$${txn.price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="px-4 py-3 text-right mono">${Math.abs(txn.quantity).toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4})}</td>
+                <td class="px-4 py-3 text-right font-bold text-stock-600 dark:text-stock-400 mono">$${txn.total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="px-4 py-3 text-center">
+                    <button onclick="PortfolioTracker.showEditDialog(${txn.id})" class="text-blue-500 hover:text-blue-700 px-2 py-1 text-xs" title="แก้ไข">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="PortfolioTracker.deleteTransaction(${txn.id})" class="text-red-500 hover:text-red-700 px-2 py-1 text-xs ml-1" title="ลบ">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `}).join('');
+        
+        // Render portfolio summary
+        this.renderPortfolioSummary(transactions);
+    },
+
+    updateSummary(transactions) {
+        const totalCost = transactions.reduce((sum, t) => {
+            return sum + (t.type === 'buy' ? t.total : -t.total);
+        }, 0);
+        
+        // Calculate holdings
+        const holdings = {};
+        transactions.forEach(t => {
+            if (!holdings[t.asset]) {
+                holdings[t.asset] = { quantity: 0, cost: 0 };
+            }
+            holdings[t.asset].quantity += t.quantity;
+            holdings[t.asset].cost += (t.type === 'buy' ? t.total : -t.total);
+        });
+        
+        // Get current prices from Engine.marketData
+        let currentValue = 0;
+        let hasMarketData = false;
+        
+        if (Engine.marketData && Object.keys(Engine.marketData).length > 0 && Engine.dates.length > 0) {
+            hasMarketData = true;
+            const lastIdx = Engine.dates.length - 1;
+            
+            Object.entries(holdings).forEach(([asset, data]) => {
+                if (data.quantity > 0 && Engine.marketData[asset]) {
+                    const currentPrice = Engine.marketData[asset].prices[lastIdx];
+                    if (currentPrice) {
+                        currentValue += data.quantity * currentPrice;
+                    }
+                }
+            });
+        }
+        
+        const pnl = hasMarketData ? currentValue - totalCost : 0;
+        const pnlPct = totalCost > 0 ? (pnl / totalCost * 100) : 0;
+        
+        document.getElementById('summary-total').textContent = `$${totalCost.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('summary-count').textContent = transactions.length;
+        
+        if (hasMarketData) {
+            document.getElementById('summary-current').textContent = `$${currentValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            
+            const pnlEl = document.getElementById('summary-pnl');
+            const pnlPctEl = document.getElementById('summary-pnl-pct');
+            const pnlColor = pnl >= 0 ? 'text-green-300' : 'text-red-300';
+            const pnlSign = pnl >= 0 ? '+' : '';
+            
+            pnlEl.textContent = `${pnlSign}$${pnl.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            pnlEl.className = `text-2xl font-bold mono ${pnlColor}`;
+            pnlPctEl.textContent = `${pnlSign}${pnlPct.toFixed(2)}%`;
+        } else {
+            document.getElementById('summary-current').textContent = 'N/A';
+            document.getElementById('summary-pnl').textContent = 'N/A';
+            document.getElementById('summary-pnl-pct').textContent = 'รัน Fetch Data ก่อน';
+        }
+    },
+
+    updatePortfolioFilter() {
+        const transactions = this.getAllTransactions();
+        const portfolios = [...new Set(transactions.map(t => t.portfolio))].sort();
+        const select = document.getElementById('filter-portfolio');
+        const currentValue = select.value;
+        
+        select.innerHTML = '<option value="">ทั้งหมด</option>' + 
+            portfolios.map(p => `<option value="${p}">${p}</option>`).join('');
+        select.value = currentValue;
+    },
+
+    renderPortfolioSummary(transactions) {
+        if (transactions.length === 0) {
+            document.getElementById('portfolio-summary').classList.add('hidden');
+            return;
+        }
+        
+        const summaryByPortfolio = {};
+        transactions.forEach(txn => {
+            if (!summaryByPortfolio[txn.portfolio]) {
+                summaryByPortfolio[txn.portfolio] = { cost: 0, count: 0, holdings: {} };
+            }
+            summaryByPortfolio[txn.portfolio].cost += (txn.type === 'buy' ? txn.total : -txn.total);
+            summaryByPortfolio[txn.portfolio].count += 1;
+            
+            // Calculate holdings
+            if (!summaryByPortfolio[txn.portfolio].holdings[txn.asset]) {
+                summaryByPortfolio[txn.portfolio].holdings[txn.asset] = { quantity: 0, cost: 0, avgPrice: 0 };
+            }
+            summaryByPortfolio[txn.portfolio].holdings[txn.asset].quantity += txn.quantity;
+            summaryByPortfolio[txn.portfolio].holdings[txn.asset].cost += (txn.type === 'buy' ? txn.total : -txn.total);
+        });
+        
+        // Get current prices
+        const hasMarketData = Engine.marketData && Object.keys(Engine.marketData).length > 0 && Engine.dates.length > 0;
+        const lastIdx = hasMarketData ? Engine.dates.length - 1 : 0;
+        
+        const summaryList = document.getElementById('portfolio-summary-list');
+        summaryList.innerHTML = Object.entries(summaryByPortfolio).map(([name, data]) => {
+            let currentValue = 0;
+            let holdingsHtml = '';
+            
+            const activeHoldings = Object.entries(data.holdings).filter(([_, h]) => Math.abs(h.quantity) > 0.0001);
+            
+            if (hasMarketData && activeHoldings.length > 0) {
+                holdingsHtml = '<div class="mt-3 pt-3 border-t border-gray-300 dark:border-dark-600 space-y-2">';
+                activeHoldings.forEach(([asset, holding]) => {
+                    const avgPrice = holding.cost / holding.quantity;
+                    const currentPrice = Engine.marketData[asset]?.prices[lastIdx] || 0;
+                    const assetValue = holding.quantity * currentPrice;
+                    const assetPnl = assetValue - holding.cost;
+                    const assetPnlPct = holding.cost > 0 ? (assetPnl / holding.cost * 100) : 0;
+                    
+                    currentValue += assetValue;
+                    
+                    const pnlColor = assetPnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+                    const pnlSign = assetPnl >= 0 ? '+' : '';
+                    
+                    holdingsHtml += `
+                        <div class="flex justify-between items-center text-xs">
+                            <div>
+                                <span class="font-bold text-gray-700 dark:text-gray-300">${asset}</span>
+                                <span class="text-gray-500 ml-2">${holding.quantity.toFixed(4)}</span>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-bold text-gray-700 dark:text-gray-300">$${assetValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                                <div class="${pnlColor} text-[10px]">${pnlSign}$${assetPnl.toFixed(2)} (${pnlSign}${assetPnlPct.toFixed(2)}%)</div>
+                            </div>
+                        </div>
+                    `;
+                });
+                holdingsHtml += '</div>';
+            } else if (activeHoldings.length > 0) {
+                holdingsHtml = '<div class="mt-3 pt-3 border-t border-gray-300 dark:border-dark-600 space-y-1">';
+                activeHoldings.forEach(([asset, holding]) => {
+                    holdingsHtml += `
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="font-bold text-gray-700 dark:text-gray-300">${asset}</span>
+                            <span class="text-gray-500">${holding.quantity.toFixed(4)} units</span>
+                        </div>
+                    `;
+                });
+                holdingsHtml += '<div class="text-[10px] text-orange-600 dark:text-orange-400 mt-2">รัน Fetch Data เพื่อดูราคาตลาด</div></div>';
+            }
+            
+            const pnl = hasMarketData && activeHoldings.length > 0 ? currentValue - data.cost : 0;
+            const pnlPct = data.cost > 0 && hasMarketData ? (pnl / data.cost * 100) : 0;
+            const pnlColor = pnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+            const pnlSign = pnl >= 0 ? '+' : '';
+            
+            return `
+            <div class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-dark-800 dark:to-dark-700 rounded-lg p-4 border border-gray-200 dark:border-dark-600">
+                <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">${name}</div>
+                <div class="text-xl font-bold text-stock-600 dark:text-stock-400 mono mb-1">ต้นทุน: $${data.cost.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                ${hasMarketData && activeHoldings.length > 0 ? `
+                    <div class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">มูลค่าปัจจุบัน: $${currentValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                    <div class="text-sm font-bold ${pnlColor}">P&L: ${pnlSign}$${Math.abs(pnl).toFixed(2)} (${pnlSign}${pnlPct.toFixed(2)}%)</div>
+                ` : ''}
+                <div class="text-xs text-gray-500 mt-2">
+                    <span class="mr-3"><i class="fas fa-list-ul mr-1"></i>${data.count} รายการ</span>
+                    <span><i class="fas fa-coins mr-1"></i>${activeHoldings.length} Assets</span>
+                </div>
+                ${holdingsHtml}
+            </div>
+        `}).join('');
+        
+        document.getElementById('portfolio-summary').classList.remove('hidden');
     }
 };
 
