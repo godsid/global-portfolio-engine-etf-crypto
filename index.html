@@ -1575,6 +1575,18 @@ const UI = {
         document.getElementById('cfg-end').value = end.toISOString().slice(0,10);
         this.renderHealthMonitor();
         if(typeof renderMathInElement !== 'undefined') renderMathInElement(document.body);
+        
+        // Auto-load last used config
+        const lastUsedConfig = ConfigManager.getLastUsedConfig();
+        if (lastUsedConfig) {
+            const configs = ConfigManager.getAllConfigs();
+            if (configs[lastUsedConfig]) {
+                setTimeout(() => {
+                    ConfigManager.loadConfigData(configs[lastUsedConfig]);
+                    console.log(`Auto-loaded last used config: ${lastUsedConfig}`);
+                }, 500);
+            }
+        }
     },
 
     changeMarketMode(mode){
@@ -2092,6 +2104,9 @@ const UI = {
             });
         }
 
+        // Calculate Portfolio Tracker data
+        const portfolioTrackerCurve = this.calculatePortfolioTrackerCurve(res.dates);
+
         const grad = ctx.createLinearGradient(0, 0, 0, 400); grad.addColorStop(0, 'rgba(59, 130, 246, 0.2)'); grad.addColorStop(1, 'rgba(59, 130, 246, 0)');
         const startValue = res.curve[0];
         const benchStartValue = bench.length > 0 ? bench[0] : startValue;
@@ -2100,6 +2115,20 @@ const UI = {
             { label: 'Selected Strategy', data: res.curve, borderColor: '#3b82f6', backgroundColor: grad, borderWidth: 2, fill: true, pointRadius: 0, tension: 0.1 },
             { label: `Benchmark (${cfg.bench})`, data: bench, borderColor: '#64748b', borderDash: [4,4], borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.1 }
         ];
+
+        // Add Portfolio Tracker curve if available
+        if (portfolioTrackerCurve && portfolioTrackerCurve.length > 0) {
+            datasets.push({
+                label: 'Portfolio Tracker (Real)',
+                data: portfolioTrackerCurve,
+                borderColor: '#0ECB81',
+                borderWidth: 2.5,
+                pointRadius: 0,
+                fill: false,
+                tension: 0.1,
+                borderDash: [8, 4]
+            });
+        }
 
         // Add transaction points dataset
         if (transactionPoints.length > 0) {
@@ -2153,6 +2182,11 @@ const UI = {
                                     return `${type}: $${log.nav.toFixed(0)}`;
                                 }
                                 
+                                // Portfolio Tracker - show actual value without percentage
+                                if (datasetLabel === 'Portfolio Tracker (Real)') {
+                                    return `${datasetLabel}: $${value.toFixed(2)}`;
+                                }
+                                
                                 const isStrategy = context.datasetIndex === 0;
                                 const initialValue = isStrategy ? startValue : benchStartValue;
                                 const gainPercent = ((value - initialValue) / initialValue * 100).toFixed(2);
@@ -2188,6 +2222,66 @@ const UI = {
                 } 
             } 
         });
+    },
+
+    calculatePortfolioTrackerCurve(dates) {
+        // Get current loaded config name
+        const currentConfigName = ConfigManager.getLastUsedConfig();
+        if (!currentConfigName) return null;
+
+        // Get all transactions filtered by current config name
+        const allTransactions = PortfolioTracker.getAllTransactions();
+        const configTransactions = allTransactions.filter(t => t.portfolio === currentConfigName);
+        
+        if (configTransactions.length === 0) return null;
+
+        // Sort transactions by date
+        const sortedTxns = [...configTransactions].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        // Build cumulative portfolio value over time
+        const curve = [];
+        let holdings = {}; // asset -> quantity
+        let txnIndex = 0; // Track which transactions we've processed
+        
+        for (let i = 0; i < dates.length; i++) {
+            const currentDate = dates[i];
+            
+            // Apply all transactions up to and including current date (only once per transaction)
+            while (txnIndex < sortedTxns.length && sortedTxns[txnIndex].date <= currentDate) {
+                const txn = sortedTxns[txnIndex];
+                
+                if (!holdings[txn.asset]) {
+                    holdings[txn.asset] = 0;
+                }
+                
+                // Update holdings (quantity already has sign from buy/sell)
+                holdings[txn.asset] += txn.quantity;
+                
+                txnIndex++;
+            }
+            
+            // Calculate portfolio value at this date
+            let portfolioValue = 0;
+            Object.entries(holdings).forEach(([asset, quantity]) => {
+                if (quantity !== 0 && Engine.marketData[asset]) {
+                    // Find price at current date index
+                    const assetPrices = Engine.marketData[asset].prices;
+                    const dateIdx = Engine.dates.indexOf(currentDate);
+                    
+                    if (dateIdx >= 0 && dateIdx < assetPrices.length) {
+                        const price = assetPrices[dateIdx];
+                        if (price > 0) {
+                            portfolioValue += quantity * price;
+                        }
+                    }
+                }
+            });
+            
+            // Only add value if we have transactions before or at this date
+            curve.push(txnIndex > 0 ? portfolioValue : null);
+        }
+
+        return curve;
     },
 
     renderDrawdownChart(res){
@@ -2478,10 +2572,19 @@ const UI = {
 // Config Manager
 const ConfigManager = {
     STORAGE_KEY: 'gpe_configs',
+    LAST_USED_KEY: 'gpe_last_used_config',
 
     getAllConfigs() {
         const stored = localStorage.getItem(this.STORAGE_KEY);
         return stored ? JSON.parse(stored) : {};
+    },
+
+    getLastUsedConfig() {
+        return localStorage.getItem(this.LAST_USED_KEY);
+    },
+
+    setLastUsedConfig(name) {
+        localStorage.setItem(this.LAST_USED_KEY, name);
     },
 
     getCurrentConfig() {
@@ -2683,8 +2786,15 @@ const ConfigManager = {
         }
 
         this.loadConfigData(config);
+        this.setLastUsedConfig(name);
         this.closeLoadDialog();
-        alert(`Configuration "${name}" loaded successfully!`);
+        
+        // Auto fetch data after loading config
+        setTimeout(() => {
+            if (confirm(`Configuration "${name}" loaded!\n\nFetch market data now?`)) {
+                Engine.fetchData();
+            }
+        }, 100);
     },
 
     deleteConfig(name) {
@@ -3157,18 +3267,65 @@ const PortfolioTracker = {
             holdings[t.asset].cost += (t.type === 'buy' ? t.total : -t.total);
         });
         
-        // Get current prices from Engine.marketData
-        let currentValue = 0;
+        // Try to get market data from Engine.marketData first, then from cache
+        let marketData = {};
         let hasMarketData = false;
         
         if (Engine.marketData && Object.keys(Engine.marketData).length > 0 && Engine.dates.length > 0) {
+            // Use live Engine data
+            marketData = Engine.marketData;
             hasMarketData = true;
-            const lastIdx = Engine.dates.length - 1;
+        } else {
+            // Try to load from cache - check both ETF and Crypto modes
+            const cachedAssets = Object.keys(holdings);
             
+            cachedAssets.forEach(asset => {
+                // Try both ETF and Crypto cache keys
+                const cacheKeys = [
+                    `gpe_cache_ETF_${asset}`,
+                    `gpe_cache_Crypto_${asset}`
+                ];
+                
+                for (const cacheKey of cacheKeys) {
+                    const cached = localStorage.getItem(cacheKey);
+                    if (cached) {
+                        try {
+                            const { data } = JSON.parse(cached);
+                            if (data && data.length > 0) {
+                                marketData[asset] = {
+                                    prices: data.map(d => d.price),
+                                    volumes: data.map(d => d.volume || 0)
+                                };
+                                break; // Found data, stop checking other keys
+                            }
+                        } catch(e) {}
+                    }
+                }
+            });
+            
+            if (Object.keys(marketData).length > 0) {
+                hasMarketData = true;
+            }
+        }
+        
+        // Helper function to get latest price for an asset
+        const getLatestPrice = (asset) => {
+            if (!marketData[asset] || !marketData[asset].prices) return 0;
+            const prices = marketData[asset].prices;
+            // Find the last non-zero price
+            for (let i = prices.length - 1; i >= 0; i--) {
+                if (prices[i] > 0) return prices[i];
+            }
+            return 0;
+        };
+        
+        let currentValue = 0;
+        
+        if (hasMarketData) {
             Object.entries(holdings).forEach(([asset, data]) => {
-                if (data.quantity > 0 && Engine.marketData[asset]) {
-                    const currentPrice = Engine.marketData[asset].prices[lastIdx];
-                    if (currentPrice) {
+                if (data.quantity > 0) {
+                    const currentPrice = getLatestPrice(asset);
+                    if (currentPrice > 0) {
                         currentValue += data.quantity * currentPrice;
                     }
                 }
@@ -3232,9 +3389,59 @@ const PortfolioTracker = {
             summaryByPortfolio[txn.portfolio].holdings[txn.asset].cost += (txn.type === 'buy' ? txn.total : -txn.total);
         });
         
-        // Get current prices
-        const hasMarketData = Engine.marketData && Object.keys(Engine.marketData).length > 0 && Engine.dates.length > 0;
-        const lastIdx = hasMarketData ? Engine.dates.length - 1 : 0;
+        // Get current prices - try Engine.marketData first, then cache
+        let marketData = {};
+        let hasMarketData = false;
+        
+        if (Engine.marketData && Object.keys(Engine.marketData).length > 0 && Engine.dates.length > 0) {
+            marketData = Engine.marketData;
+            hasMarketData = true;
+        } else {
+            // Load from cache - check both ETF and Crypto modes
+            const allAssets = new Set();
+            Object.values(summaryByPortfolio).forEach(data => {
+                Object.keys(data.holdings).forEach(asset => allAssets.add(asset));
+            });
+            
+            allAssets.forEach(asset => {
+                // Try both ETF and Crypto cache keys
+                const cacheKeys = [
+                    `gpe_cache_ETF_${asset}`,
+                    `gpe_cache_Crypto_${asset}`
+                ];
+                
+                for (const cacheKey of cacheKeys) {
+                    const cached = localStorage.getItem(cacheKey);
+                    if (cached) {
+                        try {
+                            const { data } = JSON.parse(cached);
+                            if (data && data.length > 0) {
+                                marketData[asset] = {
+                                    prices: data.map(d => d.price),
+                                    volumes: data.map(d => d.volume || 0)
+                                };
+                                break; // Found data, stop checking other keys
+                            }
+                        } catch(e) {}
+                    }
+                }
+            });
+            
+            if (Object.keys(marketData).length > 0) {
+                hasMarketData = true;
+            }
+        }
+        
+        // Helper function to get latest price for an asset
+        const getLatestPrice = (asset) => {
+            if (!marketData[asset] || !marketData[asset].prices) return 0;
+            const prices = marketData[asset].prices;
+            // Find the last non-zero price
+            for (let i = prices.length - 1; i >= 0; i--) {
+                if (prices[i] > 0) return prices[i];
+            }
+            return 0;
+        };
         
         const summaryList = document.getElementById('portfolio-summary-list');
         summaryList.innerHTML = Object.entries(summaryByPortfolio).map(([name, data]) => {
@@ -3247,19 +3454,22 @@ const PortfolioTracker = {
                 // Calculate total portfolio value for percentage calculation
                 let totalPortfolioValue = 0;
                 activeHoldings.forEach(([asset, holding]) => {
-                    const currentPrice = Engine.marketData[asset]?.prices[lastIdx] || 0;
-                    const assetValue = holding.quantity * currentPrice;
-                    totalPortfolioValue += assetValue;
+                    const currentPrice = getLatestPrice(asset);
+                    if (currentPrice > 0) {
+                        const assetValue = holding.quantity * currentPrice;
+                        totalPortfolioValue += assetValue;
+                    }
                 });
                 
                 holdingsHtml = '<div class="mt-3 pt-3 border-t border-gray-300 dark:border-dark-600 space-y-2">';
                 activeHoldings.forEach(([asset, holding]) => {
                     const avgPrice = holding.cost / holding.quantity;
-                    const currentPrice = Engine.marketData[asset]?.prices[lastIdx] || 0;
+                    const currentPrice = getLatestPrice(asset);
                     const assetValue = holding.quantity * currentPrice;
                     const assetPnl = assetValue - holding.cost;
                     const assetPnlPct = holding.cost > 0 ? (assetPnl / holding.cost * 100) : 0;
-                    const assetPortfolioPct = totalPortfolioValue > 0 ? (assetValue / totalPortfolioValue * 100) : 0;
+                    // Only show percentage if we have valid market data and value
+                    const assetPortfolioPct = (totalPortfolioValue > 0 && assetValue > 0) ? (assetValue / totalPortfolioValue * 100) : 0;
                     
                     currentValue += assetValue;
                     
