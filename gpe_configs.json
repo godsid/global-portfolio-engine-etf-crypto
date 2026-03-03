@@ -41,7 +41,7 @@
       "rf": 3,
       "mgmtFee": 0,
       "fee": 0.075,
-      "savedAt": "2026-02-12T09:13:29.564Z"
+      "savedAt": "2026-02-28T01:34:52.141Z"
     },
     "Jitta-ETF": {
       "marketType": "ETF",
@@ -114,10 +114,10 @@
       "portfolio": "Crypto-Hot",
       "asset": "XRP",
       "type": "buy",
-      "price": 1.6227,
-      "quantity": 884.54,
-      "total": 1435.343058,
-      "updatedAt": "2026-02-10T09:54:29.186Z"
+      "price": 1.54,
+      "quantity": 414.53,
+      "total": 638.3761999999999,
+      "updatedAt": "2026-02-19T09:10:43.932Z"
     },
     {
       "id": 1770468315050,
@@ -170,9 +170,9 @@
       "asset": "PEPE",
       "type": "buy",
       "price": 0.00000369,
-      "quantity": 91426412,
-      "total": 337.36346027999997,
-      "createdAt": "2026-02-12T08:22:22.337Z"
+      "quantity": 78484444,
+      "total": 289.60759836,
+      "updatedAt": "2026-02-19T08:49:28.766Z"
     },
     {
       "id": 1770884566132,
@@ -203,11 +203,77 @@
       "asset": "PEPE",
       "type": "buy",
       "price": 0.0000037,
-      "quantity": 7149096,
-      "total": 26.4516552,
-      "createdAt": "2026-02-12T08:23:30.855Z"
+      "quantity": 46823449,
+      "total": 173.2467613,
+      "updatedAt": "2026-02-19T08:55:44.427Z"
+    },
+    {
+      "id": 1771489712615,
+      "date": "2026-02-19",
+      "portfolio": "Crypto-Hot",
+      "asset": "PEPE",
+      "type": "sell",
+      "price": 0.00000422,
+      "quantity": -26986273,
+      "total": 113.88207206000001,
+      "createdAt": "2026-02-19T08:28:32.615Z"
+    },
+    {
+      "id": 1771489748101,
+      "date": "2026-02-19",
+      "portfolio": "Crypto-Hot",
+      "asset": "BTC",
+      "type": "buy",
+      "price": 68840,
+      "quantity": 0.00125,
+      "total": 86.05,
+      "createdAt": "2026-02-19T08:29:08.101Z"
+    },
+    {
+      "id": 1771489775115,
+      "date": "2026-02-19",
+      "portfolio": "Crypto-Hot",
+      "asset": "XRP",
+      "type": "buy",
+      "price": 1.4116,
+      "quantity": 21.2,
+      "total": 29.925919999999998,
+      "createdAt": "2026-02-19T08:29:35.115Z"
+    },
+    {
+      "id": 1772242415016,
+      "date": "2026-02-28",
+      "portfolio": "Crypto-Hot",
+      "asset": "PEPE",
+      "type": "buy",
+      "price": 0.00000366,
+      "quantity": 12896436,
+      "total": 47.20095576,
+      "createdAt": "2026-02-28T01:33:35.016Z"
+    },
+    {
+      "id": 1772242442007,
+      "date": "2026-02-28",
+      "portfolio": "Crypto-Hot",
+      "asset": "XRP",
+      "type": "sell",
+      "price": 1.3585,
+      "quantity": -4,
+      "total": 5.434,
+      "createdAt": "2026-02-28T01:34:02.007Z"
+    },
+    {
+      "id": 1772242473000,
+      "date": "2026-02-28",
+      "portfolio": "Crypto-Hot",
+      "asset": "BTC",
+      "type": "sell",
+      "price": 65833.45,
+      "quantity": -0.00063,
+      "total": 41.4750735,
+      "createdAt": "2026-02-28T01:34:33.000Z"
     }
   ],
-  "exportedAt": "2026-02-12T09:17:05.728Z",
+  "exportedAt": "2026-03-03T01:11:06.054Z",
   "version": "1.0"
 }
