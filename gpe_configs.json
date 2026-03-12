@@ -148,7 +148,9 @@
     "Dime": {
       "marketType": "ETF",
       "assets": [
-        "ASNS"
+        "ASNS",
+        "ONDS",
+        "SLDB"
       ],
       "strategy": "ALL",
       "bench": "SPY",
@@ -168,8 +170,8 @@
       "dca": 0,
       "rf": 3,
       "mgmtFee": 0,
-      "fee": 0.075,
-      "savedAt": "2026-03-06T12:08:57.065Z"
+      "fee": 0.15,
+      "savedAt": "2026-03-12T14:38:22.913Z"
     },
     "Jitta-Tech": {
       "marketType": "ETF",
@@ -264,17 +266,6 @@
       "quantity": 0.00931,
       "total": 715.5490041,
       "updatedAt": "2026-02-10T09:54:18.967Z"
-    },
-    {
-      "id": 1770469337894,
-      "date": "2026-02-07",
-      "portfolio": "Jitta-ETF",
-      "asset": "ICLN",
-      "type": "buy",
-      "price": 16.75,
-      "quantity": 24.818,
-      "total": 415.7015,
-      "updatedAt": "2026-03-04T09:30:03.651Z"
     },
     {
       "id": 1770884511632,
@@ -506,8 +497,30 @@
       "quantity": 5.305,
       "total": 672.72705,
       "createdAt": "2026-03-06T12:32:16.718Z"
+    },
+    {
+      "id": 1773325611692,
+      "date": "2026-03-12",
+      "portfolio": "Dime",
+      "asset": "SLDB",
+      "type": "buy",
+      "price": 7.7929,
+      "quantity": 40,
+      "total": 311.716,
+      "createdAt": "2026-03-12T14:26:51.692Z"
+    },
+    {
+      "id": 1773325644609,
+      "date": "2026-03-12",
+      "portfolio": "Dime",
+      "asset": "ONDS",
+      "type": "buy",
+      "price": 10.2265,
+      "quantity": 30,
+      "total": 306.795,
+      "createdAt": "2026-03-12T14:27:24.609Z"
     }
   ],
-  "exportedAt": "2026-03-06T12:35:51.503Z",
+  "exportedAt": "2026-03-12T14:39:18.121Z",
   "version": "1.0"
 }
