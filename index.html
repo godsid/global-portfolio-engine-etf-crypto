@@ -227,9 +227,30 @@ th.sortable:hover { color: #3b82f6; }
         </div>
       </div>
       
+      <div>
+        <label class="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300 flex items-center gap-2">
+          <i class="fas fa-percent text-orange-500"></i>
+          Commission ($)
+          <span class="text-xs font-normal text-gray-500">ค่าธรรมเนียม/ค่าคอมมิชชั่น</span>
+        </label>
+        <input id="txn-commission" type="number" step="0.01" placeholder="0.00" value="0" class="w-full px-3 py-2 rounded border border-gray-300 dark:border-dark-700 bg-white dark:bg-dark-800 text-sm">
+      </div>
+      
       <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-        <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">มูลค่ารวม</div>
-        <div id="txn-total-preview" class="text-lg font-bold text-stock-600 dark:text-stock-400 mono">$0.00</div>
+        <div class="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">มูลค่ารวม</div>
+            <div id="txn-total-preview" class="text-lg font-bold text-stock-600 dark:text-stock-400 mono">$0.00</div>
+          </div>
+          <div>
+            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">Commission</div>
+            <div id="txn-commission-preview" class="text-lg font-bold text-orange-600 dark:text-orange-400 mono">$0.00</div>
+          </div>
+        </div>
+        <div class="mt-2 pt-2 border-t border-blue-200 dark:border-blue-800">
+          <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">ยอดสุทธิ (รวม Commission)</div>
+          <div id="txn-net-preview" class="text-xl font-bold text-green-600 dark:text-green-400 mono">$0.00</div>
+        </div>
       </div>
     </div>
     
@@ -453,6 +474,53 @@ th.sortable:hover { color: #3b82f6; }
           <div>
               <label class="opt-label-mini text-acc-green">DCA ($)</label>
               <input id="cfg-dca" value="0" type="number" class="opt-input text-center font-bold text-acc-green">
+          </div>
+      </div>
+      
+      <!-- Enhanced Dynamic DCA -->
+      <div class="border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
+          <div class="flex items-center justify-between mb-2">
+              <label class="opt-label-mini text-purple-600 dark:text-purple-400">
+                  <i class="fas fa-chart-line"></i> Enhanced Dynamic DCA
+              </label>
+              <label class="flex items-center gap-1">
+                  <input type="checkbox" id="cfg-enhanced-dca" class="w-3 h-3">
+                  <span class="text-[9px] text-gray-500">Enable</span>
+              </label>
+          </div>
+          <div id="enhanced-dca-controls" class="space-y-2 opacity-50 pointer-events-none">
+              <div>
+                  <label class="opt-label-mini">
+                      Strategy
+                      <span class="has-tooltip"><i class="fas fa-question-circle help-icon"></i><span class="tooltip-source">
+                          <h4>Enhanced DCA Strategies</h4>
+                          <p><strong>RSI-Based:</strong> เพิ่มเงินลงทุนเมื่อราคาต่ำ (RSI < 30), ลดเมื่อราคาสูง (RSI > 70)</p>
+                          <p><strong>Volatility:</strong> เพิ่มเงินลงทุนเมื่อความผันผวนสูง (โอกาสดี), ลดเมื่อเสถียร</p>
+                          <p><strong>MA Crossover:</strong> เพิ่มเงินลงทุนเมื่อราคาต่ำกว่า Moving Average</p>
+                          <p><strong>Momentum:</strong> ปรับตามแนวโน้มราคา (Trending Up/Down)</p>
+                      </span></span>
+                  </label>
+                  <select id="cfg-dca-strategy" class="opt-input text-center">
+                      <option value="RSI">RSI-Based</option>
+                      <option value="VOLATILITY">Volatility-Based</option>
+                      <option value="MA">MA Crossover</option>
+                      <option value="MOMENTUM">Momentum-Based</option>
+                  </select>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                  <div>
+                      <label class="opt-label-mini text-acc-red">Min Multiplier</label>
+                      <input id="cfg-dca-min" value="0.5" type="number" step="0.1" class="opt-input text-center text-[10px]">
+                  </div>
+                  <div>
+                      <label class="opt-label-mini text-acc-green">Max Multiplier</label>
+                      <input id="cfg-dca-max" value="2.0" type="number" step="0.1" class="opt-input text-center text-[10px]">
+                  </div>
+              </div>
+              <div>
+                  <label class="opt-label-mini">Lookback Period</label>
+                  <input id="cfg-dca-lookback" value="14" type="number" class="opt-input text-center text-[10px]">
+              </div>
           </div>
       </div>
       <div class="grid grid-cols-3 gap-1">
@@ -693,7 +761,7 @@ th.sortable:hover { color: #3b82f6; }
             </div>
 
             <!-- Summary Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mt-6">
                 <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white">
                     <div class="text-xs opacity-80 mb-1">มูลค่าลงทุันรวม</div>
                     <div id="summary-total" class="text-2xl font-bold mono">$0.00</div>
@@ -708,6 +776,10 @@ th.sortable:hover { color: #3b82f6; }
                     <div id="summary-pnl-pct" class="text-xs opacity-90 mt-1">0.00%</div>
                 </div>
                 <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-4 text-white">
+                    <div class="text-xs opacity-80 mb-1"><i class="fas fa-percent mr-1"></i>Commission รวม</div>
+                    <div id="summary-commission" class="text-2xl font-bold mono">$0.00</div>
+                </div>
+                <div class="bg-gradient-to-br from-gray-500 to-gray-600 rounded-xl p-4 text-white">
                     <div class="text-xs opacity-80 mb-1">จำนวนรายการ</div>
                     <div id="summary-count" class="text-2xl font-bold mono">0</div>
                 </div>
@@ -749,6 +821,7 @@ th.sortable:hover { color: #3b82f6; }
                             <th class="px-4 py-3 text-right font-bold text-gray-700 dark:text-gray-300">ราคา</th>
                             <th class="px-4 py-3 text-right font-bold text-gray-700 dark:text-gray-300">จำนวน</th>
                             <th class="px-4 py-3 text-right font-bold text-gray-700 dark:text-gray-300">มูลค่ารวม</th>
+                            <th class="px-4 py-3 text-right font-bold text-orange-600 dark:text-orange-400"><i class="fas fa-percent mr-1"></i>Commission</th>
                             <th class="px-4 py-3 text-center font-bold text-gray-700 dark:text-gray-300">จัดการ</th>
                         </tr>
                     </thead>
@@ -771,6 +844,98 @@ th.sortable:hover { color: #3b82f6; }
                 <div id="portfolio-summary-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     <!-- Populated by JS -->
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Portfolio Rebalance Modal -->
+    <div id="rebalance-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-dark-800 rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden">
+            <div class="bg-gradient-to-r from-stock-500 to-stock-600 p-4 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-balance-scale"></i>
+                    <span>ปรับสัดส่วน Portfolio: <span id="rebalance-portfolio-name" class="font-mono"></span></span>
+                </h3>
+                <button onclick="RebalanceCalculator.closeModal()" class="text-white hover:text-gray-200 text-2xl leading-none">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto max-h-[calc(90vh-180px)] custom-scrollbar">
+                <!-- Current Holdings -->
+                <div class="mb-6">
+                    <h4 class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                        <i class="fas fa-wallet"></i> สถานะปัจจุบัน
+                    </h4>
+                    <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                        <div class="grid grid-cols-3 gap-4 text-sm">
+                            <div>
+                                <div class="text-gray-600 dark:text-gray-400 text-xs">มูลค่ารวม</div>
+                                <div class="text-lg font-bold text-stock-600 dark:text-stock-400 mono" id="rebalance-total-value">$0.00</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-600 dark:text-gray-400 text-xs">จำนวน Assets</div>
+                                <div class="text-lg font-bold text-gray-800 dark:text-gray-200" id="rebalance-asset-count">0</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-600 dark:text-gray-400 text-xs">สถานะ</div>
+                                <div class="text-lg font-bold text-green-600 dark:text-green-400" id="rebalance-status">พร้อม</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Asset List with Target Inputs -->
+                <div class="mb-6">
+                    <h4 class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                        <i class="fas fa-list-ul"></i> กำหนด Target % สำหรับแต่ละ Asset
+                    </h4>
+                    <div id="rebalance-asset-list" class="space-y-2">
+                        <!-- Populated by JS -->
+                    </div>
+                    <div class="mt-3 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                        <i class="fas fa-info-circle"></i>
+                        <span>ระบุ % ที่ต้องการสำหรับแต่ละ Asset (รวมต้องเท่ากับ 100%)</span>
+                    </div>
+                    <div class="mt-2 flex items-center gap-2">
+                        <div class="text-sm font-bold text-gray-700 dark:text-gray-300">รวม Target:</div>
+                        <div id="rebalance-total-target" class="text-lg font-bold mono">0.0%</div>
+                        <div id="rebalance-target-warning" class="text-xs text-red-600 dark:text-red-400 hidden">
+                            <i class="fas fa-exclamation-triangle"></i> ต้องรวม = 100%
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rebalance Actions -->
+                <div id="rebalance-actions" class="hidden">
+                    <h4 class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                        <i class="fas fa-exchange-alt"></i> รายการซื้อ/ขาย
+                    </h4>
+                    <div id="rebalance-actions-list" class="space-y-2">
+                        <!-- Populated by JS -->
+                    </div>
+                    <div class="mt-4 bg-gray-50 dark:bg-dark-700 rounded-lg p-4 border border-gray-200 dark:border-dark-600">
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <div class="text-gray-600 dark:text-gray-400 text-xs">ยอดซื้อรวม</div>
+                                <div class="text-lg font-bold text-green-600 dark:text-green-400 mono" id="rebalance-total-buy">$0.00</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-600 dark:text-gray-400 text-xs">ยอดขายรวม</div>
+                                <div class="text-lg font-bold text-red-600 dark:text-red-400 mono" id="rebalance-total-sell">$0.00</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-100 dark:bg-dark-700 p-4 flex gap-3 justify-end border-t border-gray-200 dark:border-dark-600">
+                <button onclick="RebalanceCalculator.closeModal()" class="px-4 py-2 bg-gray-300 dark:bg-dark-600 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-400 dark:hover:bg-dark-500 transition-colors">
+                    <i class="fas fa-times mr-2"></i>ยกเลิก
+                </button>
+                <button onclick="RebalanceCalculator.calculateRebalance()" class="px-4 py-2 bg-stock-500 hover:bg-stock-600 text-white rounded-lg font-bold transition-colors">
+                    <i class="fas fa-calculator mr-2"></i>คำนวณ
+                </button>
             </div>
         </div>
     </div>
@@ -1255,6 +1420,114 @@ class QuantEngine {
       UI.enableRunButton(true);
   }
 
+  // Enhanced Dynamic DCA Calculation Methods
+  calculateRSI(prices, period = 14) {
+      if (prices.length < period + 1) return 50; // Neutral if not enough data
+      
+      let gains = 0, losses = 0;
+      for (let i = prices.length - period; i < prices.length; i++) {
+          const change = prices[i] - prices[i - 1];
+          if (change > 0) gains += change;
+          else losses += Math.abs(change);
+      }
+      
+      const avgGain = gains / period;
+      const avgLoss = losses / period;
+      
+      if (avgLoss === 0) return 100;
+      const rs = avgGain / avgLoss;
+      return 100 - (100 / (1 + rs));
+  }
+
+  calculateDCAMultiplier(cfg, benchmarkPrices, currentIdx) {
+      if (!cfg.enhancedDCA || cfg.dca === 0) return 1.0;
+      
+      const lookback = Math.min(cfg.dcaLookback, currentIdx);
+      if (lookback < 2) return 1.0;
+      
+      const recentPrices = benchmarkPrices.slice(Math.max(0, currentIdx - lookback), currentIdx + 1);
+      const currentPrice = benchmarkPrices[currentIdx];
+      
+      let multiplier = 1.0;
+      
+      switch (cfg.dcaStrategy) {
+          case 'RSI': {
+              // RSI-Based: Buy more when oversold, less when overbought
+              const rsi = this.calculateRSI(recentPrices, Math.min(14, lookback));
+              if (rsi < 30) {
+                  // Oversold - increase investment (1.5x to max)
+                  multiplier = cfg.dcaMin + ((30 - rsi) / 30) * (cfg.dcaMax - cfg.dcaMin);
+              } else if (rsi > 70) {
+                  // Overbought - decrease investment (min to 1.0x)
+                  multiplier = cfg.dcaMin + ((100 - rsi) / 30) * (1.0 - cfg.dcaMin);
+              } else {
+                  // Neutral zone (30-70) - normal investment with slight bias
+                  const normalizedRSI = (rsi - 50) / 20; // -1 to 1
+                  multiplier = 1.0 - (normalizedRSI * 0.3); // 0.7 to 1.3
+              }
+              break;
+          }
+          
+          case 'VOLATILITY': {
+              // Volatility-Based: Buy more during high volatility (opportunity)
+              const returns = [];
+              for (let i = 1; i < recentPrices.length; i++) {
+                  returns.push((recentPrices[i] - recentPrices[i-1]) / recentPrices[i-1]);
+              }
+              const volatility = returns.length > 0 ? math.std(returns) : 0;
+              const avgVolatility = 0.02; // Assume 2% average daily volatility
+              
+              // Higher volatility = more opportunity = higher multiplier
+              const volRatio = volatility / avgVolatility;
+              multiplier = Math.min(cfg.dcaMax, Math.max(cfg.dcaMin, 1.0 + (volRatio - 1.0) * 0.5));
+              break;
+          }
+          
+          case 'MA': {
+              // Moving Average Crossover: Buy more when below MA (discount)
+              const ma = recentPrices.reduce((a, b) => a + b, 0) / recentPrices.length;
+              const priceToMA = currentPrice / ma;
+              
+              if (priceToMA < 0.95) {
+                  // Price below MA (discount) - increase investment
+                  multiplier = cfg.dcaMin + ((0.95 - priceToMA) / 0.15) * (cfg.dcaMax - cfg.dcaMin);
+              } else if (priceToMA > 1.05) {
+                  // Price above MA (premium) - decrease investment
+                  multiplier = cfg.dcaMin;
+              } else {
+                  // Near MA - normal investment
+                  multiplier = 1.0 + ((1.0 - priceToMA) * 2); // Linear interpolation
+              }
+              multiplier = Math.min(cfg.dcaMax, Math.max(cfg.dcaMin, multiplier));
+              break;
+          }
+          
+          case 'MOMENTUM': {
+              // Momentum-Based: Contrarian approach - buy more on downtrends
+              const oldPrice = recentPrices[0];
+              const momentum = (currentPrice - oldPrice) / oldPrice;
+              
+              if (momentum < -0.1) {
+                  // Strong downtrend - significant increase
+                  multiplier = cfg.dcaMax;
+              } else if (momentum < 0) {
+                  // Mild downtrend - moderate increase
+                  multiplier = 1.0 + ((Math.abs(momentum) / 0.1) * (cfg.dcaMax - 1.0));
+              } else if (momentum > 0.1) {
+                  // Strong uptrend - reduce investment
+                  multiplier = cfg.dcaMin;
+              } else {
+                  // Mild uptrend - slight reduction
+                  multiplier = 1.0 - ((momentum / 0.1) * (1.0 - cfg.dcaMin));
+              }
+              break;
+          }
+      }
+      
+      // Ensure multiplier stays within bounds
+      return Math.min(cfg.dcaMax, Math.max(cfg.dcaMin, multiplier));
+  }
+
   runSimulation() {
       if (Object.keys(this.marketData).length === 0) {
           alert("Please Fetch Data first!");
@@ -1381,7 +1654,11 @@ class QuantEngine {
                           let totalNav = nav;
                           
                           if (cfg.dca > 0) {
-                               let inflow = cfg.dca;
+                               // Calculate dynamic DCA multiplier based on market conditions
+                               const benchmarkPrices = this.marketData[cfg.bench]?.prices || this.marketData[activeUniverse[0]].prices;
+                               const dcaMultiplier = this.calculateDCAMultiplier(cfg, benchmarkPrices, t);
+                               
+                               let inflow = cfg.dca * dcaMultiplier;
                                let currentTotal = totalNav;
                                
                                // Update cash and nav with inflow
@@ -1421,7 +1698,18 @@ class QuantEngine {
                                });
                                
                                rebCount++;
-                               logs.push({ date: this.dates[t], type: 'DCA', inflow: inflow, allocation: allocationPcts, nav: totalNav, shares: {...shares}, sharesChange: sharesChange, prices: prices });
+                               logs.push({ 
+                                   date: this.dates[t], 
+                                   type: 'DCA', 
+                                   inflow: inflow, 
+                                   baseDCA: cfg.dca,
+                                   multiplier: dcaMultiplier,
+                                   allocation: allocationPcts, 
+                                   nav: totalNav, 
+                                   shares: {...shares}, 
+                                   sharesChange: sharesChange, 
+                                   prices: prices 
+                               });
 
                           } else {
                               let diffPct = {}, realTO = 0;
@@ -1742,7 +2030,8 @@ const UI = {
     },
 
     getParams(){
-        const p = {}; ['cfg-strategy', 'cfg-start', 'cfg-end', 'cfg-bench', 'cfg-fee', 'cfg-frontend-fee', 'cfg-mgmt-fee', 'cfg-rf', 'cfg-initial', 'cfg-dca', 'cfg-liq-top'].forEach(id => { const el = document.getElementById(id); p[id.replace('cfg-','')] = el ? el.value : null; });
+        const p = {}; ['cfg-strategy', 'cfg-start', 'cfg-end', 'cfg-bench', 'cfg-fee', 'cfg-frontend-fee', 'cfg-mgmt-fee', 'cfg-rf', 'cfg-initial', 'cfg-dca', 'cfg-liq-top', 'cfg-dca-strategy', 'cfg-dca-min', 'cfg-dca-max', 'cfg-dca-lookback'].forEach(id => { const el = document.getElementById(id); p[id.replace('cfg-','')] = el ? el.value : null; });
+        const enhancedDCA = document.getElementById('cfg-enhanced-dca')?.checked || false;
         
         const lbs = parseInt(document.getElementById('cfg-lb-start').value) || 1;
         const lbe = parseInt(document.getElementById('cfg-lb-end').value) || 50;
@@ -1770,6 +2059,11 @@ const UI = {
             rf: parseFloat(p['rf'] || 2.0),
             initial: parseFloat(p.initial || 1000),
             dca: parseFloat(p.dca || 0),
+            enhancedDCA: enhancedDCA,
+            dcaStrategy: p['dca-strategy'] || 'RSI',
+            dcaMin: parseFloat(p['dca-min'] || 0.5),
+            dcaMax: parseFloat(p['dca-max'] || 2.0),
+            dcaLookback: parseInt(p['dca-lookback'] || 14),
             liqTopN: parseInt(p['liq-top'] || 5)
         };
     },
@@ -2003,10 +2297,22 @@ const UI = {
                     }).join('');
                 }
                 
+                // Enhanced DCA Indicator
+                const multiplierBadge = l.multiplier && l.multiplier !== 1.0 
+                    ? `<span class="inline-block px-2 py-1 rounded-md ${l.multiplier > 1.0 ? 'bg-acc-green/20 text-acc-green' : 'bg-acc-red/20 text-acc-red'} text-[9px] font-bold ml-2"><i class="fas fa-chart-line"></i> ${(l.multiplier * 100).toFixed(0)}% (×${l.multiplier.toFixed(2)})</span>`
+                    : '';
+                
+                const dcaInfo = l.baseDCA && l.multiplier 
+                    ? `<span class="text-[9px] text-gray-500">Base: $${l.baseDCA.toFixed(0)} × ${l.multiplier.toFixed(2)} = $${l.inflow.toFixed(0)}</span>`
+                    : '';
+                
                 html = `
                 <tr>
                     <td class="p-3 text-gray-400 font-bold border-b dark:border-dark-700 align-top w-[100px]">${l.date}</td>
-                    <td class="p-3 font-bold text-acc-green border-b dark:border-dark-700 align-top w-[140px]">Injection: +$${l.inflow.toFixed(0)}</td>
+                    <td class="p-3 font-bold text-acc-green border-b dark:border-dark-700 align-top w-[140px]">
+                        <div>Injection: +$${l.inflow.toFixed(0)} ${multiplierBadge}</div>
+                        ${dcaInfo ? `<div class="mt-1">${dcaInfo}</div>` : ''}
+                    </td>
                     <td class="p-3 border-b dark:border-dark-700 align-top w-[200px]">
                         <div class="mb-1 text-[9px] text-gray-500 font-bold uppercase">Smart Allocation</div>
                         <div class="flex flex-wrap">${badges}</div>
@@ -3027,20 +3333,29 @@ const PortfolioTracker = {
         document.getElementById('txn-asset').value = '';
         document.getElementById('txn-price').value = '';
         document.getElementById('txn-quantity').value = '';
+        document.getElementById('txn-commission').value = '0';
         document.getElementById('txn-total-preview').textContent = '$0.00';
+        document.getElementById('txn-commission-preview').textContent = '$0.00';
+        document.getElementById('txn-net-preview').textContent = '$0.00';
         document.getElementById('transaction-modal').classList.remove('hidden');
         
         // Add event listeners for real-time total calculation
         const priceInput = document.getElementById('txn-price');
         const qtyInput = document.getElementById('txn-quantity');
+        const commissionInput = document.getElementById('txn-commission');
         const updateTotal = () => {
             const price = parseFloat(priceInput.value) || 0;
             const qty = parseFloat(qtyInput.value) || 0;
+            const commission = parseFloat(commissionInput.value) || 0;
             const total = price * Math.abs(qty);
+            const net = total + commission;
             document.getElementById('txn-total-preview').textContent = `$${total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('txn-commission-preview').textContent = `$${commission.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('txn-net-preview').textContent = `$${net.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
         };
         priceInput.oninput = updateTotal;
         qtyInput.oninput = updateTotal;
+        commissionInput.oninput = updateTotal;
     },
 
     showEditDialog(id) {
@@ -3077,20 +3392,32 @@ const PortfolioTracker = {
         document.getElementById('txn-asset').value = txn.asset;
         document.getElementById('txn-price').value = txn.price;
         document.getElementById('txn-quantity').value = Math.abs(txn.quantity);
-        document.getElementById('txn-total-preview').textContent = `$${(txn.price * Math.abs(txn.quantity)).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('txn-commission').value = txn.commission || 0;
+        const total = txn.price * Math.abs(txn.quantity);
+        const commission = txn.commission || 0;
+        const net = total + commission;
+        document.getElementById('txn-total-preview').textContent = `$${total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('txn-commission-preview').textContent = `$${commission.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('txn-net-preview').textContent = `$${net.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
         document.getElementById('transaction-modal').classList.remove('hidden');
         
         // Add event listeners for real-time total calculation
         const priceInput = document.getElementById('txn-price');
         const qtyInput = document.getElementById('txn-quantity');
+        const commissionInput = document.getElementById('txn-commission');
         const updateTotal = () => {
             const price = parseFloat(priceInput.value) || 0;
             const qty = parseFloat(qtyInput.value) || 0;
+            const commission = parseFloat(commissionInput.value) || 0;
             const total = price * Math.abs(qty);
+            const net = total + commission;
             document.getElementById('txn-total-preview').textContent = `$${total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('txn-commission-preview').textContent = `$${commission.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('txn-net-preview').textContent = `$${net.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
         };
         priceInput.oninput = updateTotal;
         qtyInput.oninput = updateTotal;
+        commissionInput.oninput = updateTotal;
     },
 
     closeDialog() {
@@ -3106,6 +3433,7 @@ const PortfolioTracker = {
         const asset = document.getElementById('txn-asset').value.trim().toUpperCase();
         const price = parseFloat(document.getElementById('txn-price').value);
         let quantity = parseFloat(document.getElementById('txn-quantity').value);
+        const commission = parseFloat(document.getElementById('txn-commission').value) || 0;
         const type = this.currentType;
 
         // Validation
@@ -3140,6 +3468,7 @@ const PortfolioTracker = {
                     type,
                     price,
                     quantity,
+                    commission,
                     total: price * Math.abs(quantity),
                     updatedAt: new Date().toISOString()
                 };
@@ -3154,6 +3483,7 @@ const PortfolioTracker = {
                 type,
                 price,
                 quantity,
+                commission,
                 total: price * Math.abs(quantity),
                 createdAt: new Date().toISOString()
             };
@@ -3224,6 +3554,11 @@ const PortfolioTracker = {
                 '<span class="inline-block bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-1 rounded text-xs font-bold"><i class="fas fa-plus-circle mr-1"></i>ซื้อ</span>' :
                 '<span class="inline-block bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-1 rounded text-xs font-bold"><i class="fas fa-minus-circle mr-1"></i>ขาย</span>';
             
+            const commission = txn.commission || 0;
+            const commissionDisplay = commission > 0 ? 
+                `<span class="text-orange-600 dark:text-orange-400 font-bold">$${commission.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>` :
+                '<span class="text-gray-400">-</span>';
+            
             return `
             <tr class="hover:bg-gray-50 dark:hover:bg-dark-800 transition-colors">
                 <td class="px-4 py-3 mono text-xs">${txn.date}</td>
@@ -3237,6 +3572,7 @@ const PortfolioTracker = {
                 <td class="px-4 py-3 text-right mono">$${txn.price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                 <td class="px-4 py-3 text-right mono">${Math.abs(txn.quantity).toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4})}</td>
                 <td class="px-4 py-3 text-right font-bold text-stock-600 dark:text-stock-400 mono">$${txn.total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="px-4 py-3 text-right mono">${commissionDisplay}</td>
                 <td class="px-4 py-3 text-center">
                     <button onclick="PortfolioTracker.showEditDialog(${txn.id})" class="text-blue-500 hover:text-blue-700 px-2 py-1 text-xs" title="แก้ไข">
                         <i class="fas fa-edit"></i>
@@ -3255,6 +3591,11 @@ const PortfolioTracker = {
     updateSummary(transactions) {
         const totalCost = transactions.reduce((sum, t) => {
             return sum + (t.type === 'buy' ? t.total : -t.total);
+        }, 0);
+        
+        // Calculate total commission
+        const totalCommission = transactions.reduce((sum, t) => {
+            return sum + (t.commission || 0);
         }, 0);
         
         // Calculate holdings
@@ -3337,6 +3678,7 @@ const PortfolioTracker = {
         
         document.getElementById('summary-total').textContent = `$${totalCost.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
         document.getElementById('summary-count').textContent = transactions.length;
+        document.getElementById('summary-commission').textContent = `$${totalCommission.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
         
         if (hasMarketData) {
             document.getElementById('summary-current').textContent = `$${currentValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
@@ -3376,9 +3718,10 @@ const PortfolioTracker = {
         const summaryByPortfolio = {};
         transactions.forEach(txn => {
             if (!summaryByPortfolio[txn.portfolio]) {
-                summaryByPortfolio[txn.portfolio] = { cost: 0, count: 0, holdings: {} };
+                summaryByPortfolio[txn.portfolio] = { cost: 0, count: 0, commission: 0, holdings: {} };
             }
             summaryByPortfolio[txn.portfolio].cost += (txn.type === 'buy' ? txn.total : -txn.total);
+            summaryByPortfolio[txn.portfolio].commission += (txn.commission || 0);
             summaryByPortfolio[txn.portfolio].count += 1;
             
             // Calculate holdings
@@ -3517,11 +3860,22 @@ const PortfolioTracker = {
                     <div class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">มูลค่าปัจจุบัน: $${currentValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
                     <div class="text-sm font-bold ${pnlColor}">P&L: ${pnlSign}$${Math.abs(pnl).toFixed(2)} (${pnlSign}${pnlPct.toFixed(2)}%)</div>
                 ` : ''}
+                ${data.commission > 0 ? `
+                    <div class="text-sm font-bold text-orange-600 dark:text-orange-400 mt-1">
+                        <i class="fas fa-percent mr-1"></i>Commission: $${data.commission.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </div>
+                ` : ''}
                 <div class="text-xs text-gray-500 mt-2">
                     <span class="mr-3"><i class="fas fa-list-ul mr-1"></i>${data.count} รายการ</span>
                     <span><i class="fas fa-coins mr-1"></i>${activeHoldings.length} Assets</span>
                 </div>
                 ${holdingsHtml}
+                ${hasMarketData && activeHoldings.length > 0 ? `
+                <button onclick="RebalanceCalculator.openModal('${name}', ${JSON.stringify(data.holdings).replace(/"/g, '&quot;')})" class="w-full mt-3 px-3 py-2 bg-gradient-to-r from-stock-500 to-stock-600 hover:from-stock-600 hover:to-stock-700 text-white rounded-lg text-xs font-bold transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2">
+                    <i class="fas fa-balance-scale"></i>
+                    <span>ปรับสัดส่วน Portfolio</span>
+                </button>
+                ` : ''}
             </div>
         `}).join('');
         
@@ -3529,8 +3883,286 @@ const PortfolioTracker = {
     }
 };
 
+const RebalanceCalculator = {
+    currentPortfolio: null,
+    currentHoldings: {},
+    
+    openModal(portfolioName, holdings) {
+        this.currentPortfolio = portfolioName;
+        this.currentHoldings = holdings;
+        
+        // Get current prices
+        const marketData = Engine.marketData;
+        let totalValue = 0;
+        let hasValidPrices = false;
+        
+        Object.entries(holdings).forEach(([asset, data]) => {
+            if (Math.abs(data.quantity) > 0.0001) {
+                const price = this.getLatestPrice(asset, marketData);
+                if (price > 0) {
+                    totalValue += data.quantity * price;
+                    hasValidPrices = true;
+                }
+            }
+        });
+        
+        if (!hasValidPrices) {
+            alert('ไม่พบข้อมูลราคา กรุณารัน Fetch Data ก่อน');
+            return;
+        }
+        
+        // Update modal header
+        document.getElementById('rebalance-portfolio-name').textContent = portfolioName;
+        document.getElementById('rebalance-total-value').textContent = `$${totalValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        
+        // Count active assets
+        const activeAssets = Object.entries(holdings).filter(([_, h]) => Math.abs(h.quantity) > 0.0001);
+        document.getElementById('rebalance-asset-count').textContent = activeAssets.length;
+        
+        // Render asset list
+        this.renderAssetList(holdings, marketData, totalValue);
+        
+        // Show modal
+        document.getElementById('rebalance-modal').classList.remove('hidden');
+        
+        // Hide actions initially
+        document.getElementById('rebalance-actions').classList.add('hidden');
+    },
+    
+    closeModal() {
+        document.getElementById('rebalance-modal').classList.add('hidden');
+        this.currentPortfolio = null;
+        this.currentHoldings = {};
+    },
+    
+    getLatestPrice(asset, marketData) {
+        if (!marketData[asset] || !marketData[asset].prices) return 0;
+        const prices = marketData[asset].prices;
+        for (let i = prices.length - 1; i >= 0; i--) {
+            if (prices[i] > 0) return prices[i];
+        }
+        return 0;
+    },
+    
+    renderAssetList(holdings, marketData, totalValue) {
+        const activeHoldings = Object.entries(holdings).filter(([_, h]) => Math.abs(h.quantity) > 0.0001);
+        
+        const listHtml = activeHoldings.map(([asset, data]) => {
+            const currentPrice = this.getLatestPrice(asset, marketData);
+            const currentValue = data.quantity * currentPrice;
+            const currentPct = (currentValue / totalValue * 100);
+            
+            return `
+                <div class="bg-gray-50 dark:bg-dark-700 rounded-lg p-3 border border-gray-200 dark:border-dark-600">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex-1">
+                            <div class="font-bold text-gray-800 dark:text-gray-200 text-sm">${asset}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">
+                                ถือ: ${data.quantity.toFixed(4)} × $${currentPrice.toFixed(2)} = $${currentValue.toFixed(2)}
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-lg font-bold text-stock-600 dark:text-stock-400 mono">${currentPct.toFixed(1)}%</div>
+                            <div class="text-[9px] text-gray-500">ปัจจุบัน</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs text-gray-600 dark:text-gray-400 font-semibold">Target %:</label>
+                        <input 
+                            type="number" 
+                            id="target-${asset}" 
+                            value="${currentPct.toFixed(1)}" 
+                            step="0.1" 
+                            min="0" 
+                            max="100"
+                            onchange="RebalanceCalculator.updateTotalTarget()"
+                            class="flex-1 px-2 py-1 bg-white dark:bg-dark-800 border border-gray-300 dark:border-dark-600 rounded text-sm font-bold text-center mono focus:border-stock-500 focus:ring-1 focus:ring-stock-500 outline-none"
+                        >
+                        <span class="text-xs text-gray-500">%</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        document.getElementById('rebalance-asset-list').innerHTML = listHtml;
+        this.updateTotalTarget();
+    },
+    
+    updateTotalTarget() {
+        const activeHoldings = Object.entries(this.currentHoldings).filter(([_, h]) => Math.abs(h.quantity) > 0.0001);
+        let total = 0;
+        
+        activeHoldings.forEach(([asset, _]) => {
+            const input = document.getElementById(`target-${asset}`);
+            if (input) {
+                total += parseFloat(input.value) || 0;
+            }
+        });
+        
+        const totalEl = document.getElementById('rebalance-total-target');
+        const warningEl = document.getElementById('rebalance-target-warning');
+        
+        totalEl.textContent = `${total.toFixed(1)}%`;
+        
+        if (Math.abs(total - 100) > 0.1) {
+            totalEl.classList.add('text-red-600', 'dark:text-red-400');
+            totalEl.classList.remove('text-green-600', 'dark:text-green-400');
+            warningEl.classList.remove('hidden');
+        } else {
+            totalEl.classList.remove('text-red-600', 'dark:text-red-400');
+            totalEl.classList.add('text-green-600', 'dark:text-green-400');
+            warningEl.classList.add('hidden');
+        }
+    },
+    
+    calculateRebalance() {
+        // Check if total equals 100%
+        const activeHoldings = Object.entries(this.currentHoldings).filter(([_, h]) => Math.abs(h.quantity) > 0.0001);
+        let totalTarget = 0;
+        
+        activeHoldings.forEach(([asset, _]) => {
+            const input = document.getElementById(`target-${asset}`);
+            if (input) {
+                totalTarget += parseFloat(input.value) || 0;
+            }
+        });
+        
+        if (Math.abs(totalTarget - 100) > 0.1) {
+            alert('Target รวมต้องเท่ากับ 100%\nปัจจุบัน: ' + totalTarget.toFixed(1) + '%');
+            return;
+        }
+        
+        // Calculate current portfolio value
+        const marketData = Engine.marketData;
+        let totalValue = 0;
+        
+        const currentValues = {};
+        activeHoldings.forEach(([asset, data]) => {
+            const price = this.getLatestPrice(asset, marketData);
+            const value = data.quantity * price;
+            currentValues[asset] = { quantity: data.quantity, price: price, value: value };
+            totalValue += value;
+        });
+        
+        // Calculate rebalance actions
+        const actions = [];
+        let totalBuy = 0;
+        let totalSell = 0;
+        
+        activeHoldings.forEach(([asset, _]) => {
+            const targetPct = parseFloat(document.getElementById(`target-${asset}`).value) || 0;
+            const targetValue = totalValue * (targetPct / 100);
+            const currentValue = currentValues[asset].value;
+            const diff = targetValue - currentValue;
+            
+            if (Math.abs(diff) > 0.01) { // Only show if difference > $0.01
+                const action = {
+                    asset: asset,
+                    currentPct: (currentValue / totalValue * 100),
+                    targetPct: targetPct,
+                    currentValue: currentValue,
+                    targetValue: targetValue,
+                    diff: diff,
+                    price: currentValues[asset].price,
+                    quantity: diff / currentValues[asset].price,
+                    type: diff > 0 ? 'buy' : 'sell'
+                };
+                actions.push(action);
+                
+                if (diff > 0) totalBuy += diff;
+                else totalSell += Math.abs(diff);
+            }
+        });
+        
+        // Render actions
+        this.renderActions(actions, totalBuy, totalSell);
+        
+        // Show actions section
+        document.getElementById('rebalance-actions').classList.remove('hidden');
+        
+        // Scroll to actions
+        document.getElementById('rebalance-actions').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    },
+    
+    renderActions(actions, totalBuy, totalSell) {
+        if (actions.length === 0) {
+            document.getElementById('rebalance-actions-list').innerHTML = `
+                <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <i class="fas fa-check-circle text-4xl text-green-500 mb-2"></i>
+                    <div class="font-bold">Portfolio อยู่ในสัดส่วนที่ต้องการแล้ว</div>
+                    <div class="text-xs mt-1">ไม่จำเป็นต้องปรับ</div>
+                </div>
+            `;
+            document.getElementById('rebalance-total-buy').textContent = '$0.00';
+            document.getElementById('rebalance-total-sell').textContent = '$0.00';
+            return;
+        }
+        
+        // Sort: sells first, then buys
+        actions.sort((a, b) => {
+            if (a.type !== b.type) return a.type === 'sell' ? -1 : 1;
+            return Math.abs(b.diff) - Math.abs(a.diff);
+        });
+        
+        const actionsHtml = actions.map(action => {
+            const color = action.type === 'buy' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+            const bgColor = action.type === 'buy' ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20';
+            const borderColor = action.type === 'buy' ? 'border-green-200 dark:border-green-800' : 'border-red-200 dark:border-red-800';
+            const icon = action.type === 'buy' ? 'fa-arrow-up' : 'fa-arrow-down';
+            const label = action.type === 'buy' ? 'ซื้อ' : 'ขาย';
+            
+            return `
+                <div class="${bgColor} ${borderColor} border rounded-lg p-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="${color} text-2xl">
+                                <i class="fas ${icon}"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-gray-800 dark:text-gray-200">${action.asset}</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400">
+                                    ${action.currentPct.toFixed(1)}% → ${action.targetPct.toFixed(1)}%
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="${color} font-bold text-lg mono">${label}</div>
+                            <div class="text-sm font-bold ${color}">${Math.abs(action.quantity).toFixed(4)} units</div>
+                            <div class="text-xs text-gray-600 dark:text-gray-400">≈ $${Math.abs(action.diff).toFixed(2)}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        document.getElementById('rebalance-actions-list').innerHTML = actionsHtml;
+        document.getElementById('rebalance-total-buy').textContent = `$${totalBuy.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('rebalance-total-sell').textContent = `$${totalSell.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    }
+};
+
 const Engine = new QuantEngine();
-window.onload = () => UI.init();
+
+// Enhanced DCA Controls Toggle
+window.onload = () => {
+    UI.init();
+    
+    // Setup Enhanced DCA toggle
+    const enhancedDCACheckbox = document.getElementById('cfg-enhanced-dca');
+    const enhancedDCAControls = document.getElementById('enhanced-dca-controls');
+    
+    if (enhancedDCACheckbox && enhancedDCAControls) {
+        enhancedDCACheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                enhancedDCAControls.classList.remove('opacity-50', 'pointer-events-none');
+                enhancedDCAControls.classList.add('opacity-100');
+            } else {
+                enhancedDCAControls.classList.add('opacity-50', 'pointer-events-none');
+                enhancedDCAControls.classList.remove('opacity-100');
+            }
+        });
+    }
+};
 </script>
 </body>
 </html>

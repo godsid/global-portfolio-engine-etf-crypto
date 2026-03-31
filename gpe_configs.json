@@ -156,10 +156,10 @@
       "bench": "SPY",
       "startDate": "2025-01-01",
       "endDate": "2030-12-31",
-      "lbStart": 1,
+      "lbStart": 5,
       "lbEnd": 50,
       "lbStep": 1,
-      "rbStart": 1,
+      "rbStart": 5,
       "rbEnd": 50,
       "rbStep": 1,
       "liqStart": 5,
@@ -167,11 +167,11 @@
       "liqStep": 5,
       "liqTop": 5,
       "initial": 237.88,
-      "dca": 0,
+      "dca": 10,
       "rf": 3,
       "mgmtFee": 0,
       "fee": 0.15,
-      "savedAt": "2026-03-12T14:38:22.913Z"
+      "savedAt": "2026-03-31T00:16:04.152Z"
     },
     "Jitta-Tech": {
       "marketType": "ETF",
@@ -209,16 +209,17 @@
         "IXN",
         "IXJ",
         "ICLN",
-        "SMH"
+        "SMH",
+        "LIT"
       ],
       "strategy": "ALL",
       "bench": "SPY",
-      "startDate": "2025-01-01",
+      "startDate": "2025-11-01",
       "endDate": "2030-12-31",
-      "lbStart": 1,
+      "lbStart": 5,
       "lbEnd": 50,
       "lbStep": 1,
-      "rbStart": 1,
+      "rbStart": 30,
       "rbEnd": 50,
       "rbStep": 1,
       "liqStart": 5,
@@ -226,11 +227,11 @@
       "liqStep": 5,
       "liqTop": 8,
       "initial": 237.88,
-      "dca": 0,
+      "dca": 468,
       "rf": 3,
       "mgmtFee": 0,
       "fee": 0.075,
-      "savedAt": "2026-03-06T12:22:57.051Z"
+      "savedAt": "2026-03-31T00:57:20.914Z"
     }
   },
   "transactions": [
@@ -266,17 +267,6 @@
       "quantity": 0.00931,
       "total": 715.5490041,
       "updatedAt": "2026-02-10T09:54:18.967Z"
-    },
-    {
-      "id": 1770469337894,
-      "date": "2026-02-07",
-      "portfolio": "Jitta-AI",
-      "asset": "ICLN",
-      "type": "buy",
-      "price": 16.75,
-      "quantity": 24.818,
-      "total": 415.7015,
-      "updatedAt": "2026-02-10T09:54:35.273Z"
     },
     {
       "id": 1770884511632,
@@ -434,14 +424,14 @@
     },
     {
       "id": 1772800110783,
-      "date": "2026-03-06",
+      "date": "2026-03-02",
       "portfolio": "Jitta-AI",
       "asset": "ICLN",
       "type": "buy",
-      "price": 17.1,
-      "quantity": 31.495,
-      "total": 538.5645000000001,
-      "createdAt": "2026-03-06T12:28:30.783Z"
+      "price": 18.46,
+      "quantity": 6.004,
+      "total": 110.83384,
+      "updatedAt": "2026-03-31T00:30:24.888Z"
     },
     {
       "id": 1772800142641,
@@ -517,8 +507,9 @@
       "type": "buy",
       "price": 7.7929,
       "quantity": 40,
+      "commission": 0.01,
       "total": 311.716,
-      "createdAt": "2026-03-12T14:26:51.692Z"
+      "updatedAt": "2026-03-31T01:01:37.291Z"
     },
     {
       "id": 1773325644609,
@@ -528,8 +519,9 @@
       "type": "buy",
       "price": 10.2265,
       "quantity": 30,
+      "commission": 0,
       "total": 306.795,
-      "createdAt": "2026-03-12T14:27:24.609Z"
+      "updatedAt": "2026-03-31T01:02:09.424Z"
     },
     {
       "id": 1773411975950,
@@ -539,10 +531,193 @@
       "type": "buy",
       "price": 0.4309,
       "quantity": 380,
+      "commission": 4.07,
       "total": 163.742,
-      "createdAt": "2026-03-13T14:26:15.950Z"
+      "updatedAt": "2026-03-31T01:01:00.322Z"
+    },
+    {
+      "id": 1774915792529,
+      "date": "2026-03-19",
+      "portfolio": "Dime",
+      "asset": "ASNS",
+      "type": "buy",
+      "price": 0.3117,
+      "quantity": 311,
+      "commission": 3.33,
+      "total": 96.9387,
+      "updatedAt": "2026-03-31T01:00:27.829Z"
+    },
+    {
+      "id": 1774915829731,
+      "date": "2026-03-24",
+      "portfolio": "Dime",
+      "asset": "ASNS",
+      "type": "buy",
+      "price": 0.4074,
+      "quantity": 250,
+      "commission": 2.68,
+      "total": 101.85,
+      "updatedAt": "2026-03-31T00:59:54.283Z"
+    },
+    {
+      "id": 1774916365661,
+      "date": "2026-03-19",
+      "portfolio": "Jitta-AI",
+      "asset": "LIT",
+      "type": "buy",
+      "price": 70.55,
+      "quantity": 7.56,
+      "total": 533.358,
+      "createdAt": "2026-03-31T00:19:25.661Z"
+    },
+    {
+      "id": 1774916424593,
+      "date": "2026-03-19",
+      "portfolio": "Jitta-AI",
+      "asset": "ICLN",
+      "type": "sell",
+      "price": 18.7,
+      "quantity": -31.495,
+      "total": 588.9565,
+      "createdAt": "2026-03-31T00:20:24.593Z"
+    },
+    {
+      "id": 1774916454486,
+      "date": "2026-03-19",
+      "portfolio": "Jitta-AI",
+      "asset": "IXN",
+      "type": "sell",
+      "price": 105.07,
+      "quantity": -0.026,
+      "total": 2.73182,
+      "createdAt": "2026-03-31T00:20:54.486Z"
+    },
+    {
+      "id": 1774916491594,
+      "date": "2026-03-20",
+      "portfolio": "Jitta-AI",
+      "asset": "IXJ",
+      "type": "buy",
+      "price": 92.41,
+      "quantity": 0.217,
+      "total": 20.05297,
+      "createdAt": "2026-03-31T00:21:31.594Z"
+    },
+    {
+      "id": 1774916525383,
+      "date": "2026-03-20",
+      "portfolio": "Jitta-AI",
+      "asset": "LIT",
+      "type": "buy",
+      "price": 66.79,
+      "quantity": 0.401,
+      "total": 26.782790000000006,
+      "createdAt": "2026-03-31T00:22:05.383Z"
+    },
+    {
+      "id": 1774916571805,
+      "date": "2026-03-23",
+      "portfolio": "Jitta-AI",
+      "asset": "LIT",
+      "type": "buy",
+      "price": 69.45,
+      "quantity": 0.068,
+      "total": 4.722600000000001,
+      "createdAt": "2026-03-31T00:22:51.805Z"
+    },
+    {
+      "id": 1774916616607,
+      "date": "2026-03-30",
+      "portfolio": "Jitta-AI",
+      "asset": "IXJ",
+      "type": "buy",
+      "price": 92.5,
+      "quantity": 1.118,
+      "commission": 0.22,
+      "total": 103.415,
+      "updatedAt": "2026-03-31T00:47:34.552Z"
+    },
+    {
+      "id": 1774916643443,
+      "date": "2026-03-30",
+      "portfolio": "Jitta-AI",
+      "asset": "IXN",
+      "type": "buy",
+      "price": 98.69,
+      "quantity": 1.23,
+      "commission": 0.28,
+      "total": 121.3887,
+      "updatedAt": "2026-03-31T00:47:50.006Z"
+    },
+    {
+      "id": 1774916666741,
+      "date": "2026-03-30",
+      "portfolio": "Jitta-AI",
+      "asset": "LIT",
+      "type": "buy",
+      "price": 71.85,
+      "quantity": 1.264,
+      "commission": 0.19,
+      "total": 90.8184,
+      "updatedAt": "2026-03-31T00:48:02.477Z"
+    },
+    {
+      "id": 1774916700011,
+      "date": "2026-03-30",
+      "portfolio": "Jitta-AI",
+      "asset": "SMH",
+      "type": "buy",
+      "price": 377.65,
+      "quantity": 0.303,
+      "commission": 0.27,
+      "total": 114.42795,
+      "updatedAt": "2026-03-31T00:48:13.831Z"
+    },
+    {
+      "id": 1774917211984,
+      "date": "2025-12-19",
+      "portfolio": "Jitta-AI",
+      "asset": "ICLN",
+      "type": "buy",
+      "price": 16.19,
+      "quantity": 15.728,
+      "total": 254.63632,
+      "createdAt": "2026-03-31T00:33:31.984Z"
+    },
+    {
+      "id": 1774917254666,
+      "date": "2025-12-22",
+      "portfolio": "Jitta-AI",
+      "asset": "ICLN",
+      "type": "buy",
+      "price": 16.29,
+      "quantity": 0.427,
+      "total": 6.95583,
+      "createdAt": "2026-03-31T00:34:14.666Z"
+    },
+    {
+      "id": 1774917301031,
+      "date": "2025-12-30",
+      "portfolio": "Jitta-AI",
+      "asset": "ICLN",
+      "type": "buy",
+      "price": 16.46,
+      "quantity": 2.93,
+      "total": 48.2278,
+      "createdAt": "2026-03-31T00:35:01.031Z"
+    },
+    {
+      "id": 1774917374063,
+      "date": "2026-01-28",
+      "portfolio": "Jitta-AI",
+      "asset": "ICLN",
+      "type": "buy",
+      "price": 18.35,
+      "quantity": 5.601,
+      "total": 102.77835,
+      "createdAt": "2026-03-31T00:36:14.063Z"
     }
   ],
-  "exportedAt": "2026-03-15T23:36:39.674Z",
+  "exportedAt": "2026-03-31T01:03:06.554Z",
   "version": "1.0"
 }

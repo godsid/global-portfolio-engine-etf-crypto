@@ -248,6 +248,78 @@ New capital is allocated preferentially to assets with the **largest weight defi
 
 ---
 
+### Enhanced Dynamic DCA (NEW v48.3)
+
+Enhanced DCA automatically adjusts investment amounts based on market conditions using quantitative indicators.
+
+#### DCA Multiplier Formula
+
+[
+DCA_{actual} = DCA_{base} \times Multiplier
+]
+
+Where:
+[
+Multiplier \in [Min, Max], \quad \text{default: } [0.5, 2.0]
+]
+
+#### Strategy Options
+
+**1. RSI-Based Strategy**
+- **Oversold (RSI < 30)**: Increase investment (opportunity)
+- **Overbought (RSI > 70)**: Decrease investment (expensive)
+- **Neutral (30-70)**: Normal investment with slight bias
+
+[
+Multiplier = \begin{cases}
+Min + \frac{30 - RSI}{30} \times (Max - Min) & \text{if } RSI < 30 \\
+Min + \frac{100 - RSI}{30} \times (1 - Min) & \text{if } RSI > 70 \\
+1.0 - \frac{RSI - 50}{20} \times 0.3 & \text{otherwise}
+\end{cases}
+]
+
+**2. Volatility-Based Strategy**
+- Higher volatility = More opportunity = Higher multiplier
+- Buy more during market turbulence
+
+[
+Multiplier = \min\left(Max, \max\left(Min, 1.0 + \left(\frac{\sigma}{\sigma_{avg}} - 1\right) \times 0.5\right)\right)
+]
+
+**3. Moving Average Crossover**
+- Price below MA = Discount = Increase investment
+- Price above MA = Premium = Decrease investment
+
+[
+Multiplier = \begin{cases}
+Min + \frac{0.95 - PriceToMA}{0.15} \times (Max - Min) & \text{if } PriceToMA < 0.95 \\
+Min & \text{if } PriceToMA > 1.05 \\
+1.0 + (1.0 - PriceToMA) \times 2 & \text{otherwise}
+\end{cases}
+]
+
+**4. Momentum-Based (Contrarian)**
+- Strong downtrend (-10%+): Maximum investment
+- Strong uptrend (+10%+): Minimum investment
+- Buy the dip philosophy
+
+[
+Multiplier = \begin{cases}
+Max & \text{if } Momentum < -0.1 \\
+1.0 + \frac{|Momentum|}{0.1} \times (Max - 1.0) & \text{if } -0.1 \leq Momentum < 0 \\
+Min & \text{if } Momentum > 0.1 \\
+1.0 - \frac{Momentum}{0.1} \times (1.0 - Min) & \text{otherwise}
+\end{cases}
+]
+
+#### Configuration Parameters
+- **Strategy**: RSI / Volatility / MA Crossover / Momentum
+- **Min Multiplier**: Minimum investment multiplier (default: 0.5)
+- **Max Multiplier**: Maximum investment multiplier (default: 2.0)
+- **Lookback Period**: Days to analyze for signal calculation (default: 14)
+
+---
+
 ## 8. Step 6 — Performance Metrics
 
 ### CAGR
