@@ -8,7 +8,7 @@ This project runs entirely **client-side in the browser** and is deployable via 
 ---
 
 ## 🔗 Live Demo
-https://waranyutrkm.github.io/global-portfolio-engine-etf-crypto/
+https://godsid.github.io/global-portfolio-engine-etf-crypto/
 
 ---
 
