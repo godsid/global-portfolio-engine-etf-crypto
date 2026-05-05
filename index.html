@@ -1423,17 +1423,28 @@ class QuantEngine {
   // Enhanced Dynamic DCA Calculation Methods
   calculateRSI(prices, period = 14) {
       if (prices.length < period + 1) return 50; // Neutral if not enough data
-      
-      let gains = 0, losses = 0;
-      for (let i = prices.length - period; i < prices.length; i++) {
+
+      // Wilder's Smoothed RSI (standard formula)
+      let avgGain = 0, avgLoss = 0;
+      for (let i = 1; i <= period; i++) {
           const change = prices[i] - prices[i - 1];
-          if (change > 0) gains += change;
-          else losses += Math.abs(change);
+          if (change > 0) avgGain += change;
+          else avgLoss += Math.abs(change);
       }
-      
-      const avgGain = gains / period;
-      const avgLoss = losses / period;
-      
+      avgGain /= period;
+      avgLoss /= period;
+
+      for (let i = period + 1; i < prices.length; i++) {
+          const change = prices[i] - prices[i - 1];
+          if (change > 0) {
+              avgGain = (avgGain * (period - 1) + change) / period;
+              avgLoss = (avgLoss * (period - 1)) / period;
+          } else {
+              avgGain = (avgGain * (period - 1)) / period;
+              avgLoss = (avgLoss * (period - 1) + Math.abs(change)) / period;
+          }
+      }
+
       if (avgLoss === 0) return 100;
       const rs = avgGain / avgLoss;
       return 100 - (100 / (1 + rs));
@@ -1599,25 +1610,25 @@ class QuantEngine {
                     
                     let cash = cfg.initial * (1 - cfg.frontEndFee / 100);
                     let shares = {}; activeUniverse.forEach(k => shares[k] = 0);
-                    let curve = [], logs = [], totalTO = 0, rebCount = 0;
+                    let curve = [], logs = [], totalTO = 0, rebCount = 0, dcaCount = 0;
                     
                     const t0 = startIdx;
                     let initWeights = {};
-                    const sigs = {}, vols = {};
+                    const initSigs = {}, initVols = {};
                     const needsVol = ["InvVol", "AAA"].includes(stratKey);
 
                     activeUniverse.forEach(k => {
                        const pNow = this.marketData[k].prices[t0];
                        const pastIdx = Math.max(0, t0-lb);
                        const pPast = this.marketData[k].prices[pastIdx];
-                       sigs[k] = pNow / pPast - 1;
+                       initSigs[k] = pNow / pPast - 1;
                        if(needsVol || lb <= 30) {
                            const volSlice = returns[k].slice(Math.max(0, t0-30), t0+1);
-                           vols[k] = math.std(volSlice) || 0.01;
-                       } else { vols[k] = 1; }
+                           initVols[k] = math.std(volSlice) || 0.01;
+                       } else { initVols[k] = 1; }
                     });
 
-                    initWeights = this.getWeights(stratKey, sigs, vols, activeUniverse);
+                    initWeights = this.getWeights(stratKey, initSigs, initVols, activeUniverse);
                     activeUniverse.forEach(k => {
                         if(initWeights[k] > 0) {
                             const amt = cash * initWeights[k];
@@ -1637,128 +1648,117 @@ class QuantEngine {
                       let nav = cash + equityValue;
                       
                       if((t - startIdx) > 0 && (t - startIdx) % rb === 0){
-                          const sigs = {}, vols = {};
+                          const rebalSigs = {}, rebalVols = {};
                           activeUniverse.forEach(k => {
                               const pNow = this.marketData[k].prices[t];
                               const pastIdx = Math.max(0, t-lb);
                               const pPast = this.marketData[k].prices[pastIdx];
-                              sigs[k] = pNow / pPast - 1;
+                              rebalSigs[k] = pNow / pPast - 1;
                               if(needsVol) {
                                   const volSlice = returns[k].slice(Math.max(0, t-30), t+1);
-                                  vols[k] = math.std(volSlice) || 0.01; 
-                              } else { vols[k] = 1; }
+                                  rebalVols[k] = math.std(volSlice) || 0.01; 
+                              } else { rebalVols[k] = 1; }
                           });
-                          const targetWeights = this.getWeights(stratKey, sigs, vols, activeUniverse);
+                          const targetWeights = this.getWeights(stratKey, rebalSigs, rebalVols, activeUniverse);
 
                           let currentVal = {}; activeUniverse.forEach(k => currentVal[k] = shares[k] * this.marketData[k].prices[t]);
                           let totalNav = nav;
-                          
+                          const dayPrices = Object.fromEntries(activeUniverse.map(k => [k, this.marketData[k].prices[t]]));
+
+                          // --- DCA inflow added to NAV before rebalance ---
+                          let dcaInflow = 0, dcaMultiplier = 1.0, dcaAllocationPcts = {};
                           if (cfg.dca > 0) {
-                               // Calculate dynamic DCA multiplier based on market conditions
-                               const benchmarkPrices = this.marketData[cfg.bench]?.prices || this.marketData[activeUniverse[0]].prices;
-                               const dcaMultiplier = this.calculateDCAMultiplier(cfg, benchmarkPrices, t);
-                               
-                               let inflow = cfg.dca * dcaMultiplier;
-                               let currentTotal = totalNav;
-                               
-                               // Update cash and nav with inflow
-                               cash += inflow;
-                               totalNav += inflow;
-                               
-                               let deficits = {}, totalDeficit = 0;
-                               
-                               activeUniverse.forEach(k => {
-                                   let ideal = totalNav * targetWeights[k];
-                                   let diff = ideal - currentVal[k];
-                                   if (diff > 0) { deficits[k] = diff; totalDeficit += diff; } else { deficits[k] = 0; }
-                               });
+                              const benchmarkPrices = this.marketData[cfg.bench]?.prices || this.marketData[activeUniverse[0]].prices;
+                              dcaMultiplier = this.calculateDCAMultiplier(cfg, benchmarkPrices, t);
+                              dcaInflow = cfg.dca * dcaMultiplier;
+                              cash += dcaInflow;
+                              totalNav += dcaInflow;
+                              dcaCount++;
+                          }
 
-                               let buyAmounts = {}, allocationPcts = {};
-                               activeUniverse.forEach(k => {
-                                   let amount = totalDeficit > 0 ? inflow * (deficits[k] / totalDeficit) : inflow * targetWeights[k];
-                                   buyAmounts[k] = amount;
-                                   allocationPcts[k] = (amount / inflow) * 100;
-                               });
+                          // --- Rebalance ---
+                          let diffPct = {}, realTO = 0, buySellAmounts = {};
+                          activeUniverse.forEach(k => {
+                              const targetVal = totalNav * targetWeights[k];
+                              const diff = targetVal - currentVal[k];
+                              diffPct[k] = totalNav > 0 ? (diff / totalNav) * 100 : 0;
+                              buySellAmounts[k] = diff;
+                              realTO += Math.abs(diff);
+                          });
 
-                               let sharesBefore = {};
-                               activeUniverse.forEach(k => sharesBefore[k] = shares[k]);
-                               
-                               activeUniverse.forEach(k => {
-                                   if(buyAmounts[k] > 0.01){
-                                       let netBuy = buyAmounts[k] * (1 - cfg.fee / 100);
-                                       shares[k] += netBuy / this.marketData[k].prices[t];
-                                       cash -= buyAmounts[k]; // Deduct gross amount from cash
-                                   }
-                               });
-                               
-                               let sharesChange = {}, prices = {};
-                               activeUniverse.forEach(k => {
-                                   sharesChange[k] = shares[k] - sharesBefore[k];
-                                   prices[k] = this.marketData[k].prices[t];
-                               });
-                               
-                               rebCount++;
-                               logs.push({ 
-                                   date: this.dates[t], 
-                                   type: 'DCA', 
-                                   inflow: inflow, 
-                                   baseDCA: cfg.dca,
-                                   multiplier: dcaMultiplier,
-                                   allocation: allocationPcts, 
-                                   nav: totalNav, 
-                                   shares: {...shares}, 
-                                   sharesChange: sharesChange, 
-                                   prices: prices 
-                               });
+                          const rebalanceThresholdPct = 0.5;
+                          let didRebal = false;
+                          const sharesBefore = {...shares};
 
-                          } else {
-                              let diffPct = {}, realTO = 0;
-                              let buySellAmounts = {};
-                              
-                              // Calculate buy/sell amounts for each asset
+                          if (realTO > totalNav * (rebalanceThresholdPct / 100)) {
+                              let newShares = {};
+                              let newCash = cash;
+
                               activeUniverse.forEach(k => {
-                                  const targetVal = totalNav * targetWeights[k];
-                                  const diff = targetVal - currentVal[k];
-                                  diffPct[k] = (diff / totalNav) * 100;
-                                  buySellAmounts[k] = diff;
-                                  realTO += Math.abs(diff);
+                                  if (buySellAmounts[k] > 0.01) {
+                                      const netBuy = buySellAmounts[k] * (1 - cfg.fee/100);
+                                      newShares[k] = shares[k] + (netBuy / this.marketData[k].prices[t]);
+                                      newCash -= buySellAmounts[k];
+                                  } else if (buySellAmounts[k] < -0.01) {
+                                      const grossSell = Math.abs(buySellAmounts[k]);
+                                      const sharesToSell = grossSell / this.marketData[k].prices[t];
+                                      const netSell = grossSell * (1 - cfg.fee/100);
+                                      newShares[k] = shares[k] - sharesToSell;
+                                      newCash += netSell;
+                                  } else {
+                                      newShares[k] = shares[k];
+                                  }
                               });
-                              
-                              // Use percentage-based threshold (0.5% of portfolio)
-                              const rebalanceThresholdPct = 0.5;
-                              if(realTO > totalNav * (rebalanceThresholdPct / 100)) {
-                                  let newShares = {}, netNav = totalNav;
-                                  
-                                  // Apply transaction fee separately for each asset
-                                  activeUniverse.forEach(k => {
-                                      if (buySellAmounts[k] > 0.01) {
-                                          // BUY: deduct fee from purchase
-                                          const netBuy = buySellAmounts[k] * (1 - cfg.fee/100);
-                                          newShares[k] = shares[k] + (netBuy / this.marketData[k].prices[t]);
-                                          netNav -= buySellAmounts[k]; // Deduct from available capital
-                                      } else if (buySellAmounts[k] < -0.01) {
-                                          // SELL: deduct fee from proceeds
-                                          const grossSell = Math.abs(buySellAmounts[k]);
-                                          const sharesToSell = grossSell / this.marketData[k].prices[t];
-                                          const netSell = grossSell * (1 - cfg.fee/100);
-                                          newShares[k] = shares[k] - sharesToSell;
-                                          netNav += netSell; // Add net proceeds
-                                      } else {
-                                          // NO CHANGE (below threshold)
-                                          newShares[k] = shares[k];
-                                      }
-                                  });
-                                  
-                                  let sharesChange = {}, prices = {};
-                                  activeUniverse.forEach(k => {
-                                      sharesChange[k] = newShares[k] - shares[k];
-                                      prices[k] = this.marketData[k].prices[t];
-                                  });
-                                  
-                                  totalTO += realTO; rebCount++; 
-                                  logs.push({ date: this.dates[t], type: 'REBAL', diff: diffPct, nav: netNav, shares: {...newShares}, sharesChange: sharesChange, prices: prices }); 
-                                  shares = newShares;
+
+                              totalTO += realTO; rebCount++;
+                              shares = newShares;
+                              cash = newCash;
+                              didRebal = true;
+                          }
+
+                          // --- Combined sharesChange (DCA + Rebal) vs pre-event state ---
+                          const combinedSharesChange = {};
+                          activeUniverse.forEach(k => { combinedSharesChange[k] = shares[k] - sharesBefore[k]; });
+
+                          // --- DCA allocation pcts based on deficit proportions ---
+                          if (cfg.dca > 0) {
+                              const deficits = {};
+                              let totalDeficit = 0;
+                              activeUniverse.forEach(k => {
+                                  const ideal = totalNav * targetWeights[k];
+                                  const diff = ideal - currentVal[k];
+                                  deficits[k] = diff > 0 ? diff : 0;
+                                  totalDeficit += deficits[k];
+                              });
+                              activeUniverse.forEach(k => {
+                                  const amount = totalDeficit > 0 ? dcaInflow * (deficits[k] / totalDeficit) : dcaInflow * targetWeights[k];
+                                  dcaAllocationPcts[k] = dcaInflow > 0 ? (amount / dcaInflow) * 100 : 0;
+                              });
+                          }
+
+                          // --- Final NAV ---
+                          let navAfter = cash;
+                          activeUniverse.forEach(k => { navAfter += shares[k] * this.marketData[k].prices[t]; });
+
+                          // --- Single merged log entry per day ---
+                          if (cfg.dca > 0 || didRebal) {
+                              const logType = cfg.dca > 0 && didRebal ? 'DCA_REBAL' : cfg.dca > 0 ? 'DCA' : 'REBAL';
+                              const logEntry = {
+                                  date: this.dates[t],
+                                  type: logType,
+                                  nav: navAfter,
+                                  shares: {...shares},
+                                  sharesChange: combinedSharesChange,
+                                  prices: dayPrices,
+                                  diff: diffPct
+                              };
+                              if (cfg.dca > 0) {
+                                  logEntry.inflow = dcaInflow;
+                                  logEntry.baseDCA = cfg.dca;
+                                  logEntry.multiplier = dcaMultiplier;
+                                  logEntry.allocation = dcaAllocationPcts;
                               }
+                              logs.push(logEntry);
                           }
                       }
                       
@@ -2262,120 +2262,119 @@ const UI = {
 
     renderLogs(logs){
         const b = document.getElementById('log-table'); if(!b) return;
-        
-        b.innerHTML = logs.slice().reverse().map(l => {
-            let html = '';
-            
-            if (l.type === 'DCA') {
-                const dcaItems = Object.entries(l.allocation).filter(([k,v]) => v > 0.1); 
-                dcaItems.sort((a,b) => b[1] - a[1]);
-                const badges = dcaItems.map(([k,v]) => {
-                    const changeShares = l.sharesChange && l.sharesChange[k] ? l.sharesChange[k] : 0;
-                    const price = l.prices && l.prices[k] ? l.prices[k] : 0;
-                    const valueUSDT = changeShares * price;
-                    return `<span class="inline-block px-1.5 py-0.5 rounded border border-stock-500/30 bg-stock-500/10 text-stock-600 text-[9px] font-bold mr-1 mb-1">Buy ${k}: ${v.toFixed(1)}% <span class="text-gray-500">(${changeShares.toFixed(4)} = $${valueUSDT.toFixed(2)})</span></span>`;
-                }).join('');
-                
-                // Current Holdings
-                let holdingsHTML = '';
-                if (l.shares && l.prices) {
-                    const holdings = Object.entries(l.shares).filter(([k,v]) => v > 0.0001).sort((a,b) => b[1] - a[1]);
-                    // Calculate total value for percentage
-                    let totalValue = 0;
-                    holdings.forEach(([k,v]) => {
-                        const price = l.prices[k] || 0;
-                        totalValue += v * price;
-                    });
-                    
-                    holdingsHTML = holdings.map(([k,v]) => {
-                        const price = l.prices[k] || 0;
-                        const value = v * price;
-                        const percentage = totalValue > 0 ? (value / totalValue * 100) : 0;
-                        const change = l.sharesChange && l.sharesChange[k] ? l.sharesChange[k] : 0;
-                        const changeHTML = Math.abs(change) > 0.0001 ? `<span class="text-acc-green"> (+${change.toFixed(4)})</span>` : '';
-                        return `<div class="text-[9px] text-gray-600 dark:text-gray-400">${k}: <span class="font-bold">${v.toFixed(4)}</span>${changeHTML} <span class="text-blue-500 font-bold">[${percentage.toFixed(1)}%]</span></div>`;
-                    }).join('');
-                }
-                
-                // Enhanced DCA Indicator
-                const multiplierBadge = l.multiplier && l.multiplier !== 1.0 
-                    ? `<span class="inline-block px-2 py-1 rounded-md ${l.multiplier > 1.0 ? 'bg-acc-green/20 text-acc-green' : 'bg-acc-red/20 text-acc-red'} text-[9px] font-bold ml-2"><i class="fas fa-chart-line"></i> ${(l.multiplier * 100).toFixed(0)}% (×${l.multiplier.toFixed(2)})</span>`
-                    : '';
-                
-                const dcaInfo = l.baseDCA && l.multiplier 
-                    ? `<span class="text-[9px] text-gray-500">Base: $${l.baseDCA.toFixed(0)} × ${l.multiplier.toFixed(2)} = $${l.inflow.toFixed(0)}</span>`
-                    : '';
-                
-                html = `
-                <tr>
-                    <td class="p-3 text-gray-400 font-bold border-b dark:border-dark-700 align-top w-[100px]">${l.date}</td>
-                    <td class="p-3 font-bold text-acc-green border-b dark:border-dark-700 align-top w-[140px]">
-                        <div>Injection: +$${l.inflow.toFixed(0)} ${multiplierBadge}</div>
-                        ${dcaInfo ? `<div class="mt-1">${dcaInfo}</div>` : ''}
-                    </td>
-                    <td class="p-3 border-b dark:border-dark-700 align-top w-[200px]">
-                        <div class="mb-1 text-[9px] text-gray-500 font-bold uppercase">Smart Allocation</div>
-                        <div class="flex flex-wrap">${badges}</div>
-                    </td>
-                    <td class="p-3 border-b dark:border-dark-700 align-top">
-                        <div class="text-gray-500 text-[9px] font-mono mb-1">NAV: $${l.nav.toFixed(0)}</div>
-                        <div class="text-[8px] text-gray-500 font-bold uppercase mb-1">Holdings</div>
-                        ${holdingsHTML}
-                    </td>
-                </tr>`;
-                
-            } else {
-                const diffs = Object.entries(l.diff).filter(([k,v]) => Math.abs(v) > 0.1); 
-                diffs.sort((a,b) => b[1] - a[1]);
-                const badges = diffs.map(([k,v]) => {
-                    const isBuy = v > 0;
-                    const color = isBuy ? 'text-acc-green bg-acc-green/10 border-acc-green/20' : 'text-acc-red bg-acc-red/10 border-acc-red/20';
-                    const sign = isBuy ? 'Buy' : 'Sell';
-                    const changeShares = l.sharesChange && l.sharesChange[k] ? l.sharesChange[k] : 0;
-                    const price = l.prices && l.prices[k] ? l.prices[k] : 0;
-                    const valueUSDT = Math.abs(changeShares * price);
-                    return `<span class="inline-block px-1.5 py-0.5 rounded border text-[9px] font-bold mr-1 mb-1 ${color}">${sign} ${k}: ${Math.abs(v).toFixed(2)}% <span class="opacity-75">(${Math.abs(changeShares).toFixed(4)} = $${valueUSDT.toFixed(2)})</span></span>`;
-                }).join('');
-                
-                // Current Holdings
-                let holdingsHTML = '';
-                if (l.shares && l.prices) {
-                    const holdings = Object.entries(l.shares).filter(([k,v]) => v > 0.0001).sort((a,b) => b[1] - a[1]);
-                    // Calculate total value for percentage
-                    let totalValue = 0;
-                    holdings.forEach(([k,v]) => {
-                        const price = l.prices[k] || 0;
-                        totalValue += v * price;
-                    });
-                    
-                    holdingsHTML = holdings.map(([k,v]) => {
-                        const price = l.prices[k] || 0;
-                        const value = v * price;
-                        const percentage = totalValue > 0 ? (value / totalValue * 100) : 0;
-                        const change = l.sharesChange && l.sharesChange[k] ? l.sharesChange[k] : 0;
-                        const changeColor = change > 0 ? 'text-acc-green' : 'text-acc-red';
-                        const changeSign = change > 0 ? '+' : '';
-                        const changeHTML = Math.abs(change) > 0.0001 ? `<span class="${changeColor}"> (${changeSign}${change.toFixed(4)})</span>` : '';
-                        return `<div class="text-[9px] text-gray-600 dark:text-gray-400">${k}: <span class="font-bold">${v.toFixed(4)}</span>${changeHTML} <span class="text-blue-500 font-bold">[${percentage.toFixed(1)}%]</span></div>`;
-                    }).join('');
-                }
-                
-                html = `
-                <tr>
-                    <td class="p-3 text-gray-400 font-bold border-b dark:border-dark-700 align-top w-[100px]">${l.date}</td>
-                    <td class="p-3 font-bold text-blue-500 border-b dark:border-dark-700 align-top w-[140px]">Rebalance</td>
-                    <td class="p-3 border-b dark:border-dark-700 align-top w-[200px]">
-                        <div class="mb-1 text-[9px] text-gray-500 font-bold uppercase">% of Portfolio</div>
-                        <div class="flex flex-wrap">${badges}</div>
-                    </td>
-                    <td class="p-3 border-b dark:border-dark-700 align-top">
-                        <div class="text-gray-500 text-[9px] font-mono mb-1">NAV: $${l.nav.toFixed(0)}</div>
-                        <div class="text-[8px] text-gray-500 font-bold uppercase mb-1">Holdings</div>
-                        ${holdingsHTML}
-                    </td>
-                </tr>`;
+
+        // Merge logs by date so Injection + Rebalance on the same day show as one row
+        const mergedByDate = [];
+        const dateMap = {};
+        logs.forEach(log => {
+            if (!dateMap[log.date]) {
+                dateMap[log.date] = { date: log.date, dca: null, rebal: null };
+                mergedByDate.push(dateMap[log.date]);
             }
-            return html;
+            if (log.type === 'DCA') { dateMap[log.date].dca = log; }
+            if (log.type === 'REBAL') { dateMap[log.date].rebal = log; }
+            if (log.type === 'DCA_REBAL') { dateMap[log.date].dca = log; dateMap[log.date].rebal = log; }
+        });
+
+        const renderHoldings = (shares, prices, sharesChange = {}) => {
+            if (!shares || !prices) return '';
+            const holdings = Object.entries(shares).filter(([_, v]) => v > 0.0001).sort((a, b) => b[1] - a[1]);
+            let totalValue = 0;
+            holdings.forEach(([k, v]) => {
+                totalValue += v * (prices[k] || 0);
+            });
+            return holdings.map(([k, v]) => {
+                const price = prices[k] || 0;
+                const value = v * price;
+                const percentage = totalValue > 0 ? (value / totalValue * 100) : 0;
+                const change = sharesChange[k] || 0;
+                const changeColor = change >= 0 ? 'text-acc-green' : 'text-acc-red';
+                const changeSign = change >= 0 ? '+' : '';
+                const changeHTML = Math.abs(change) > 0.0001 ? `<span class="${changeColor}"> (${changeSign}${change.toFixed(4)})</span>` : '';
+                return `<div class="text-[9px] text-gray-600 dark:text-gray-400">${k}: <span class="font-bold">${v.toFixed(4)}</span>${changeHTML} <span class="text-stock-600 font-bold">$${value.toFixed(2)}</span> <span class="text-blue-500 font-bold">[${percentage.toFixed(1)}%]</span></div>`;
+            }).join('');
+        };
+
+        b.innerHTML = mergedByDate.slice().reverse().map(m => {
+            const dca = m.dca;
+            const rebal = m.rebal;
+            const finalLog = rebal || dca;
+            if (!finalLog) return '';
+
+            const combinedSharesChange = {};
+            if (dca && dca.sharesChange) {
+                Object.entries(dca.sharesChange).forEach(([k, v]) => {
+                    combinedSharesChange[k] = (combinedSharesChange[k] || 0) + v;
+                });
+            }
+            if (rebal && rebal.sharesChange) {
+                Object.entries(rebal.sharesChange).forEach(([k, v]) => {
+                    combinedSharesChange[k] = (combinedSharesChange[k] || 0) + v;
+                });
+            }
+
+            let actionHTML = '';
+
+            if (dca) {
+                const multiplierBadge = dca.multiplier && dca.multiplier !== 1.0
+                    ? `<span class="inline-block px-2 py-1 rounded-md ${dca.multiplier > 1.0 ? 'bg-acc-green/20 text-acc-green' : 'bg-acc-red/20 text-acc-red'} text-[9px] font-bold ml-2"><i class="fas fa-chart-line"></i> ${(dca.multiplier * 100).toFixed(0)}% (×${dca.multiplier.toFixed(2)})</span>`
+                    : '';
+                const dcaInfo = dca.baseDCA && dca.multiplier
+                    ? `<div class="mt-1 text-[9px] text-gray-500">Base: $${dca.baseDCA.toFixed(0)} × ${dca.multiplier.toFixed(2)} = $${dca.inflow.toFixed(0)}</div>`
+                    : '';
+
+                actionHTML += `<div class="text-acc-green">Injection: +$${dca.inflow.toFixed(0)} ${multiplierBadge}</div>${dcaInfo}`;
+            }
+
+            if (rebal) {
+                actionHTML += `${actionHTML ? '<div class="mt-2"></div>' : ''}<div class="text-blue-500">Rebalance</div>`;
+            }
+
+            const finalNav = finalLog.nav || 0;
+            const finalPrices = finalLog.prices || dca?.prices || rebal?.prices || {};
+            const combinedAdjustments = Object.entries(combinedSharesChange)
+                .map(([asset, shareDelta]) => {
+                    const price = finalPrices[asset] || 0;
+                    const valueDelta = shareDelta * price;
+                    const portfolioPct = finalNav > 0 ? (valueDelta / finalNav) * 100 : 0;
+                    return {
+                        asset,
+                        shareDelta,
+                        valueDelta,
+                        portfolioPct
+                    };
+                })
+                .filter(item => Math.abs(item.valueDelta) > 0.01)
+                .sort((a, b) => Math.abs(b.valueDelta) - Math.abs(a.valueDelta));
+
+            const detailHTML = combinedAdjustments.length > 0
+                ? `
+                    <div>
+                        <div class="mb-1 text-[9px] text-gray-500 font-bold uppercase">% of Portfolio</div>
+                        <div class="flex flex-wrap">${combinedAdjustments.map(item => {
+                            const isBuy = item.valueDelta > 0;
+                            const color = isBuy ? 'text-acc-green bg-acc-green/10 border-acc-green/20' : 'text-acc-red bg-acc-red/10 border-acc-red/20';
+                            const sign = isBuy ? 'Buy' : 'Sell';
+                            return `<span class="inline-block px-1.5 py-0.5 rounded border text-[9px] font-bold mr-1 mb-1 ${color}">${sign} ${item.asset}: ${Math.abs(item.portfolioPct).toFixed(2)}% <span class="opacity-75">(${Math.abs(item.shareDelta).toFixed(4)} = $${Math.abs(item.valueDelta).toFixed(2)})</span></span>`;
+                        }).join('')}</div>
+                    </div>
+                `
+                : '<div class="text-[9px] text-gray-400 italic">No portfolio adjustment</div>';
+
+            const holdingsHTML = renderHoldings(finalLog.shares, finalLog.prices, combinedSharesChange);
+
+            return `
+                <tr>
+                    <td class="p-3 text-gray-400 font-bold border-b dark:border-dark-700 align-top w-[100px]">${m.date}</td>
+                    <td class="p-3 font-bold border-b dark:border-dark-700 align-top w-[180px]">${actionHTML}</td>
+                    <td class="p-3 border-b dark:border-dark-700 align-top w-[240px]">${detailHTML}</td>
+                    <td class="p-3 border-b dark:border-dark-700 align-top">
+                        <div class="text-gray-500 text-[9px] font-mono mb-1">NAV: $${(finalLog.nav || 0).toFixed(0)}</div>
+                        <div class="text-[8px] text-gray-500 font-bold uppercase mb-1">Holdings</div>
+                        ${holdingsHTML}
+                    </td>
+                </tr>
+            `;
         }).join('');
     },
 
@@ -2391,27 +2390,26 @@ const UI = {
             bench = benchRaw.map(v => (v / benchRaw[0]) * startVal);
         }
 
-        // Create transaction points from logs
+        // Create transaction scatter points — one per date (merged), using date→index Map
+        const dateIndexMap = new Map();
+        res.dates.forEach((d, i) => dateIndexMap.set(d, i));
+
         const transactionPoints = [];
-        const transactionData = {};
         if (res.logs && res.logs.length > 0) {
+            const seenDates = new Set();
             res.logs.forEach(log => {
-                // Find date index in res.dates
-                const dateIdx = res.dates.indexOf(log.date);
-                
-                if (dateIdx >= 0 && res.curve[dateIdx] !== undefined) {
-                    transactionPoints.push({
-                        x: log.date,  // Use date string instead of index
-                        y: res.curve[dateIdx],
-                        log: log
-                    });
-                    transactionData[dateIdx] = log;
+                if (seenDates.has(log.date)) return;
+                seenDates.add(log.date);
+                const dateIdx = dateIndexMap.get(log.date);
+                if (dateIdx !== undefined && res.curve[dateIdx] !== undefined) {
+                    transactionPoints.push({ x: log.date, y: res.curve[dateIdx], log: log });
                 }
             });
         }
 
         // Calculate Portfolio Tracker data
         const portfolioTrackerCurve = this.calculatePortfolioTrackerCurve(res.dates);
+        const realCostCurve = this.calculateRealCostCurve(res, cfg);
 
         const grad = ctx.createLinearGradient(0, 0, 0, 400); grad.addColorStop(0, 'rgba(59, 130, 246, 0.2)'); grad.addColorStop(1, 'rgba(59, 130, 246, 0)');
         const startValue = res.curve[0];
@@ -2436,6 +2434,20 @@ const UI = {
             });
         }
 
+        // Add real invested cost curve (Initial + cumulative DCA)
+        if (realCostCurve && realCostCurve.length > 0) {
+            datasets.push({
+                label: 'Real Cost (Initial + DCA)',
+                data: realCostCurve,
+                borderColor: '#f59e0b',
+                borderWidth: 2,
+                pointRadius: 0,
+                fill: false,
+                tension: 0,
+                borderDash: [6, 3]
+            });
+        }
+
         // Add transaction points dataset
         if (transactionPoints.length > 0) {
             datasets.push({
@@ -2444,7 +2456,7 @@ const UI = {
                 type: 'scatter',
                 pointRadius: 7,
                 pointHoverRadius: 9,
-                pointBackgroundColor: transactionPoints.map(p => p.log.type === 'DCA' ? '#0ECB81' : '#FCD535'),
+                pointBackgroundColor: transactionPoints.map(p => p.log.type === 'DCA' ? '#0ECB81' : p.log.type === 'DCA_REBAL' ? '#8b5cf6' : '#FCD535'),
                 pointBorderColor: '#ffffff',
                 pointBorderWidth: 2.5,
                 showLine: false,
@@ -2484,12 +2496,16 @@ const UI = {
                                 // Check if this is a transaction point
                                 if (datasetLabel === 'Transactions' && context.raw.log) {
                                     const log = context.raw.log;
-                                    const type = log.type === 'DCA' ? 'DCA Injection' : 'Rebalance';
+                                    const type = log.type === 'DCA' ? 'DCA Injection' : log.type === 'DCA_REBAL' ? 'DCA + Rebalance' : 'Rebalance';
                                     return `${type}: $${log.nav.toFixed(0)}`;
                                 }
                                 
                                 // Portfolio Tracker - show actual value without percentage
                                 if (datasetLabel === 'Portfolio Tracker (Real)') {
+                                    return `${datasetLabel}: $${value.toFixed(2)}`;
+                                }
+
+                                if (datasetLabel === 'Real Cost (Initial + DCA)') {
                                     return `${datasetLabel}: $${value.toFixed(2)}`;
                                 }
                                 
@@ -2590,6 +2606,25 @@ const UI = {
         return curve;
     },
 
+    calculateRealCostCurve(res, cfg) {
+        if (!res || !res.dates || !res.dates.length) return null;
+
+        const dcaByDate = {};
+        (res.logs || []).forEach(log => {
+            if (log.type === 'DCA' && Number.isFinite(log.inflow) && log.inflow > 0) {
+                dcaByDate[log.date] = (dcaByDate[log.date] || 0) + log.inflow;
+            }
+        });
+
+        let cumulativeCost = Number.isFinite(cfg.initial) ? cfg.initial : 0;
+        return res.dates.map((date) => {
+            if (dcaByDate[date]) {
+                cumulativeCost += dcaByDate[date];
+            }
+            return cumulativeCost;
+        });
+    },
+
     renderDrawdownChart(res){
         const ctx = document.getElementById('chart-drawdown').getContext('2d'); if(this.chartDD) this.chartDD.destroy();
         let pk = 0; const dd = res.curve.map(v => { if(v > pk) pk = v; return (v - pk)/pk * 100; });
@@ -2642,15 +2677,18 @@ const UI = {
 
         const lbs = [...new Set(filtered.map(r => r.lb))].sort((a,b)=>a-b);
         const rbs = [...new Set(filtered.map(r => r.rb))].sort((a,b)=>a-b);
-        
-        const metric = document.getElementById('surface-metric').value; 
+
+        const metric = document.getElementById('surface-metric').value;
         const sdLayer = parseInt(document.getElementById('surface-sd').value);
-        
+
         document.getElementById('surface-date-display').innerText = refResult.dates[sliceIndex-1] ? `Horizon: ${refResult.dates[sliceIndex-1]}` : 'Full History';
         document.getElementById('dist-metric-label').innerText = metric;
 
+        // O(1) lookup map instead of O(n) filtered.find per cell
+        const resultMap = new Map(filtered.map(r => [`${r.lb}_${r.rb}`, r]));
+
         const z = rbs.map(rb => lbs.map(lb => {
-            const m = filtered.find(r => r.lb === lb && r.rb === rb);
+            const m = resultMap.get(`${lb}_${rb}`);
             if(!m) return null;
             
             let val = 0;
