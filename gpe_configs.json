@@ -178,24 +178,24 @@
       ],
       "strategy": "ALL",
       "bench": "SPY",
-      "startDate": "2026-03-05",
+      "startDate": "2025-01-01",
       "endDate": "2030-12-31",
       "lbStart": 5,
-      "lbEnd": 50,
-      "lbStep": 1,
-      "rbStart": 10,
-      "rbEnd": 50,
+      "lbEnd": 90,
+      "lbStep": 5,
+      "rbStart": 5,
+      "rbEnd": 30,
       "rbStep": 5,
-      "liqStart": 5,
-      "liqEnd": 5,
+      "liqStart": 90,
+      "liqEnd": 90,
       "liqStep": 5,
       "liqTop": 5,
-      "initial": 237.88,
-      "dca": 0,
+      "initial": 1418,
+      "dca": 5,
       "rf": 3,
       "mgmtFee": 0,
       "fee": 0.15,
-      "savedAt": "2026-04-22T04:26:39.376Z"
+      "savedAt": "2026-05-05T17:32:50.959Z"
     },
     "Jitta-Tech": {
       "marketType": "ETF",
@@ -910,6 +910,6 @@
       "createdAt": "2026-05-05T17:08:53.108Z"
     }
   ],
-  "exportedAt": "2026-05-05T17:12:34.532Z",
+  "exportedAt": "2026-05-05T18:21:33.705Z",
   "version": "1.0"
 }
