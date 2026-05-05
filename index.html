@@ -776,7 +776,7 @@ th.sortable:hover { color: #3b82f6; }
             <!-- Summary Cards -->
             <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mt-6">
                 <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white">
-                    <div class="text-xs opacity-80 mb-1">มูลค่าลงทุันรวม</div>
+                    <div class="text-xs opacity-80 mb-1">มูลค่าลงทุนรวม</div>
                     <div id="summary-total" class="text-2xl font-bold mono">$0.00</div>
                 </div>
                 <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-4 text-white">
@@ -799,33 +799,41 @@ th.sortable:hover { color: #3b82f6; }
             </div>
         </div>
 
-        <!-- Filters -->
-        <div class="glass p-4 rounded-2xl">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                    <label class="text-xs font-bold text-gray-600 dark:text-gray-400 mb-1 block">กรองตาม Portfolio</label>
-                    <select id="filter-portfolio" onchange="PortfolioTracker.filterTransactions()" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-dark-700 bg-white dark:bg-dark-800 text-sm">
-                        <option value="">ทั้งหมด</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="text-xs font-bold text-gray-600 dark:text-gray-400 mb-1 block">กรองตาม Asset</label>
-                    <input id="filter-asset" type="text" placeholder="ค้นหา Asset..." onkeyup="PortfolioTracker.filterTransactions()" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-dark-700 bg-white dark:bg-dark-800 text-sm">
-                </div>
-                <div class="flex items-end">
-                    <button onclick="PortfolioTracker.clearFilters()" class="w-full bg-gray-200 hover:bg-gray-300 dark:bg-dark-700 dark:hover:bg-dark-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg text-sm font-bold transition-all">
-                        <i class="fas fa-times mr-2"></i>ล้างตัวกรอง
-                    </button>
-                </div>
-            </div>
-        </div>
-
         <!-- Transactions Table -->
         <div class="glass p-6 rounded-2xl">
+            <!-- Portfolio Summary -->
+            <div id="portfolio-summary" class="mb-6 pb-6 border-b border-gray-200 dark:border-dark-700 hidden">
+                <h4 class="text-md font-bold text-dark-900 dark:text-white mb-3">สรุปตาม Portfolio</h4>
+                <div id="portfolio-summary-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Filters (placed directly above transaction list) -->
+            <div class="mb-6 pb-6 border-b border-gray-200 dark:border-dark-700">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                        <label class="text-xs font-bold text-gray-600 dark:text-gray-400 mb-1 block">กรองตาม Portfolio</label>
+                        <select id="filter-portfolio" onchange="PortfolioTracker.filterTransactions()" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-dark-700 bg-white dark:bg-dark-800 text-sm">
+                            <option value="">ทั้งหมด</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-600 dark:text-gray-400 mb-1 block">กรองตาม Asset</label>
+                        <input id="filter-asset" type="text" placeholder="ค้นหา Asset..." onkeyup="PortfolioTracker.filterTransactions()" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-dark-700 bg-white dark:bg-dark-800 text-sm">
+                    </div>
+                    <div class="flex items-end">
+                        <button onclick="PortfolioTracker.clearFilters()" class="w-full bg-gray-200 hover:bg-gray-300 dark:bg-dark-700 dark:hover:bg-dark-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg text-sm font-bold transition-all">
+                            <i class="fas fa-times mr-2"></i>ล้างตัวกรอง
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <h3 class="text-lg font-bold text-dark-900 dark:text-white mb-4">รายการลงทุน</h3>
-            <div class="overflow-x-auto custom-scrollbar">
+            <div class="overflow-x-auto overflow-y-auto custom-scrollbar max-h-[560px]">
                 <table class="w-full text-sm">
-                    <thead class="bg-gray-100 dark:bg-dark-800">
+                    <thead class="bg-gray-100 dark:bg-dark-800 sticky top-0 z-10">
                         <tr>
                             <th class="px-4 py-3 text-left font-bold text-gray-700 dark:text-gray-300">วันที่</th>
                             <th class="px-4 py-3 text-left font-bold text-gray-700 dark:text-gray-300">Portfolio</th>
@@ -848,14 +856,6 @@ th.sortable:hover { color: #3b82f6; }
                     <button onclick="PortfolioTracker.showAddDialog()" class="mt-4 bg-stock-500 hover:bg-stock-600 text-white px-4 py-2 rounded-lg text-sm font-bold">
                         เพิ่มรายการแรก
                     </button>
-                </div>
-            </div>
-
-            <!-- Portfolio Summary -->
-            <div id="portfolio-summary" class="mt-6 pt-6 border-t border-gray-200 dark:border-dark-700 hidden">
-                <h4 class="text-md font-bold text-dark-900 dark:text-white mb-3">สรุปตาม Portfolio</h4>
-                <div id="portfolio-summary-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    <!-- Populated by JS -->
                 </div>
             </div>
         </div>
@@ -1207,12 +1207,12 @@ class QuantEngine {
   }
 
   // Cache Management (6 hours)
-  getCacheKey(symbol) {
-      return `gpe_cache_${this.marketMode}_${symbol}`;
+  getCacheKey(symbol, mode = this.marketMode) {
+      return `gpe_cache_${mode}_${symbol}`;
   }
 
-  getCachedData(symbol) {
-      const cacheKey = this.getCacheKey(symbol);
+  getCachedData(symbol, mode = this.marketMode) {
+      const cacheKey = this.getCacheKey(symbol, mode);
       const cached = localStorage.getItem(cacheKey);
       if (!cached) return null;
       
@@ -1246,8 +1246,8 @@ class QuantEngine {
       }
   }
 
-  setCachedData(symbol, data) {
-      const cacheKey = this.getCacheKey(symbol);
+  setCachedData(symbol, data, mode = this.marketMode) {
+      const cacheKey = this.getCacheKey(symbol, mode);
       const cacheObj = {
           data: data,
           timestamp: Date.now()
@@ -1289,28 +1289,36 @@ class QuantEngine {
       return response;
   }
 
-  async fetchAssetData(symbol){
+    inferAssetMode(symbol) {
+        const sym = symbol.toUpperCase();
+        if (CRYPTO_UNIVERSE.includes(sym)) return "CRYPTO";
+        if (ETF_UNIVERSE.includes(sym)) return "ETF";
+        return this.marketMode;
+    }
+
+    async fetchAssetData(symbol, modeOverride = null){
     const logEl = document.getElementById('status-log');
     logEl.classList.remove('hidden');
+        const sourceMode = modeOverride || this.inferAssetMode(symbol);
     
     // Check cache first
-    const cachedData = this.getCachedData(symbol);
+        const cachedData = this.getCachedData(symbol, sourceMode);
     if (cachedData) {
-        logEl.innerHTML += `<span class="text-purple-500">> 💾 ${symbol} (Cached, ${cachedData.length} Days)</span><br>`;
+                logEl.innerHTML += `<span class="text-purple-500">> 💾 ${symbol} [${sourceMode}] (Cached, ${cachedData.length} Days)</span><br>`;
         this.dataStatus[symbol] = { status: 'ok', days: cachedData.length, cached: true };
         return cachedData;
     }
     
     // Fetch fresh data
     let result = null;
-    if(this.marketMode === "CRYPTO") result = await this.fetchBinanceData(symbol);
+        if(sourceMode === "CRYPTO") result = await this.fetchBinanceData(symbol);
     else result = await this.fetchYahooDataRecursive(symbol, 0);
 
     if (result && result.length > 50) {
-        logEl.innerHTML += `<span class="text-acc-green">> ✅ ${symbol} OK (${result.length} Days)</span><br>`;
+                logEl.innerHTML += `<span class="text-acc-green">> ✅ ${symbol} [${sourceMode}] OK (${result.length} Days)</span><br>`;
         this.dataStatus[symbol] = { status: 'ok', days: result.length, cached: false };
         // Cache the data
-        this.setCachedData(symbol, result);
+                this.setCachedData(symbol, result, sourceMode);
     } else {
         logEl.innerHTML += `<span class="text-acc-red">> ❌ ${symbol} FAILED</span><br>`;
         this.dataStatus[symbol] = { status: 'error', days: 0, cached: false };
@@ -1368,7 +1376,9 @@ class QuantEngine {
       UI.setSystemStatus('loading');
       
       const cfg = UI.getParams();
-      let desiredTickers = [...new Set([...this.universe, cfg.bench])];
+      const trackerAssets = [...new Set((PortfolioTracker.getAllTransactions() || []).map(t => (t.asset || '').toUpperCase()).filter(Boolean))];
+      // Fetch all known assets (ETF + Crypto) plus user assets/universe/benchmark
+      let desiredTickers = [...new Set([...ETF_UNIVERSE, ...CRYPTO_UNIVERSE, ...this.universe, ...trackerAssets, cfg.bench])];
       
       // --- NEW: Batch Processing to prevent UI Freeze ---
       const batchSize = 3; 
@@ -1382,7 +1392,7 @@ class QuantEngine {
           // Yield to UI thread
           await new Promise(r => setTimeout(r, 50)); 
 
-          const results = await Promise.all(batch.map(s => this.fetchAssetData(s)));
+          const results = await Promise.all(batch.map(s => this.fetchAssetData(s, this.inferAssetMode(s))));
           
           results.forEach((res, idx) => {
               if (res && res.length > 50) {
@@ -3487,6 +3497,51 @@ const PortfolioTracker = {
         return Object.keys(configs);
     },
 
+    getMarketDataForAssets(assets) {
+        const marketData = {};
+        const engineData = Engine.marketData || {};
+
+        // 1) Prefer live data in Engine if available for each asset
+        assets.forEach(asset => {
+            const src = engineData[asset];
+            if (src && Array.isArray(src.prices) && src.prices.length > 0) {
+                marketData[asset] = src;
+            }
+        });
+
+        // 2) Fallback to cache per-asset (works across ETF/Crypto mixed portfolios)
+        assets.forEach(asset => {
+            if (marketData[asset]) return;
+            const cacheKeys = [`gpe_cache_ETF_${asset}`, `gpe_cache_Crypto_${asset}`];
+            for (const cacheKey of cacheKeys) {
+                const cached = localStorage.getItem(cacheKey);
+                if (!cached) continue;
+                try {
+                    const parsed = JSON.parse(cached);
+                    const data = parsed?.data;
+                    if (Array.isArray(data) && data.length > 0) {
+                        marketData[asset] = {
+                            prices: data.map(d => d.price),
+                            volumes: data.map(d => d.volume || 0)
+                        };
+                        break;
+                    }
+                } catch(e) {}
+            }
+        });
+
+        return marketData;
+    },
+
+    getLatestPriceFromData(asset, marketData) {
+        if (!marketData[asset] || !marketData[asset].prices) return 0;
+        const prices = marketData[asset].prices;
+        for (let i = prices.length - 1; i >= 0; i--) {
+            if (Number.isFinite(prices[i]) && prices[i] > 0) return prices[i];
+        }
+        return 0;
+    },
+
     setType(type) {
         this.currentType = type;
         const buyBtn = document.getElementById('txn-type-buy');
@@ -3729,7 +3784,8 @@ const PortfolioTracker = {
     },
 
     renderTransactions(filteredTransactions = null) {
-        const transactions = filteredTransactions || this.getAllTransactions();
+        const allTransactions = this.getAllTransactions();
+        const transactions = filteredTransactions || allTransactions;
         const tbody = document.getElementById('transactions-table');
         const emptyDiv = document.getElementById('transactions-empty');
         
@@ -3750,6 +3806,18 @@ const PortfolioTracker = {
         
         // Sort by date descending
         const sorted = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        const formatDisplayPrice = (price) => {
+            const n = Number(price);
+            if (!Number.isFinite(n)) return '-';
+
+            // Show the stored value as-is (no forced rounding)
+            const raw = String(price);
+            if (!/[eE]/.test(raw)) return raw;
+
+            // Expand scientific notation when needed
+            return n.toLocaleString('en-US', { useGrouping: false, maximumFractionDigits: 20 }).replace(/\.?0+$/, '');
+        };
         
         tbody.innerHTML = sorted.map(txn => {
             const typeLabel = txn.type === 'buy' ? 
@@ -3771,7 +3839,7 @@ const PortfolioTracker = {
                 </td>
                 <td class="px-4 py-3 text-center">${typeLabel}</td>
                 <td class="px-4 py-3 font-bold">${txn.asset}</td>
-                <td class="px-4 py-3 text-right mono">$${txn.price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="px-4 py-3 text-right mono">$${formatDisplayPrice(txn.price)}</td>
                 <td class="px-4 py-3 text-right mono">${Math.abs(txn.quantity).toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4})}</td>
                 <td class="px-4 py-3 text-right font-bold text-stock-600 dark:text-stock-400 mono">$${txn.total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                 <td class="px-4 py-3 text-right mono">${commissionDisplay}</td>
@@ -3787,7 +3855,7 @@ const PortfolioTracker = {
         `}).join('');
         
         // Render portfolio summary
-        this.renderPortfolioSummary(transactions);
+        this.renderPortfolioSummary(allTransactions);
     },
 
     updateSummary(transactions) {
@@ -3810,64 +3878,15 @@ const PortfolioTracker = {
             holdings[t.asset].cost += (t.type === 'buy' ? t.total : -t.total);
         });
         
-        // Try to get market data from Engine.marketData first, then from cache
-        let marketData = {};
-        let hasMarketData = false;
-        
-        if (Engine.marketData && Object.keys(Engine.marketData).length > 0 && Engine.dates.length > 0) {
-            // Use live Engine data
-            marketData = Engine.marketData;
-            hasMarketData = true;
-        } else {
-            // Try to load from cache - check both ETF and Crypto modes
-            const cachedAssets = Object.keys(holdings);
-            
-            cachedAssets.forEach(asset => {
-                // Try both ETF and Crypto cache keys
-                const cacheKeys = [
-                    `gpe_cache_ETF_${asset}`,
-                    `gpe_cache_Crypto_${asset}`
-                ];
-                
-                for (const cacheKey of cacheKeys) {
-                    const cached = localStorage.getItem(cacheKey);
-                    if (cached) {
-                        try {
-                            const { data } = JSON.parse(cached);
-                            if (data && data.length > 0) {
-                                marketData[asset] = {
-                                    prices: data.map(d => d.price),
-                                    volumes: data.map(d => d.volume || 0)
-                                };
-                                break; // Found data, stop checking other keys
-                            }
-                        } catch(e) {}
-                    }
-                }
-            });
-            
-            if (Object.keys(marketData).length > 0) {
-                hasMarketData = true;
-            }
-        }
-        
-        // Helper function to get latest price for an asset
-        const getLatestPrice = (asset) => {
-            if (!marketData[asset] || !marketData[asset].prices) return 0;
-            const prices = marketData[asset].prices;
-            // Find the last non-zero price
-            for (let i = prices.length - 1; i >= 0; i--) {
-                if (prices[i] > 0) return prices[i];
-            }
-            return 0;
-        };
+        const marketData = this.getMarketDataForAssets(Object.keys(holdings));
+        const hasMarketData = Object.keys(marketData).length > 0;
         
         let currentValue = 0;
         
         if (hasMarketData) {
             Object.entries(holdings).forEach(([asset, data]) => {
                 if (data.quantity > 0) {
-                    const currentPrice = getLatestPrice(asset);
+                    const currentPrice = this.getLatestPriceFromData(asset, marketData);
                     if (currentPrice > 0) {
                         currentValue += data.quantity * currentPrice;
                     }
@@ -3934,59 +3953,12 @@ const PortfolioTracker = {
             summaryByPortfolio[txn.portfolio].holdings[txn.asset].cost += (txn.type === 'buy' ? txn.total : -txn.total);
         });
         
-        // Get current prices - try Engine.marketData first, then cache
-        let marketData = {};
-        let hasMarketData = false;
-        
-        if (Engine.marketData && Object.keys(Engine.marketData).length > 0 && Engine.dates.length > 0) {
-            marketData = Engine.marketData;
-            hasMarketData = true;
-        } else {
-            // Load from cache - check both ETF and Crypto modes
-            const allAssets = new Set();
-            Object.values(summaryByPortfolio).forEach(data => {
-                Object.keys(data.holdings).forEach(asset => allAssets.add(asset));
-            });
-            
-            allAssets.forEach(asset => {
-                // Try both ETF and Crypto cache keys
-                const cacheKeys = [
-                    `gpe_cache_ETF_${asset}`,
-                    `gpe_cache_Crypto_${asset}`
-                ];
-                
-                for (const cacheKey of cacheKeys) {
-                    const cached = localStorage.getItem(cacheKey);
-                    if (cached) {
-                        try {
-                            const { data } = JSON.parse(cached);
-                            if (data && data.length > 0) {
-                                marketData[asset] = {
-                                    prices: data.map(d => d.price),
-                                    volumes: data.map(d => d.volume || 0)
-                                };
-                                break; // Found data, stop checking other keys
-                            }
-                        } catch(e) {}
-                    }
-                }
-            });
-            
-            if (Object.keys(marketData).length > 0) {
-                hasMarketData = true;
-            }
-        }
-        
-        // Helper function to get latest price for an asset
-        const getLatestPrice = (asset) => {
-            if (!marketData[asset] || !marketData[asset].prices) return 0;
-            const prices = marketData[asset].prices;
-            // Find the last non-zero price
-            for (let i = prices.length - 1; i >= 0; i--) {
-                if (prices[i] > 0) return prices[i];
-            }
-            return 0;
-        };
+        const allAssets = new Set();
+        Object.values(summaryByPortfolio).forEach(data => {
+            Object.keys(data.holdings).forEach(asset => allAssets.add(asset));
+        });
+        const marketData = this.getMarketDataForAssets([...allAssets]);
+        const hasMarketData = Object.keys(marketData).length > 0;
         
         const summaryList = document.getElementById('portfolio-summary-list');
         summaryList.innerHTML = Object.entries(summaryByPortfolio).map(([name, data]) => {
@@ -3994,22 +3966,24 @@ const PortfolioTracker = {
             let holdingsHtml = '';
             
             const activeHoldings = Object.entries(data.holdings).filter(([_, h]) => Math.abs(h.quantity) > 0.0001);
+            let hasPortfolioMarketData = false;
             
             if (hasMarketData && activeHoldings.length > 0) {
                 // Calculate total portfolio value for percentage calculation
                 let totalPortfolioValue = 0;
                 activeHoldings.forEach(([asset, holding]) => {
-                    const currentPrice = getLatestPrice(asset);
+                    const currentPrice = this.getLatestPriceFromData(asset, marketData);
                     if (currentPrice > 0) {
                         const assetValue = holding.quantity * currentPrice;
                         totalPortfolioValue += assetValue;
+                        hasPortfolioMarketData = true;
                     }
                 });
                 
                 holdingsHtml = '<div class="mt-3 pt-3 border-t border-gray-300 dark:border-dark-600 space-y-2">';
                 activeHoldings.forEach(([asset, holding]) => {
                     const avgPrice = holding.cost / holding.quantity;
-                    const currentPrice = getLatestPrice(asset);
+                    const currentPrice = this.getLatestPriceFromData(asset, marketData);
                     const assetValue = holding.quantity * currentPrice;
                     const assetPnl = assetValue - holding.cost;
                     const assetPnlPct = holding.cost > 0 ? (assetPnl / holding.cost * 100) : 0;
@@ -4049,8 +4023,8 @@ const PortfolioTracker = {
                 holdingsHtml += '<div class="text-[10px] text-orange-600 dark:text-orange-400 mt-2">รัน Fetch Data เพื่อดูราคาตลาด</div></div>';
             }
             
-            const pnl = hasMarketData && activeHoldings.length > 0 ? currentValue - data.cost : 0;
-            const pnlPct = data.cost > 0 && hasMarketData ? (pnl / data.cost * 100) : 0;
+            const pnl = hasPortfolioMarketData && activeHoldings.length > 0 ? currentValue - data.cost : 0;
+            const pnlPct = data.cost > 0 && hasPortfolioMarketData ? (pnl / data.cost * 100) : 0;
             const pnlColor = pnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
             const pnlSign = pnl >= 0 ? '+' : '';
             
@@ -4058,7 +4032,7 @@ const PortfolioTracker = {
             <div class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-dark-800 dark:to-dark-700 rounded-lg p-4 border border-gray-200 dark:border-dark-600">
                 <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">${name}</div>
                 <div class="text-xl font-bold text-stock-600 dark:text-stock-400 mono mb-1">ต้นทุน: $${data.cost.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                ${hasMarketData && activeHoldings.length > 0 ? `
+                ${hasPortfolioMarketData && activeHoldings.length > 0 ? `
                     <div class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">มูลค่าปัจจุบัน: $${currentValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
                     <div class="text-sm font-bold ${pnlColor}">P&L: ${pnlSign}$${Math.abs(pnl).toFixed(2)} (${pnlSign}${pnlPct.toFixed(2)}%)</div>
                 ` : ''}
@@ -4072,7 +4046,7 @@ const PortfolioTracker = {
                     <span><i class="fas fa-coins mr-1"></i>${activeHoldings.length} Assets</span>
                 </div>
                 ${holdingsHtml}
-                ${hasMarketData && activeHoldings.length > 0 ? `
+                ${hasPortfolioMarketData && activeHoldings.length > 0 ? `
                 <button onclick="RebalanceCalculator.openModal('${name}', ${JSON.stringify(data.holdings).replace(/"/g, '&quot;')})" class="w-full mt-3 px-3 py-2 bg-gradient-to-r from-stock-500 to-stock-600 hover:from-stock-600 hover:to-stock-700 text-white rounded-lg text-xs font-bold transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2">
                     <i class="fas fa-balance-scale"></i>
                     <span>ปรับสัดส่วน Portfolio</span>
