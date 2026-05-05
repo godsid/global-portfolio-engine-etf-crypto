@@ -608,10 +608,23 @@ th.sortable:hover { color: #3b82f6; }
                     <h3 class="text-xs font-bold uppercase text-gray-500 tracking-widest">Growth Analysis</h3>
                     <p class="text-[9px] text-gray-400 mono mt-0.5 ml-2" id="chart-subtitle">Waiting for simulation...</p>
                 </div>
-                <button onclick="UI.toggleLog()" class="text-[9px] font-bold bg-gray-100 dark:bg-dark-800 px-3 py-1 rounded border dark:border-dark-700 mono">LOG SCALE</button>
+                <div class="flex items-center gap-2">
+                    <div class="flex bg-gray-100 dark:bg-dark-800 rounded border dark:border-dark-700 p-0.5">
+                        <button id="btn-view-growth" onclick="UI.setMainChartView('growth')" class="text-[9px] font-bold px-2.5 py-1 rounded bg-stock-500 text-white">Growth</button>
+                        <button id="btn-view-asset" onclick="UI.setMainChartView('asset')" class="text-[9px] font-bold px-2.5 py-1 rounded text-gray-500 dark:text-gray-300">Asset Price</button>
+                    </div>
+                    <button id="btn-log-scale" onclick="UI.toggleLog()" class="text-[9px] font-bold bg-gray-100 dark:bg-dark-800 px-3 py-1 rounded border dark:border-dark-700 mono">LOG SCALE</button>
+                </div>
             </div>
-            <div class="h-[320px] w-full"><canvas id="chart-equity"></canvas></div>
-            <div class="h-[100px] w-full border-t dark:border-dark-700 pt-2"><canvas id="chart-drawdown"></canvas></div>
+            <div class="h-[320px] w-full">
+                <div id="chart-growth-wrap" class="h-full w-full">
+                    <canvas id="chart-equity"></canvas>
+                </div>
+                <div id="chart-asset-wrap" class="h-full w-full hidden">
+                    <canvas id="chart-asset-prices"></canvas>
+                </div>
+            </div>
+            <div id="drawdown-wrap" class="h-[100px] w-full border-t dark:border-dark-700 pt-2"><canvas id="chart-drawdown"></canvas></div>
         </div>
 
         <!-- Matrix Table -->
@@ -1847,7 +1860,7 @@ class QuantEngine {
 ========================================================= */
 
 const UI = {
-    chartEq: null, chartDD: null, isLog: false, selectedIdx: 0,
+    chartEq: null, chartDD: null, chartAsset: null, isLog: false, selectedIdx: 0, mainChartView: 'growth',
     sortCol: 'sharpe', sortDir: 'desc',
     surfaceTimer: null, surfaceFrame: 100,
     currentPage: 1, rowsPerPage: 10, filteredData: [],
@@ -2099,7 +2112,55 @@ const UI = {
     renderAssets(){ const l = document.getElementById('asset-list'); if(l) l.innerHTML = Engine.universe.map(a => `<span class="bg-white dark:bg-dark-800 border dark:border-dark-700 px-1.5 py-0.5 rounded text-[9px] mono font-bold flex items-center gap-1 shadow-sm transition-transform hover:scale-105">${a} <button onclick="UI.removeAsset('${a}')" class="text-red-500 hover:text-red-700 font-bold ml-1">×</button></span>`).join(''); },
     loading(s, t="..."){ const elT = document.getElementById('loader-text'); const elL = document.getElementById('loader'); if(elT) elT.innerText = t; if(elL) s ? elL.classList.remove('hidden') : elL.classList.add('hidden'); },
     toggleTheme(){ document.body.classList.toggle('dark'); if(Engine.results.length) this.selectResult(this.selectedIdx); },
-    toggleLog(){ this.isLog = !this.isLog; if(Engine.results[this.selectedIdx]) this.renderEquity(Engine.results[this.selectedIdx]); },
+    toggleLog(){ 
+        if (this.mainChartView !== 'growth') return;
+        this.isLog = !this.isLog; 
+        if(Engine.results[this.selectedIdx]) this.renderEquity(Engine.results[this.selectedIdx]); 
+    },
+
+    setMainChartView(view){
+        this.mainChartView = view === 'asset' ? 'asset' : 'growth';
+
+        const growthWrap = document.getElementById('chart-growth-wrap');
+        const assetWrap = document.getElementById('chart-asset-wrap');
+        const drawdownWrap = document.getElementById('drawdown-wrap');
+        const logBtn = document.getElementById('btn-log-scale');
+        const growthBtn = document.getElementById('btn-view-growth');
+        const assetBtn = document.getElementById('btn-view-asset');
+
+        if (this.mainChartView === 'growth') {
+            growthWrap?.classList.remove('hidden');
+            assetWrap?.classList.add('hidden');
+            drawdownWrap?.classList.remove('hidden');
+            logBtn?.classList.remove('hidden');
+            growthBtn?.classList.add('bg-stock-500', 'text-white');
+            growthBtn?.classList.remove('text-gray-500', 'dark:text-gray-300');
+            assetBtn?.classList.remove('bg-stock-500', 'text-white');
+            assetBtn?.classList.add('text-gray-500', 'dark:text-gray-300');
+        } else {
+            growthWrap?.classList.add('hidden');
+            assetWrap?.classList.remove('hidden');
+            drawdownWrap?.classList.add('hidden');
+            logBtn?.classList.add('hidden');
+            assetBtn?.classList.add('bg-stock-500', 'text-white');
+            assetBtn?.classList.remove('text-gray-500', 'dark:text-gray-300');
+            growthBtn?.classList.remove('bg-stock-500', 'text-white');
+            growthBtn?.classList.add('text-gray-500', 'dark:text-gray-300');
+        }
+
+        if (Engine.results[this.selectedIdx]) this.renderSelectedMainChart(Engine.results[this.selectedIdx]);
+    },
+
+    renderSelectedMainChart(res){
+        if (!res) return;
+        if (this.mainChartView === 'asset') {
+            this.renderAssetPrices(res);
+            if (this.chartDD) { this.chartDD.destroy(); this.chartDD = null; }
+        } else {
+            this.renderEquity(res);
+            this.renderDrawdownChart(res);
+        }
+    },
 
     sortBatch(col){
         if(this.sortCol === col) this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
@@ -2255,8 +2316,7 @@ const UI = {
         const benches = { 'bench-cagr': `Bench: ${Engine.benchStats.cagr}%`, 'bench-sharpe': `Bench: ${Engine.benchStats.sharpe}`, 'bench-mdd': `Bench: ${Engine.benchStats.mdd}%`, 'bench-sortino': `Bench: ${Engine.benchStats.sortino}`, 'bench-calmar': `Bench: ${Engine.benchStats.calmar}`, 'bench-winrate': `Bench: ${Engine.benchStats.winrate}%` };
         Object.entries(benches).forEach(([id, v]) => { const el = document.getElementById(id); if(el) el.innerText = v; });
         document.getElementById('chart-subtitle').innerText = `${res.stratFull} [Liq.W: ${res.liqLB}d] (Active: ${res.activeUniverse.length}) vs ${document.getElementById('cfg-bench').value}`;
-        this.renderEquity(res); this.renderLogs(res.logs);
-        this.renderDrawdownChart(res);
+        this.renderSelectedMainChart(res); this.renderLogs(res.logs);
         this.renderBatchTable(); UI.renderSurface(); UI.runMonteCarlo();
     },
 
@@ -2376,6 +2436,77 @@ const UI = {
                 </tr>
             `;
         }).join('');
+    },
+
+    renderAssetPrices(res){
+        const canvas = document.getElementById('chart-asset-prices');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (this.chartAsset) this.chartAsset.destroy();
+
+        const startIdx = Engine.dates.findIndex(d => d === res.dates[0]);
+        const palette = ['#3b82f6', '#0ECB81', '#f59e0b', '#8b5cf6', '#ef4444', '#14b8a6', '#eab308', '#ec4899'];
+
+        const datasets = (res.activeUniverse || []).map((asset, idx) => {
+            const prices = Engine.marketData[asset]?.prices || [];
+            const sliced = startIdx >= 0 ? prices.slice(startIdx, startIdx + res.dates.length) : [];
+            return {
+                label: asset,
+                data: sliced,
+                borderColor: palette[idx % palette.length],
+                borderWidth: 2,
+                pointRadius: 0,
+                fill: false,
+                tension: 0.12
+            };
+        }).filter(ds => ds.data.length > 0);
+
+        const allPositive = datasets.flatMap(ds => ds.data.filter(v => Number.isFinite(v) && v > 0));
+        const minPrice = allPositive.length ? Math.min(...allPositive) : 1;
+        const maxPrice = allPositive.length ? Math.max(...allPositive) : 1;
+        const rangeRatio = minPrice > 0 ? (maxPrice / minPrice) : 1;
+        const useLogScale = rangeRatio >= 20;
+
+        this.chartAsset = new Chart(ctx, {
+            type: 'line',
+            data: { labels: res.dates, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'nearest', intersect: false, axis: 'x' },
+                scales: {
+                    y: {
+                        type: useLogScale ? 'logarithmic' : 'linear',
+                        grid: { color: document.body.classList.contains('dark') ? '#2B3139' : '#e2e8f0' },
+                        ticks: { 
+                            color: '#94a3b8',
+                            callback: (v) => `$${Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 })}`
+                        }
+                    },
+                    x: { display: false }
+                },
+                plugins: {
+                    legend: { labels: { color: document.body.classList.contains('dark') ? '#EAECEF' : '#1E2329' } },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.9)',
+                        titleFont: { family: 'JetBrains Mono', size: 11 },
+                        bodyFont: { family: 'JetBrains Mono', size: 10 },
+                        padding: 12,
+                        cornerRadius: 8,
+                        displayColors: true,
+                        callbacks: {
+                            title: function(context) {
+                                return context[0].label || '';
+                            },
+                            label: function(context) {
+                                const value = context.parsed.y;
+                                return `${context.dataset.label}: $${value.toFixed(4)}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
     },
 
     renderEquity(res){
