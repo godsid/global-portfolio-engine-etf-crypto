@@ -2311,9 +2311,11 @@ const UI = {
 
     selectResult(idx){
         this.selectedIdx = idx; const res = Engine.results[idx]; if(!res) return;
+        const cfg = UI.getParams();
+        const benchStatsForResult = this.calculateBenchmarkStatsForResult(res, cfg);
         const metrics = { 'kpi-cagr': res.cagr+"%", 'kpi-sharpe': res.sharpe, 'kpi-mdd': res.mdd+"%", 'kpi-sortino': res.sortino, 'kpi-calmar': res.calmar, 'kpi-winrate': res.winrate+"%" };
         Object.entries(metrics).forEach(([id, v]) => { const el = document.getElementById(id); if(el) el.innerText = v; });
-        const benches = { 'bench-cagr': `Bench: ${Engine.benchStats.cagr}%`, 'bench-sharpe': `Bench: ${Engine.benchStats.sharpe}`, 'bench-mdd': `Bench: ${Engine.benchStats.mdd}%`, 'bench-sortino': `Bench: ${Engine.benchStats.sortino}`, 'bench-calmar': `Bench: ${Engine.benchStats.calmar}`, 'bench-winrate': `Bench: ${Engine.benchStats.winrate}%` };
+        const benches = { 'bench-cagr': `Bench: ${benchStatsForResult.cagr}%`, 'bench-sharpe': `Bench: ${benchStatsForResult.sharpe}`, 'bench-mdd': `Bench: ${benchStatsForResult.mdd}%`, 'bench-sortino': `Bench: ${benchStatsForResult.sortino}`, 'bench-calmar': `Bench: ${benchStatsForResult.calmar}`, 'bench-winrate': `Bench: ${benchStatsForResult.winrate}%` };
         Object.entries(benches).forEach(([id, v]) => { const el = document.getElementById(id); if(el) el.innerText = v; });
         document.getElementById('chart-subtitle').innerText = `${res.stratFull} [Liq.W: ${res.liqLB}d] (Active: ${res.activeUniverse.length}) vs ${document.getElementById('cfg-bench').value}`;
         this.renderSelectedMainChart(res); this.renderLogs(res.logs);
@@ -2509,17 +2511,48 @@ const UI = {
         });
     },
 
+    calculateBenchmarkCurveForResult(res, cfg) {
+        if (!res || !res.dates?.length) return [];
+
+        const benchAll = Engine.marketData[cfg.bench]?.prices;
+        const sIdx = Engine.dates.findIndex(d => d === res.dates[0]);
+        if (!benchAll || sIdx < 0) return [];
+
+        const benchRaw = benchAll.slice(sIdx, sIdx + res.dates.length);
+        if (!benchRaw.length || !Number.isFinite(benchRaw[0]) || benchRaw[0] <= 0) return [];
+
+        const dcaByDate = {};
+        (res.logs || []).forEach(log => {
+            if (Number.isFinite(log.inflow) && log.inflow > 0) {
+                dcaByDate[log.date] = (dcaByDate[log.date] || 0) + log.inflow;
+            }
+        });
+
+        const netBuyFactor = 1 - (cfg.fee / 100);
+        let units = (cfg.initial * (1 - cfg.frontEndFee / 100) * netBuyFactor) / benchRaw[0];
+        let lastValue = units * benchRaw[0];
+
+        return res.dates.map((date, idx) => {
+            const px = benchRaw[idx];
+            if (!Number.isFinite(px) || px <= 0) return lastValue;
+
+            const inflow = dcaByDate[date] || 0;
+            if (inflow > 0) units += (inflow * netBuyFactor) / px;
+            lastValue = units * px;
+            return lastValue;
+        });
+    },
+
+    calculateBenchmarkStatsForResult(res, cfg) {
+        const benchCurve = this.calculateBenchmarkCurveForResult(res, cfg);
+        if (!benchCurve.length) return Engine.benchStats;
+        return Engine.calcStats(benchCurve, cfg.rf);
+    },
+
     renderEquity(res){
         const ctx = document.getElementById('chart-equity').getContext('2d'); if(this.chartEq) this.chartEq.destroy();
-        const cfg = UI.getParams(); 
-        const bAll = Engine.marketData[cfg.bench]?.prices; 
-        const sIdx = Engine.dates.findIndex(d => d === res.dates[0]);
-        let bench = [];
-        if (bAll) {
-            const benchRaw = bAll.slice(sIdx, sIdx + res.curve.length);
-            const startVal = res.curve[0];
-            bench = benchRaw.map(v => (v / benchRaw[0]) * startVal);
-        }
+        const cfg = UI.getParams();
+        const bench = this.calculateBenchmarkCurveForResult(res, cfg);
 
         // Create transaction scatter points — one per date (merged), using date→index Map
         const dateIndexMap = new Map();
@@ -2742,7 +2775,7 @@ const UI = {
 
         const dcaByDate = {};
         (res.logs || []).forEach(log => {
-            if (log.type === 'DCA' && Number.isFinite(log.inflow) && log.inflow > 0) {
+            if (Number.isFinite(log.inflow) && log.inflow > 0) {
                 dcaByDate[log.date] = (dcaByDate[log.date] || 0) + log.inflow;
             }
         });
