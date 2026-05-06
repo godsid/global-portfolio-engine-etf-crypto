@@ -1146,7 +1146,7 @@ th.sortable:hover { color: #3b82f6; }
    QUANT ENGINE CORE V48.2 (LIQUID ALPHA + SPEED FIX)
 ========================================================= */
 
-const CRYPTO_UNIVERSE = ["BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "DOGE", "DOT", "AVAX", "LINK", "UNI", "MATIC", "LTC", "ATOM"];
+const CRYPTO_UNIVERSE = ["BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "DOGE", "DOT", "AVAX", "LINK", "UNI", "LTC", "ATOM"];
 const ETF_UNIVERSE = ["SPY", "QQQ", "IWM", "EFA", "EEM", "GLD", "TLT", "VNQ", "LQD", "HYG", "XLE", "XLF", "XLK", "XLV"];
 
 const STRAT_NAMES = {
@@ -1170,6 +1170,8 @@ class QuantEngine {
   constructor(){
     this.universe = [...ETF_UNIVERSE];
     this.marketMode = "ETF"; 
+    this.assetTypeMap = {};
+    this.knownUniverseByMode = { ETF: [...ETF_UNIVERSE], CRYPTO: [...CRYPTO_UNIVERSE] };
     this.marketData = {}; // { SYMBOL: { prices: [], volumes: [] } }
     this.dates = [];
     this.assets = []; // Initialize assets array
@@ -1177,17 +1179,73 @@ class QuantEngine {
     this.tradingDays = 252;
     this.benchStats = { cagr: 0, sharpe: 0, mdd: 0, sortino: 0, calmar: 0, winrate: 0 };
     this.dataStatus = {}; 
+    this.rebuildAssetRegistry();
+  }
+
+  normalizeMarketMode(mode) {
+      return mode === "CRYPTO" ? "CRYPTO" : "ETF";
+  }
+
+  rebuildAssetRegistry(configs = {}, runtimeEntries = []) {
+      const known = {
+          ETF: new Set(ETF_UNIVERSE),
+          CRYPTO: new Set(CRYPTO_UNIVERSE)
+      };
+      const assetTypeMap = {};
+
+      const registerAsset = (symbol, mode) => {
+          const normalizedMode = this.normalizeMarketMode(mode);
+          const normalizedSymbol = (symbol || '').toUpperCase().trim();
+          if (!normalizedSymbol) return;
+          known[normalizedMode].add(normalizedSymbol);
+          assetTypeMap[normalizedSymbol] = normalizedMode;
+      };
+
+      ETF_UNIVERSE.forEach(symbol => registerAsset(symbol, 'ETF'));
+      CRYPTO_UNIVERSE.forEach(symbol => registerAsset(symbol, 'CRYPTO'));
+
+      Object.values(configs || {}).forEach(config => {
+          const mode = this.normalizeMarketMode(config?.marketType);
+          (config?.assets || []).forEach(symbol => registerAsset(symbol, mode));
+          if (config?.bench) registerAsset(config.bench, mode);
+      });
+
+      (runtimeEntries || []).forEach(entry => registerAsset(entry?.symbol, entry?.mode));
+
+      this.assetTypeMap = assetTypeMap;
+      this.knownUniverseByMode = {
+          ETF: [...known.ETF],
+          CRYPTO: [...known.CRYPTO]
+      };
+  }
+
+  syncAssetRegistryFromConfigs() {
+      const configs = typeof ConfigManager !== 'undefined' ? ConfigManager.getAllConfigs() : {};
+      const runtimeEntries = (this.universe || []).map(symbol => ({ symbol, mode: this.marketMode }));
+      const benchEl = document.getElementById('cfg-bench');
+      const bench = benchEl ? (benchEl.value || '').toUpperCase().trim() : '';
+      if (bench) runtimeEntries.push({ symbol: bench, mode: this.marketMode });
+      this.rebuildAssetRegistry(configs, runtimeEntries);
+  }
+
+  getKnownUniverse(mode = this.marketMode) {
+      const normalizedMode = this.normalizeMarketMode(mode);
+      return [...(this.knownUniverseByMode[normalizedMode] || [])];
+  }
+
+  getAllKnownAssets() {
+      return [...new Set([...(this.knownUniverseByMode.ETF || []), ...(this.knownUniverseByMode.CRYPTO || [])])];
   }
 
   setMarketMode(mode){
-      this.marketMode = mode;
-      if(mode === "ETF") {
-          this.universe = [...ETF_UNIVERSE];
+      this.marketMode = this.normalizeMarketMode(mode);
+      if(this.marketMode === "ETF") {
+          this.universe = this.getKnownUniverse("ETF");
           this.tradingDays = 252;
           document.getElementById('cfg-bench').value = 'SPY';
           document.getElementById('trading-days-info').innerText = "* 252 Trading Days/Year";
       } else {
-          this.universe = [...CRYPTO_UNIVERSE];
+          this.universe = this.getKnownUniverse("CRYPTO");
           this.tradingDays = 365;
           document.getElementById('cfg-bench').value = 'BTC';
           document.getElementById('trading-days-info').innerText = "* 365 Trading Days/Year";
@@ -1317,8 +1375,7 @@ class QuantEngine {
 
     inferAssetMode(symbol) {
         const sym = symbol.toUpperCase();
-        if (CRYPTO_UNIVERSE.includes(sym)) return "CRYPTO";
-        if (ETF_UNIVERSE.includes(sym)) return "ETF";
+        if (this.assetTypeMap[sym]) return this.assetTypeMap[sym];
         return this.marketMode;
     }
 
@@ -1434,7 +1491,7 @@ class QuantEngine {
       const cfg = UI.getParams();
       const trackerAssets = [...new Set((PortfolioTracker.getAllTransactions() || []).map(t => (t.asset || '').toUpperCase()).filter(Boolean))];
       // Fetch all known assets (ETF + Crypto) plus user assets/universe/benchmark
-      let desiredTickers = [...new Set([...ETF_UNIVERSE, ...CRYPTO_UNIVERSE, ...this.universe, ...trackerAssets, cfg.bench])];
+    let desiredTickers = [...new Set([...this.getAllKnownAssets(), ...this.universe, ...trackerAssets, cfg.bench])];
       
       // --- NEW: Batch Processing to prevent UI Freeze ---
       const batchSize = 3; 
@@ -1933,6 +1990,8 @@ const UI = {
     robustData: [], robustPage: 1, robustPerPage: 4,
 
     init(){
+        Engine.syncAssetRegistryFromConfigs();
+        Engine.universe = Engine.getKnownUniverse(Engine.marketMode);
         this.renderQuickAddOptions();
         this.renderAssets(); 
         this.switchTab('dashboard');
@@ -1949,7 +2008,7 @@ const UI = {
             const configs = ConfigManager.getAllConfigs();
             if (configs[lastUsedConfig]) {
                 setTimeout(() => {
-                    ConfigManager.loadConfigData(configs[lastUsedConfig]);
+                    ConfigManager.loadConfigData(configs[lastUsedConfig], lastUsedConfig);
                     console.log(`Auto-loaded last used config: ${lastUsedConfig}`);
                 }, 500);
             }
@@ -2164,6 +2223,8 @@ const UI = {
         const v = i.value.trim().toUpperCase(); 
         if(v && !Engine.universe.includes(v)){ 
             Engine.universe.push(v); 
+            ConfigManager.syncCurrentConfigAssets(Engine.universe, Engine.marketMode);
+            Engine.syncAssetRegistryFromConfigs();
             this.renderAssets(); 
             this.renderHealthMonitor(); 
             this.enableRunButton(false); 
@@ -2172,6 +2233,8 @@ const UI = {
     },
     removeAsset(s){ 
         Engine.universe = Engine.universe.filter(u => u !== s); 
+        ConfigManager.syncCurrentConfigAssets(Engine.universe, Engine.marketMode);
+        Engine.syncAssetRegistryFromConfigs();
         this.renderAssets(); 
         this.renderHealthMonitor();
     },
@@ -3147,6 +3210,7 @@ const UI = {
 const ConfigManager = {
     STORAGE_KEY: 'gpe_configs',
     LAST_USED_KEY: 'gpe_last_used_config',
+    currentConfigName: null,
 
     getAllConfigs() {
         const stored = localStorage.getItem(this.STORAGE_KEY);
@@ -3159,6 +3223,23 @@ const ConfigManager = {
 
     setLastUsedConfig(name) {
         localStorage.setItem(this.LAST_USED_KEY, name);
+    },
+
+    syncCurrentConfigAssets(assets, marketType) {
+        const configName = this.currentConfigName || this.getLastUsedConfig();
+        if (!configName) return;
+
+        const configs = this.getAllConfigs();
+        if (!configs[configName]) return;
+
+        configs[configName] = {
+            ...configs[configName],
+            marketType: marketType || configs[configName].marketType || 'ETF',
+            assets: [...new Set((assets || []).map(asset => (asset || '').toUpperCase().trim()).filter(Boolean))],
+            savedAt: new Date().toISOString()
+        };
+
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(configs));
     },
 
     getCurrentConfig() {
@@ -3189,12 +3270,13 @@ const ConfigManager = {
         };
     },
 
-    loadConfigData(config) {
+    loadConfigData(config, name = null) {
+        if (name) this.currentConfigName = name;
         document.getElementById('cfg-market-type').value = config.marketType || 'ETF';
         UI.changeMarketMode(config.marketType || 'ETF');
         
         // Load assets
-        Engine.universe = config.assets || [];
+        Engine.universe = [...new Set((config.assets || []).map(asset => (asset || '').toUpperCase().trim()).filter(Boolean))];
         UI.renderAssets();
         
         document.getElementById('cfg-strategy').value = config.strategy || 'ALL';
@@ -3216,6 +3298,8 @@ const ConfigManager = {
         document.getElementById('cfg-rf').value = config.rf || 3.0;
         document.getElementById('cfg-mgmt-fee').value = config.mgmtFee || 0.0;
         document.getElementById('cfg-fee').value = config.fee || 0.1;
+        Engine.syncAssetRegistryFromConfigs();
+        UI.renderHealthMonitor();
     },
 
     showSaveDialog() {
@@ -3291,6 +3375,9 @@ const ConfigManager = {
         
         configs[name] = this.getCurrentConfig();
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(configs));
+        this.currentConfigName = name;
+        this.setLastUsedConfig(name);
+        Engine.syncAssetRegistryFromConfigs();
         
         this.closeSaveDialog();
         alert(`Configuration "${name}" saved successfully!`);
@@ -3359,7 +3446,7 @@ const ConfigManager = {
             return;
         }
 
-        this.loadConfigData(config);
+        this.loadConfigData(config, name);
         this.setLastUsedConfig(name);
         this.closeLoadDialog();
         
@@ -3377,6 +3464,9 @@ const ConfigManager = {
         const configs = this.getAllConfigs();
         delete configs[name];
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(configs));
+        if (this.currentConfigName === name) this.currentConfigName = null;
+        if (this.getLastUsedConfig() === name) localStorage.removeItem(this.LAST_USED_KEY);
+        Engine.syncAssetRegistryFromConfigs();
         
         this.showLoadDialog(); // Refresh the list
     },
@@ -3481,6 +3571,7 @@ const ConfigManager = {
                     if (configNames.length > 0) {
                         const mergedConfigs = { ...existingConfigs, ...importedConfigs };
                         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(mergedConfigs));
+                        Engine.syncAssetRegistryFromConfigs();
                         importSummary.push(`${configNames.length} configuration(s)`);
                     }
                     
