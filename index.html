@@ -1217,33 +1217,59 @@ class QuantEngine {
       if (!cached) return null;
       
       try {
-          const { data, timestamp } = JSON.parse(cached);
-          const now = Date.now();
-          const sixHours = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
-          
-          // Check if cache is expired (older than 6 hours)
-          if (now - timestamp >= sixHours) {
-              localStorage.removeItem(cacheKey);
-              return null;
-          }
-          
-          // Check if data is up-to-date (last date should be recent)
-          if (data && data.length > 0) {
-              const lastDate = new Date(data[data.length - 1].date);
-              const today = new Date();
-              const daysDiff = Math.floor((today - lastDate) / (1000 * 60 * 60 * 24));
-              
-              // If data is more than 2 days old, refetch
-              if (daysDiff > 2) {
-                  localStorage.removeItem(cacheKey);
-                  return null;
-              }
-          }
-          
-          return data;
+          const { data } = JSON.parse(cached);
+          return Array.isArray(data) ? data : null;
       } catch(e) {
           return null;
       }
+  }
+
+  getBangkokDateParts() {
+      const now = new Date();
+      const parts = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Asia/Bangkok',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          hour12: false
+      }).formatToParts(now);
+
+      const get = (type) => parts.find(p => p.type === type)?.value;
+      return {
+          year: Number(get('year')),
+          month: Number(get('month')),
+          day: Number(get('day')),
+          hour: Number(get('hour'))
+      };
+  }
+
+  getExpectedLatestDateByMode(mode = this.marketMode) {
+      const { year, month, day, hour } = this.getBangkokDateParts();
+      const closeHour = mode === 'CRYPTO' ? 7 : 4;
+      const daysBack = hour < closeHour ? 2 : 1;
+      const baseUtc = new Date(Date.UTC(year, month - 1, day));
+      baseUtc.setUTCDate(baseUtc.getUTCDate() - daysBack);
+      return baseUtc.toISOString().slice(0, 10);
+  }
+
+  isCacheUpToDate(data, mode = this.marketMode) {
+      if (!Array.isArray(data) || data.length === 0) return false;
+      const lastDate = data[data.length - 1]?.date;
+      if (!lastDate) return false;
+      const expectedLatest = this.getExpectedLatestDateByMode(mode);
+      return lastDate >= expectedLatest;
+  }
+
+  mergeHistoryData(existingData, newData) {
+      const merged = new Map();
+      (existingData || []).forEach(row => {
+          if (row && row.date) merged.set(row.date, row);
+      });
+      (newData || []).forEach(row => {
+          if (row && row.date) merged.set(row.date, row);
+      });
+      return [...merged.values()].sort((a, b) => a.date.localeCompare(b.date));
   }
 
   setCachedData(symbol, data, mode = this.marketMode) {
@@ -1301,11 +1327,30 @@ class QuantEngine {
     logEl.classList.remove('hidden');
         const sourceMode = modeOverride || this.inferAssetMode(symbol);
     
-    // Check cache first
+    // Check cache first and update incrementally when needed
         const cachedData = this.getCachedData(symbol, sourceMode);
-    if (cachedData) {
-                logEl.innerHTML += `<span class="text-purple-500">> 💾 ${symbol} [${sourceMode}] (Cached, ${cachedData.length} Days)</span><br>`;
-        this.dataStatus[symbol] = { status: 'ok', days: cachedData.length, cached: true };
+    if (cachedData && cachedData.length > 0) {
+        if (this.isCacheUpToDate(cachedData, sourceMode)) {
+                    logEl.innerHTML += `<span class="text-purple-500">> 💾 ${symbol} [${sourceMode}] (Cached, Up-to-date ${cachedData.length} Days)</span><br>`;
+            this.dataStatus[symbol] = { status: 'ok', days: cachedData.length, cached: true };
+            return cachedData;
+        }
+
+        const lastCachedDate = cachedData[cachedData.length - 1].date;
+        let incremental = null;
+        if(sourceMode === "CRYPTO") incremental = await this.fetchBinanceData(symbol, lastCachedDate);
+        else incremental = await this.fetchYahooDataRecursive(symbol, 0, lastCachedDate);
+
+        if (incremental && incremental.length > 0) {
+            const mergedData = this.mergeHistoryData(cachedData, incremental);
+                    logEl.innerHTML += `<span class="text-cyan-400">> 🔄 ${symbol} [${sourceMode}] Cache Updated (+${Math.max(0, mergedData.length - cachedData.length)} Days)</span><br>`;
+            this.dataStatus[symbol] = { status: 'ok', days: mergedData.length, cached: false, updated: true };
+                    this.setCachedData(symbol, mergedData, sourceMode);
+            return mergedData;
+        }
+
+                logEl.innerHTML += `<span class="text-purple-500">> 💾 ${symbol} [${sourceMode}] (Cached Fallback, ${cachedData.length} Days)</span><br>`;
+        this.dataStatus[symbol] = { status: 'ok', days: cachedData.length, cached: true, stale: true };
         return cachedData;
     }
     
@@ -1327,10 +1372,16 @@ class QuantEngine {
     return result;
   }
 
-  async fetchBinanceData(symbol){
+  async fetchBinanceData(symbol, fromDate = null){
     try {
         const pair = `${symbol.toUpperCase()}USDT`;
-        const response = await this.fetchWithTimeout(`https://api.binance.com/api/v3/klines?symbol=${pair}&interval=1d&limit=1000`);
+        let url = `https://api.binance.com/api/v3/klines?symbol=${pair}&interval=1d&limit=1000`;
+        if (fromDate) {
+            const start = new Date(`${fromDate}T00:00:00Z`);
+            start.setUTCDate(start.getUTCDate() + 1);
+            url += `&startTime=${start.getTime()}`;
+        }
+        const response = await this.fetchWithTimeout(url);
         if(!response.ok) throw new Error(`Fetch failed`);
         const data = await response.json();
         return data.map(d => ({ 
@@ -1341,10 +1392,15 @@ class QuantEngine {
     } catch(e) { return null; }
   }
 
-  async fetchYahooDataRecursive(symbol, proxyIdx){
+  async fetchYahooDataRecursive(symbol, proxyIdx, fromDate = null){
       if(proxyIdx >= PROXIES.length) return null;
       try {
-          const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol.toUpperCase()}?interval=1d&range=5y`;
+          let yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol.toUpperCase()}?interval=1d&range=5y`;
+          if (fromDate) {
+              const period1 = Math.floor((new Date(`${fromDate}T00:00:00Z`).getTime() / 1000)) + 86400;
+              const period2 = Math.floor(Date.now() / 1000);
+              yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol.toUpperCase()}?interval=1d&period1=${period1}&period2=${period2}`;
+          }
           const proxyUrl = PROXIES[proxyIdx](yahooUrl);
           const response = await this.fetchWithTimeout(proxyUrl);
           if(!response.ok) throw new Error(`Proxy ${proxyIdx} failed`);
@@ -1367,7 +1423,7 @@ class QuantEngine {
               }
           }
           return history;
-      } catch(e) { return await this.fetchYahooDataRecursive(symbol, proxyIdx + 1); }
+      } catch(e) { return await this.fetchYahooDataRecursive(symbol, proxyIdx + 1, fromDate); }
   }
 
   async fetchData() {
