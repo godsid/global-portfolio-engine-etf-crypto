@@ -3207,6 +3207,55 @@ const UI = {
 };
 
 // Config Manager
+/* =========================================================
+   CRYPTO UTILITIES - XOR Cipher + Base64
+========================================================= */
+const CryptoUtils = {
+    ENCRYPTION_KEY: 'tui@10naja',
+    ENCRYPTION_PREFIX: 'GPEENC::',
+    
+    // XOR cipher with repeating key
+    xorCipher(data, key) {
+        let result = '';
+        for (let i = 0; i < data.length; i++) {
+            result += String.fromCharCode(data.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+        }
+        return result;
+    },
+    
+    // Encrypt string to Base64
+    encrypt(data, key = this.ENCRYPTION_KEY) {
+        const encrypted = this.xorCipher(data, key);
+        return btoa(unescape(encodeURIComponent(encrypted)));
+    },
+    
+    // Decrypt Base64 to string
+    decrypt(encryptedData, key = this.ENCRYPTION_KEY) {
+        try {
+            const decoded = decodeURIComponent(escape(atob(encryptedData)));
+            return this.xorCipher(decoded, key);
+        } catch (e) {
+            return null;
+        }
+    },
+    
+    // Check if data is encrypted format
+    isEncrypted(data) {
+        return data && typeof data === 'string' && data.startsWith(this.ENCRYPTION_PREFIX);
+    },
+    
+    // Remove prefix and get encrypted content
+    getEncryptedContent(data) {
+        if (this.isEncrypted(data)) {
+            return data.substring(this.ENCRYPTION_PREFIX.length);
+        }
+        return data;
+    }
+};
+
+/* =========================================================
+   CONFIG MANAGER
+========================================================= */
 const ConfigManager = {
     STORAGE_KEY: 'gpe_configs',
     LAST_USED_KEY: 'gpe_last_used_config',
@@ -3491,18 +3540,21 @@ const ConfigManager = {
         // Create JSON string with pretty formatting
         const jsonString = JSON.stringify(exportData, null, 2);
         
-        // Create blob and download
-        const blob = new Blob([jsonString], { type: 'application/json' });
+        // Encrypt the data with key "tui@10naja"
+        const encrypted = CryptoUtils.ENCRYPTION_PREFIX + CryptoUtils.encrypt(jsonString, CryptoUtils.ENCRYPTION_KEY);
+        
+        // Create blob and download as .gpe (encrypted) file
+        const blob = new Blob([encrypted], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = 'gpe_configs.json';
+        link.download = `gpe_configs_${new Date().toISOString().slice(0,10)}.gpe`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
         
-        alert(`Exported ${Object.keys(configs).length} configuration(s) and ${transactions.length} transaction(s) to gpe_configs.json`);
+        alert(`Exported ${Object.keys(configs).length} configuration(s) and ${transactions.length} transaction(s)\n\nFile is encrypted with your key.\nFile saved as: gpe_configs_${new Date().toISOString().slice(0,10)}.gpe`);
     },
 
     importConfigs() {
@@ -3514,9 +3566,12 @@ const ConfigManager = {
         const file = event.target.files[0];
         if (!file) return;
         
-        // Validate file type
-        if (!file.name.endsWith('.json')) {
-            alert('Please select a valid JSON file');
+        // Accept both .json (legacy/unencrypted) and .gpe (encrypted) files
+        const isGpeFile = file.name.endsWith('.gpe');
+        const isJsonFile = file.name.endsWith('.json');
+        
+        if (!isGpeFile && !isJsonFile) {
+            alert('Please select a valid file (.json or .gpe)');
             event.target.value = ''; // Reset input
             return;
         }
@@ -3524,7 +3579,24 @@ const ConfigManager = {
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
-                const importedData = JSON.parse(e.target.result);
+                let importedData;
+                const rawContent = e.target.result;
+                
+                // Check if this is an encrypted file
+                if (CryptoUtils.isEncrypted(rawContent)) {
+                    // Decrypt the data
+                    const encryptedContent = CryptoUtils.getEncryptedContent(rawContent);
+                    const decryptedJson = CryptoUtils.decrypt(encryptedContent, CryptoUtils.ENCRYPTION_KEY);
+                    
+                    if (!decryptedJson) {
+                        throw new Error('Failed to decrypt file. Wrong key or corrupted file.');
+                    }
+                    
+                    importedData = JSON.parse(decryptedJson);
+                } else {
+                    // Legacy unencrypted JSON file
+                    importedData = JSON.parse(rawContent);
+                }
                 
                 // Validate structure
                 if (typeof importedData !== 'object' || importedData === null) {
