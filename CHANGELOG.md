@@ -1,5 +1,12 @@
 # Changelog
 
+## v48.5 — 2026-05-14
+
+### Changed
+- เพิ่มแสดงชื่อ Config ที่ load อยู่ใน sidebar header (Config: [ชื่อ config])
+- ย้ายปุ่ม "เพิ่มรายการ" จาก header ของ Portfolio Tracker tab ไปไว้ใน card "รายการลงทุน"
+- ปรับขนาดปุ่มให้เล็กลง (text-xs) เพื่อให้สอดคล้องกับ layout ของ card
+
 ## v48.4 — 2026-05-06
 
 ### Added
