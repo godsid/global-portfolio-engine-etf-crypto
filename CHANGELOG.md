@@ -1,5 +1,19 @@
 # Changelog
 
+## v49.0 — 2026-05-21
+
+### Added
+- เพิ่มระบบ IndexedDB Manager สำหรับเก็บข้อมูล cache (แทนที่ localStorage เพื่อรองรับข้อมูลขนาดใหญ่)
+- รองรับ fallback ไปใช้ localStorage หาก IndexedDB ไม่พร้อมใช้งาน
+- เพิ่ม P&L Chart Modal — กราฟแสดงกำไร/ขาดทุนตามช่วงเวลาของแต่ละ Portfolio (ปุ่ม chart icon ข้าง "สรุปตาม Portfolio")
+
+### Changed
+- **DCA Monthly Budget:** เปลี่ยน DCA จาก "ต่อรอบ rebalance" เป็น "งบประมาณรายเดือน" — ระบบคำนวณจำนวน rebalance cycles ในเดือนนั้น และแบ่งงบเท่าๆ กันต่อ cycle (DCA Monthly ($) label ใน UI)
+- ปรับปรุงระบบ cache ของ Engine ให้ใช้ IndexedDB เป็นหลัก
+- ปรับ clearCache ให้ล้างทั้ง IndexedDB และ localStorage cache
+
+---
+
 ## v48.5 — 2026-05-14
 
 ### Changed

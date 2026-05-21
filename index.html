@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<title>Global Portfolio Engine v48.5 — Liquid Alpha Edition (Full Docs)</title>
+<title>Global Portfolio Engine v49.0 — Liquid Alpha Edition (Full Docs)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Advanced Quant Portfolio Backtesting Engine - Liquid Alpha Edition (Volume Filter Integrated)">
 
@@ -270,7 +270,7 @@ th.sortable:hover { color: #3b82f6; }
   <div class="max-w-[1800px] mx-auto px-4 h-14 flex justify-between items-center">
     <div class="flex items-center gap-3">
       <h1 class="font-bold text-base flex items-center gap-2 text-dark-900 dark:text-white">
-        <span class="text-xl">💧</span> GPE <span class="text-[9px] bg-gradient-to-r from-blue-500 to-purple-500 text-white px-1.5 py-0.5 rounded font-bold mono">v48.3 (Full Docs)</span>
+        <span class="text-xl">💧</span> GPE <span class="text-[9px] bg-gradient-to-r from-blue-500 to-purple-500 text-white px-1.5 py-0.5 rounded font-bold mono">v49.0</span>
       </h1>
       <nav class="hidden md:flex gap-1 ml-4">
           <button id="btn-tab-dashboard" onclick="UI.switchTab('dashboard')" class="px-3 py-1 text-[10px] font-bold rounded bg-white dark:bg-dark-800 shadow-sm text-stock-600 transition-all">DASHBOARD</button>
@@ -474,7 +474,7 @@ th.sortable:hover { color: #3b82f6; }
               <input id="cfg-initial" value="10000" type="number" class="opt-input text-center font-bold">
           </div>
           <div>
-              <label class="opt-label-mini text-acc-green">DCA ($)</label>
+              <label class="opt-label-mini text-acc-green">DCA Monthly ($)</label>
               <input id="cfg-dca" value="0" type="number" class="opt-input text-center font-bold text-acc-green">
           </div>
       </div>
@@ -805,7 +805,9 @@ th.sortable:hover { color: #3b82f6; }
         <div class="glass p-6 rounded-2xl">
             <!-- Portfolio Summary -->
             <div id="portfolio-summary" class="mb-6 pb-6 border-b border-gray-200 dark:border-dark-700 hidden">
-                <h4 class="text-md font-bold text-dark-900 dark:text-white mb-3">สรุปตาม Portfolio</h4>
+                <h4 class="text-md font-bold text-dark-900 dark:text-white mb-3 flex items-center gap-2">สรุปตาม Portfolio
+                    <button onclick="PnLChartModal.show()" class="text-stock-500 hover:text-stock-600 transition-all" title="ดูกราฟ P&L"><i class="fas fa-chart-line"></i></button>
+                </h4>
                 <div id="portfolio-summary-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     <!-- Populated by JS -->
                 </div>
@@ -1142,6 +1144,22 @@ th.sortable:hover { color: #3b82f6; }
 
 </div>
 
+<!-- P&L Chart Modal -->
+<div id="pnl-chart-modal" class="fixed inset-0 bg-black/50 backdrop-filter z-[200] hidden flex items-center justify-center p-4" onclick="if(event.target.id==='pnl-chart-modal') PnLChartModal.close()">
+  <div class="bg-white dark:bg-dark-800 rounded-xl shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden">
+    <div class="bg-gradient-to-r from-purple-500 to-blue-500 p-4 flex justify-between items-center">
+      <h3 class="text-lg font-bold text-white flex items-center gap-2">
+        <i class="fas fa-chart-line"></i> P&L Over Time
+      </h3>
+      <button onclick="PnLChartModal.close()" class="text-white hover:text-gray-200 text-2xl leading-none"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="p-4 overflow-y-auto max-h-[calc(85vh-80px)] custom-scrollbar">
+      <div class="h-[400px]"><canvas id="pnl-chart-canvas"></canvas></div>
+      <p class="text-xs text-gray-500 mt-2 text-center">P&L = (current holdings × current prices) - total cost basis per portfolio</p>
+    </div>
+  </div>
+</div>
+
 <!-- ================= LOADER ================= -->
 <div id="loader" class="fixed inset-0 bg-white/95 dark:bg-dark-900/95 z-[100] hidden flex flex-col items-center justify-center backdrop-blur-md">
     <div class="w-16 h-16 border-4 border-stock-500 border-t-transparent rounded-full animate-spin"></div>
@@ -1150,7 +1168,7 @@ th.sortable:hover { color: #3b82f6; }
 
 <script>
 /* =========================================================
-   QUANT ENGINE CORE V48.2 (LIQUID ALPHA + SPEED FIX)
+   QUANT ENGINE CORE V48.6 (INDEXEDDB + ENHANCED DCA)
 ========================================================= */
 
 const CRYPTO_UNIVERSE = ["BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "DOGE", "DOT", "AVAX", "LINK", "UNI", "LTC", "ATOM"];
@@ -1172,6 +1190,143 @@ const PROXIES = [
     url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
     url => `https://corsproxy.io/?${encodeURIComponent(url)}`
 ];
+
+/* =========================================================
+   INDEXEDDB MANAGER (Replaces localStorage for large data)
+========================================================= */
+
+const IndexedDBManager = {
+    db: null,
+    DB_NAME: 'GPE_Database',
+    DB_VERSION: 1,
+    STORES: {
+        CACHE: 'market_cache',
+        CONFIGS: 'configs',
+        TRANSACTIONS: 'transactions'
+    },
+
+    async init() {
+        return new Promise((resolve, reject) => {
+            if (this.db) { resolve(); return; }
+            
+            const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
+            
+            request.onerror = () => {
+                console.warn('IndexedDB not available, falling back to memory');
+                reject(request.error);
+            };
+            
+            request.onsuccess = (event) => {
+                this.db = event.target.result;
+                resolve();
+            };
+            
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                
+                // Market data cache store
+                if (!db.objectStoreNames.contains(this.STORES.CACHE)) {
+                    const cacheStore = db.createObjectStore(this.STORES.CACHE, { keyPath: 'key' });
+                    cacheStore.createIndex('mode', 'mode', { unique: false });
+                }
+                
+                // Configurations store
+                if (!db.objectStoreNames.contains(this.STORES.CONFIGS)) {
+                    db.createObjectStore(this.STORES.CONFIGS, { keyPath: 'key' });
+                }
+                
+                // Transactions store
+                if (!db.objectStoreNames.contains(this.STORES.TRANSACTIONS)) {
+                    const txnStore = db.createObjectStore(this.STORES.TRANSACTIONS, { keyPath: 'id', autoIncrement: true });
+                    txnStore.createIndex('portfolio', 'portfolio', { unique: false });
+                    txnStore.createIndex('date', 'date', { unique: false });
+                }
+            };
+        });
+    },
+
+    async get(storeName, key) {
+        if (!this.db) return null;
+        return new Promise((resolve, reject) => {
+            try {
+                const tx = this.db.transaction(storeName, 'readonly');
+                const store = tx.objectStore(storeName);
+                const request = store.get(key);
+                request.onsuccess = () => resolve(request.result?.value || null);
+                request.onerror = () => reject(request.error);
+            } catch(e) { resolve(null); }
+        });
+    },
+
+    async set(storeName, key, value) {
+        if (!this.db) return false;
+        return new Promise((resolve, reject) => {
+            try {
+                const tx = this.db.transaction(storeName, 'readwrite');
+                const store = tx.objectStore(storeName);
+                const request = store.put({ key, value, timestamp: Date.now() });
+                request.onsuccess = () => resolve(true);
+                request.onerror = () => reject(request.error);
+            } catch(e) { resolve(false); }
+        });
+    },
+
+    async remove(storeName, key) {
+        if (!this.db) return false;
+        return new Promise((resolve, reject) => {
+            try {
+                const tx = this.db.transaction(storeName, 'readwrite');
+                const store = tx.objectStore(storeName);
+                const request = store.delete(key);
+                request.onsuccess = () => resolve(true);
+                request.onerror = () => reject(request.error);
+            } catch(e) { resolve(false); }
+        });
+    },
+
+    async clear(storeName) {
+        if (!this.db) return false;
+        return new Promise((resolve, reject) => {
+            try {
+                const tx = this.db.transaction(storeName, 'readwrite');
+                const store = tx.objectStore(storeName);
+                const request = store.clear();
+                request.onsuccess = () => resolve(true);
+                request.onerror = () => reject(request.error);
+            } catch(e) { resolve(false); }
+        });
+    },
+
+    async getAll(storeName) {
+        if (!this.db) return [];
+        return new Promise((resolve, reject) => {
+            try {
+                const tx = this.db.transaction(storeName, 'readonly');
+                const store = tx.objectStore(storeName);
+                const request = store.getAll();
+                request.onsuccess = () => resolve(request.result?.map(r => r.value) || []);
+                request.onerror = () => reject(request.error);
+            } catch(e) { resolve([]); }
+        });
+    },
+
+    // Fallback to localStorage if IndexedDB unavailable
+    fallbackGet(key) {
+        try {
+            const cached = localStorage.getItem(key);
+            if (!cached) return null;
+            const { data } = JSON.parse(cached);
+            return Array.isArray(data) ? data : null;
+        } catch(e) { return null; }
+    },
+
+    fallbackSet(key, data) {
+        try {
+            localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+            return true;
+        } catch(e) { return false; }
+    }
+};
 
 class QuantEngine {
   constructor(){
@@ -1271,22 +1426,43 @@ class QuantEngine {
       this.dataStatus = {};
   }
 
-  // Cache Management (6 hours)
+  // Cache Management - Using IndexedDB
+  async initCache() {
+      try {
+          await IndexedDBManager.init();
+      } catch(e) {
+          console.warn('IndexedDB not available, using localStorage fallback');
+      }
+  }
+
   getCacheKey(symbol, mode = this.marketMode) {
       return `gpe_cache_${mode}_${symbol}`;
   }
 
-  getCachedData(symbol, mode = this.marketMode) {
+  async getCachedData(symbol, mode = this.marketMode) {
       const cacheKey = this.getCacheKey(symbol, mode);
-      const cached = localStorage.getItem(cacheKey);
-      if (!cached) return null;
       
-      try {
-          const { data } = JSON.parse(cached);
-          return Array.isArray(data) ? data : null;
-      } catch(e) {
-          return null;
+      // Try IndexedDB first
+      if (IndexedDBManager.db) {
+          const cached = await IndexedDBManager.get(IndexedDBManager.STORES.CACHE, cacheKey);
+          if (cached && Array.isArray(cached)) return cached;
       }
+      
+      // Fallback to localStorage
+      return IndexedDBManager.fallbackGet(cacheKey);
+  }
+
+  async setCachedData(symbol, data, mode = this.marketMode) {
+      const cacheKey = this.getCacheKey(symbol, mode);
+      
+      // Try IndexedDB first
+      if (IndexedDBManager.db) {
+          await IndexedDBManager.set(IndexedDBManager.STORES.CACHE, cacheKey, data);
+          return;
+      }
+      
+      // Fallback to localStorage
+      IndexedDBManager.fallbackSet(cacheKey, data);
   }
 
   getBangkokDateParts() {
@@ -1337,34 +1513,16 @@ class QuantEngine {
       return [...merged.values()].sort((a, b) => a.date.localeCompare(b.date));
   }
 
-  setCachedData(symbol, data, mode = this.marketMode) {
-      const cacheKey = this.getCacheKey(symbol, mode);
-      const cacheObj = {
-          data: data,
-          timestamp: Date.now()
-      };
-      try {
-          localStorage.setItem(cacheKey, JSON.stringify(cacheObj));
-      } catch(e) {
-          console.warn('Failed to cache data:', e);
+  async clearCache() {
+      // Clear IndexedDB cache
+      if (IndexedDBManager.db) {
+          await IndexedDBManager.clear(IndexedDBManager.STORES.CACHE);
       }
-  }
-
-  clearCache() {
+      // Also clear legacy localStorage cache
       const keys = Object.keys(localStorage);
       const cacheKeys = keys.filter(key => key.startsWith('gpe_cache_'));
-      let count = 0;
-      
-      cacheKeys.forEach(key => {
-          localStorage.removeItem(key);
-          count++;
-      });
-      
-      if (count > 0) {
-          alert(`Cleared ${count} cached asset(s)`);
-      } else {
-          alert('No cache to clear');
-      }
+      cacheKeys.forEach(key => localStorage.removeItem(key));
+      alert(`Cache cleared (${cacheKeys.length} localStorage + IndexedDB)`);
   }
 
   // --- NEW: Fetch with Timeout ---
@@ -1809,11 +1967,22 @@ class QuantEngine {
                           const dayPrices = Object.fromEntries(activeUniverse.map(k => [k, this.marketData[k].prices[t]]));
 
                           // --- DCA inflow added to NAV before rebalance ---
+                          // cfg.dca = monthly budget; allocate per-cycle budget = monthlyBudget / cyclesInMonth
                           let dcaInflow = 0, dcaMultiplier = 1.0, dcaAllocationPcts = {};
                           if (cfg.dca > 0) {
+                              const currentDate = this.dates[t];
+                              const currentMonth = currentDate?.slice(0, 7); // "YYYY-MM"
+                              // Count rebalance cycles in current month for this rb value
+                              const monthStartIdx = this.dates.findIndex(d => d.startsWith(currentMonth));
+                              let cyclesInMonth = 0;
+                              for (let ti = monthStartIdx; ti < this.dates.length && this.dates[ti].startsWith(currentMonth); ti++) {
+                                  if ((ti - startIdx) > 0 && (ti - startIdx) % rb === 0) cyclesInMonth++;
+                              }
+                              cyclesInMonth = Math.max(cyclesInMonth, 1);
+                              const perCycleBudget = cfg.dca / cyclesInMonth;
                               const benchmarkPrices = this.marketData[cfg.bench]?.prices || this.marketData[activeUniverse[0]].prices;
                               dcaMultiplier = this.calculateDCAMultiplier(cfg, benchmarkPrices, t);
-                              dcaInflow = cfg.dca * dcaMultiplier;
+                              dcaInflow = perCycleBudget * dcaMultiplier;
                               cash += dcaInflow;
                               totalNav += dcaInflow;
                               dcaCount++;
@@ -4547,7 +4716,87 @@ const RebalanceCalculator = {
     }
 };
 
-const Engine = new QuantEngine();
+// P&L Chart Modal
+const PnLChartModal = {
+    chart: null,
+
+    show() {
+        const allTxns = PortfolioTracker.getAllTransactions();
+        if (allTxns.length === 0) { alert('ยังไม่มีรายการลงทุน'); return; }
+        if (!Engine.dates.length) { alert('กรุณารัน Fetch Data ก่อน'); return; }
+
+        const summaryByPortfolio = {};
+        allTxns.forEach(txn => {
+            if (!summaryByPortfolio[txn.portfolio]) summaryByPortfolio[txn.portfolio] = [];
+            summaryByPortfolio[txn.portfolio].push(txn);
+        });
+
+        const palette = ['#3b82f6','#0ECB81','#f59e0b','#8b5cf6','#ef4444','#14b8a6','#ec4899','#60a5fa'];
+        const datasets = [];
+        let pi = 0;
+
+        Object.entries(summaryByPortfolio).forEach(([name, txns]) => {
+            const sorted = [...txns].sort((a,b) => a.date.localeCompare(b.date));
+            const holdings = {};
+            let costBasis = 0;
+            let txnIdx = 0;
+            const pnlData = [];
+
+            for (let i = 0; i < Engine.dates.length; i++) {
+                const d = Engine.dates[i];
+                while (txnIdx < sorted.length && sorted[txnIdx].date <= d) {
+                    const t = sorted[txnIdx];
+                    if (!holdings[t.asset]) holdings[t.asset] = 0;
+                    holdings[t.asset] += t.quantity;
+                    costBasis += (t.type === 'buy' ? t.total + (t.commission || 0) : -(t.total - (t.commission || 0)));
+                    txnIdx++;
+                }
+                let mktVal = 0;
+                Object.entries(holdings).forEach(([asset, qty]) => {
+                    if (qty > 0 && Engine.marketData[asset]) {
+                        const p = Engine.marketData[asset].prices[i];
+                        if (p > 0) mktVal += qty * p;
+                    }
+                });
+                pnlData.push(txnIdx > 0 ? mktVal - costBasis : null);
+            }
+            datasets.push({
+                label: name, data: pnlData,
+                borderColor: palette[pi % palette.length], borderWidth: 2,
+                pointRadius: 0, fill: false, tension: 0.1
+            });
+            pi++;
+        });
+
+        if (this.chart) this.chart.destroy();
+        const ctx = document.getElementById('pnl-chart-canvas').getContext('2d');
+        this.chart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: Engine.dates, datasets },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                interaction: { mode: 'nearest', intersect: false, axis: 'x' },
+                scales: {
+                    y: { grid: { color: document.body.classList.contains('dark') ? '#2B3139' : '#e2e8f0' },
+                         ticks: { color: '#94a3b8', callback: v => '$' + v.toLocaleString() } },
+                    x: { ticks: { color: '#94a3b8', maxTicksLimit: 10, maxRotation: 45 }, grid: { display: false } }
+                },
+                plugins: {
+                    legend: { labels: { color: document.body.classList.contains('dark') ? '#EAECEF' : '#1E2329' } },
+                    tooltip: { backgroundColor: 'rgba(0,0,0,0.9)', titleFont: { family: 'JetBrains Mono', size: 11 },
+                        bodyFont: { family: 'JetBrains Mono', size: 10 }, padding: 12, cornerRadius: 8,
+                        callbacks: { label: ctx => `${ctx.dataset.label}: $${(ctx.parsed.y||0).toFixed(2)}` } }
+                }
+            }
+        });
+        document.getElementById('pnl-chart-modal').classList.remove('hidden');
+    },
+
+    close() {
+        document.getElementById('pnl-chart-modal').classList.add('hidden');
+        if (this.chart) { this.chart.destroy(); this.chart = null; }
+    }
+};
 
 // Enhanced DCA Controls Toggle
 window.onload = () => {
