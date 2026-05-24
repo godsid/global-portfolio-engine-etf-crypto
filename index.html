@@ -277,6 +277,24 @@ th.sortable:hover { color: #3b82f6; }
           <button id="btn-tab-tracker" onclick="UI.switchTab('tracker')" class="px-3 py-1 text-[10px] font-bold rounded text-gray-400 hover:text-stock-500 transition-all">PORTFOLIO TRACKER</button>
           <button id="btn-tab-docs" onclick="UI.switchTab('docs')" class="px-3 py-1 text-[10px] font-bold rounded text-gray-400 hover:text-stock-500 transition-all">DOCS & STRATEGIES (THAI)</button>
       </nav>
+      <!-- Mobile Menu Button -->
+      <button id="mobile-menu-btn" onclick="UI.toggleMobileMenu()" class="md:hidden w-10 h-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-dark-800 hover:bg-stock-500 hover:text-white transition-all">
+          <i class="fas fa-bars"></i>
+      </button>
+      <!-- Mobile Dropdown Menu -->
+      <div id="mobile-menu" class="hidden absolute top-full left-0 right-0 bg-white dark:bg-dark-800 shadow-xl border-t border-gray-200 dark:border-dark-700 z-50 md:hidden">
+          <div class="flex flex-col p-4 gap-2">
+              <button onclick="UI.switchTab('dashboard'); UI.closeMobileMenu();" class="w-full text-left px-4 py-3 text-sm font-bold rounded-lg bg-gray-100 dark:bg-dark-700 text-stock-600 transition-all flex items-center gap-2">
+                  <i class="fas fa-th-large"></i> DASHBOARD
+              </button>
+              <button onclick="UI.switchTab('tracker'); UI.closeMobileMenu();" class="w-full text-left px-4 py-3 text-sm font-bold rounded-lg hover:bg-gray-100 dark:hover:bg-dark-700 text-gray-600 dark:text-gray-300 transition-all flex items-center gap-2">
+                  <i class="fas fa-wallet"></i> PORTFOLIO TRACKER
+              </button>
+              <button onclick="UI.switchTab('docs'); UI.closeMobileMenu();" class="w-full text-left px-4 py-3 text-sm font-bold rounded-lg hover:bg-gray-100 dark:hover:bg-dark-700 text-gray-600 dark:text-gray-300 transition-all flex items-center gap-2">
+                  <i class="fas fa-book"></i> DOCS & STRATEGIES (THAI)
+              </button>
+          </div>
+      </div>
     </div>
     <div class="flex items-center gap-2">
         <span id="system-status" class="text-[9px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
@@ -1156,6 +1174,76 @@ th.sortable:hover { color: #3b82f6; }
     <div class="p-4 overflow-y-auto max-h-[calc(85vh-80px)] custom-scrollbar">
       <div class="h-[400px]"><canvas id="pnl-chart-canvas"></canvas></div>
       <p class="text-xs text-gray-500 mt-2 text-center">P&L = (current holdings × current prices) - total cost basis per portfolio</p>
+    </div>
+  </div>
+</div>
+
+<!-- Portfolio Detail Modal -->
+<div id="portfolio-detail-modal" class="fixed inset-0 bg-black/50 backdrop-filter z-[210] hidden flex items-center justify-center p-4" onclick="if(event.target.id==='portfolio-detail-modal') PortfolioDetailModal.close()">
+  <div class="bg-white dark:bg-dark-800 rounded-xl shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-hidden">
+    <div class="bg-gradient-to-r from-stock-500 to-purple-500 p-4 flex justify-between items-center">
+      <h3 class="text-lg font-bold text-white flex items-center gap-2">
+        <i class="fas fa-chart-pie"></i> <span id="detail-portfolio-name">Portfolio Details</span>
+      </h3>
+      <button onclick="PortfolioDetailModal.close()" class="text-white hover:text-gray-200 text-2xl leading-none"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="p-6 overflow-y-auto max-h-[calc(85vh-100px)] custom-scrollbar">
+      <!-- Summary Stats -->
+      <div class="grid grid-cols-3 gap-4 mb-6">
+        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
+          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">ต้นทุน</div>
+          <div id="detail-cost" class="text-xl font-bold text-stock-600 dark:text-stock-400 mono">$0.00</div>
+        </div>
+        <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 text-center">
+          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">มูลค่าปัจจุบัน</div>
+          <div id="detail-value" class="text-xl font-bold text-green-600 dark:text-green-400 mono">$0.00</div>
+        </div>
+        <div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 text-center">
+          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">P&L</div>
+          <div id="detail-pnl" class="text-xl font-bold text-purple-600 dark:text-purple-400 mono">$0 (0%)</div>
+        </div>
+      </div>
+      
+      <!-- Pie Charts Row -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div class="bg-gray-50 dark:bg-dark-700 rounded-xl p-4">
+          <h4 class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 text-center">มูลค่าตาม Asset</h4>
+          <div class="h-[250px]"><canvas id="detail-value-pie-chart"></canvas></div>
+        </div>
+        <div class="bg-gray-50 dark:bg-dark-700 rounded-xl p-4">
+          <h4 class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 text-center">สัดส่วนต้นทุน</h4>
+          <div class="h-[250px]"><canvas id="detail-cost-pie-chart"></canvas></div>
+        </div>
+      </div>
+      
+      <!-- Asset Details Table -->
+      <div class="bg-gray-50 dark:bg-dark-700 rounded-xl p-4">
+        <h4 class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">รายละเอียด Asset</h4>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead class="bg-gray-100 dark:bg-dark-800">
+              <tr>
+                <th class="px-3 py-2 text-left font-bold">Asset</th>
+                <th class="px-3 py-2 text-right font-bold">จำนวน</th>
+                <th class="px-3 py-2 text-right font-bold">ราคาเฉลี่ย</th>
+                <th class="px-3 py-2 text-right font-bold">ต้นทุน</th>
+                <th class="px-3 py-2 text-right font-bold">มูลค่า</th>
+                <th class="px-3 py-2 text-right font-bold">P&L %</th>
+              </tr>
+            </thead>
+            <tbody id="detail-asset-table" class="divide-y dark:divide-dark-600">
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <!-- Rebalance Button -->
+      <div class="mt-6 text-center">
+        <button id="detail-rebalance-btn" onclick="PortfolioDetailModal.openRebalance()" class="px-6 py-3 bg-gradient-to-r from-stock-500 to-stock-600 hover:from-stock-600 hover:to-stock-700 text-white rounded-lg text-sm font-bold transition-all shadow-lg flex items-center gap-2 mx-auto">
+          <i class="fas fa-balance-scale"></i>
+          <span>ปรับสัดส่วน Portfolio</span>
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -2423,6 +2511,16 @@ const UI = {
     renderAssets(){ const l = document.getElementById('asset-list'); if(l) l.innerHTML = Engine.universe.map(a => `<span class="bg-white dark:bg-dark-800 border dark:border-dark-700 px-1.5 py-0.5 rounded text-[9px] mono font-bold flex items-center gap-1 shadow-sm transition-transform hover:scale-105">${a} <button onclick="UI.removeAsset('${a}')" class="text-red-500 hover:text-red-700 font-bold ml-1">×</button></span>`).join(''); },
     loading(s, t="..."){ const elT = document.getElementById('loader-text'); const elL = document.getElementById('loader'); if(elT) elT.innerText = t; if(elL) s ? elL.classList.remove('hidden') : elL.classList.add('hidden'); },
     toggleTheme(){ document.body.classList.toggle('dark'); if(Engine.results.length) this.selectResult(this.selectedIdx); },
+
+    toggleMobileMenu() {
+        const menu = document.getElementById('mobile-menu');
+        menu.classList.toggle('hidden');
+    },
+
+    closeMobileMenu() {
+        const menu = document.getElementById('mobile-menu');
+        menu.classList.add('hidden');
+    },
     toggleLog(){ 
         if (this.mainChartView !== 'growth') return;
         this.isLog = !this.isLog; 
@@ -4366,15 +4464,17 @@ const PortfolioTracker = {
         const hasMarketData = Object.keys(marketData).length > 0;
         
         const summaryList = document.getElementById('portfolio-summary-list');
+        
+        // Use grid layout with pie chart cards - clickable to open detail modal
+        summaryList.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
+        
         summaryList.innerHTML = Object.entries(summaryByPortfolio).map(([name, data]) => {
             let currentValue = 0;
-            let holdingsHtml = '';
-            
             const activeHoldings = Object.entries(data.holdings).filter(([_, h]) => Math.abs(h.quantity) > 0.0001);
             let hasPortfolioMarketData = false;
+            const assetData = [];
             
             if (hasMarketData && activeHoldings.length > 0) {
-                // Calculate total portfolio value for percentage calculation
                 let totalPortfolioValue = 0;
                 activeHoldings.forEach(([asset, holding]) => {
                     const currentPrice = this.getLatestPriceFromData(asset, marketData);
@@ -4382,85 +4482,117 @@ const PortfolioTracker = {
                         const assetValue = holding.quantity * currentPrice;
                         totalPortfolioValue += assetValue;
                         hasPortfolioMarketData = true;
+                        assetData.push({
+                            asset,
+                            quantity: holding.quantity,
+                            avgPrice: holding.cost / holding.quantity,
+                            cost: holding.cost,
+                            currentPrice,
+                            value: assetValue,
+                            pnl: assetValue - holding.cost,
+                            pnlPct: holding.cost > 0 ? ((assetValue - holding.cost) / holding.cost * 100) : 0,
+                            portfolioPct: 0
+                        });
                     }
                 });
                 
-                holdingsHtml = '<div class="mt-3 pt-3 border-t border-gray-300 dark:border-dark-600 space-y-2">';
-                activeHoldings.forEach(([asset, holding]) => {
-                    const avgPrice = holding.cost / holding.quantity;
-                    const currentPrice = this.getLatestPriceFromData(asset, marketData);
-                    const assetValue = holding.quantity * currentPrice;
-                    const assetPnl = assetValue - holding.cost;
-                    const assetPnlPct = holding.cost > 0 ? (assetPnl / holding.cost * 100) : 0;
-                    // Only show percentage if we have valid market data and value
-                    const assetPortfolioPct = (totalPortfolioValue > 0 && assetValue > 0) ? (assetValue / totalPortfolioValue * 100) : 0;
-                    
-                    currentValue += assetValue;
-                    
-                    const pnlColor = assetPnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
-                    const pnlSign = assetPnl >= 0 ? '+' : '';
-                    
-                    holdingsHtml += `
-                        <div class="flex justify-between items-center text-xs">
-                            <div>
-                                <span class="font-bold text-gray-700 dark:text-gray-300">${asset}</span>
-                                <span class="text-gray-500 ml-2">${holding.quantity.toFixed(4)}</span>
-                                <span class="text-blue-600 dark:text-blue-400 ml-2 font-semibold">${assetPortfolioPct.toFixed(1)}%</span>
-                            </div>
-                            <div class="text-right">
-                                <div class="font-bold text-gray-700 dark:text-gray-300">$${assetValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                                <div class="${pnlColor} text-[10px]">${pnlSign}$${assetPnl.toFixed(2)} (${pnlSign}${assetPnlPct.toFixed(2)}%)</div>
-                            </div>
-                        </div>
-                    `;
+                assetData.forEach(ad => {
+                    ad.portfolioPct = totalPortfolioValue > 0 ? (ad.value / totalPortfolioValue * 100) : 0;
+                    currentValue += ad.value;
                 });
-                holdingsHtml += '</div>';
-            } else if (activeHoldings.length > 0) {
-                holdingsHtml = '<div class="mt-3 pt-3 border-t border-gray-300 dark:border-dark-600 space-y-1">';
+            } else {
+                // No market data - show cost allocation only
                 activeHoldings.forEach(([asset, holding]) => {
-                    holdingsHtml += `
-                        <div class="flex justify-between items-center text-xs">
-                            <span class="font-bold text-gray-700 dark:text-gray-300">${asset}</span>
-                            <span class="text-gray-500">${holding.quantity.toFixed(4)} units</span>
-                        </div>
-                    `;
+                    assetData.push({
+                        asset,
+                        quantity: holding.quantity,
+                        avgPrice: holding.cost / holding.quantity,
+                        cost: holding.cost,
+                        currentPrice: 0,
+                        value: 0,
+                        pnl: 0,
+                        pnlPct: 0,
+                        portfolioPct: 0
+                    });
                 });
-                holdingsHtml += '<div class="text-[10px] text-orange-600 dark:text-orange-400 mt-2">รัน Fetch Data เพื่อดูราคาตลาด</div></div>';
             }
             
-            const pnl = hasPortfolioMarketData && activeHoldings.length > 0 ? currentValue - data.cost : 0;
-            const pnlPct = data.cost > 0 && hasPortfolioMarketData ? (pnl / data.cost * 100) : 0;
+            const pnl = hasPortfolioMarketData ? currentValue - data.cost : 0;
+            const pnlPct = data.cost > 0 ? (pnl / data.cost * 100) : 0;
             const pnlColor = pnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
             const pnlSign = pnl >= 0 ? '+' : '';
             
+            // Encode data for modal
+            const encodedData = encodeURIComponent(JSON.stringify({
+                name,
+                cost: data.cost,
+                commission: data.commission,
+                count: data.count,
+                currentValue,
+                pnl,
+                pnlPct,
+                holdings: assetData
+            }));
+            
             return `
-            <div class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-dark-800 dark:to-dark-700 rounded-lg p-4 border border-gray-200 dark:border-dark-600">
-                <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">${name}</div>
-                <div class="text-xl font-bold text-stock-600 dark:text-stock-400 mono mb-1">ต้นทุน: $${data.cost.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                ${hasPortfolioMarketData && activeHoldings.length > 0 ? `
-                    <div class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">มูลค่าปัจจุบัน: $${currentValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                    <div class="text-sm font-bold ${pnlColor}">P&L: ${pnlSign}$${Math.abs(pnl).toFixed(2)} (${pnlSign}${pnlPct.toFixed(2)}%)</div>
-                ` : ''}
-                ${data.commission > 0 ? `
-                    <div class="text-sm font-bold text-orange-600 dark:text-orange-400 mt-1">
-                        <i class="fas fa-percent mr-1"></i>Commission: $${data.commission.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+            <div onclick="PortfolioDetailModal.show('${encodedData}')" class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-dark-800 dark:to-dark-700 rounded-xl p-4 border border-gray-200 dark:border-dark-600 cursor-pointer hover:border-stock-500 hover:shadow-lg transition-all">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <div class="text-xs text-gray-600 dark:text-gray-400">${name}</div>
+                        <div class="text-lg font-bold text-stock-600 dark:text-stock-400 mono">ต้นทุน: $${data.cost.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
                     </div>
-                ` : ''}
-                <div class="text-xs text-gray-500 mt-2">
-                    <span class="mr-3"><i class="fas fa-list-ul mr-1"></i>${data.count} รายการ</span>
-                    <span><i class="fas fa-coins mr-1"></i>${activeHoldings.length} Assets</span>
+                    <div class="text-right">
+                        ${hasPortfolioMarketData ? `
+                            <div class="text-sm font-bold text-gray-700 dark:text-gray-300">มูลค่า: $${currentValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                            <div class="text-sm font-bold ${pnlColor}">${pnlSign}$${Math.abs(pnl).toFixed(2)} (${pnlSign}${pnlPct.toFixed(2)}%)</div>
+                        ` : `
+                            <div class="text-xs text-orange-500">รัน Fetch Data</div>
+                        `}
+                    </div>
                 </div>
-                ${holdingsHtml}
-                ${hasPortfolioMarketData && activeHoldings.length > 0 ? `
-                <button onclick="RebalanceCalculator.openModal('${name}', ${JSON.stringify(data.holdings).replace(/"/g, '&quot;')})" class="w-full mt-3 px-3 py-2 bg-gradient-to-r from-stock-500 to-stock-600 hover:from-stock-600 hover:to-stock-700 text-white rounded-lg text-xs font-bold transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2">
-                    <i class="fas fa-balance-scale"></i>
-                    <span>ปรับสัดส่วน Portfolio</span>
-                </button>
+                
+                ${hasPortfolioMarketData && assetData.length > 0 ? `
+                <div class="mb-3">
+                    <div class="text-xs text-gray-500 mb-2">สัดส่วนมูลค่าตาม Asset</div>
+                    <div class="flex flex-wrap gap-1">
+                        ${assetData.slice(0, 4).map(ad => `
+                            <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold" style="background: ${this.getAssetColor(ad.asset)}20; color: ${this.getAssetColor(ad.asset)}">
+                                ${ad.asset}: ${ad.portfolioPct.toFixed(1)}%
+                            </span>
+                        `).join('')}
+                        ${assetData.length > 4 ? `<span class="text-[10px] text-gray-400">+${assetData.length - 4}</span>` : ''}
+                    </div>
+                </div>
                 ` : ''}
+                
+                <div class="flex items-center justify-between">
+                    <div class="text-xs text-gray-500">
+                        <i class="fas fa-list-ul mr-1"></i>${data.count} รายการ
+                        <span class="mx-2">|</span>
+                        <i class="fas fa-coins mr-1"></i>${activeHoldings.length} Assets
+                    </div>
+                    <div class="flex items-center gap-2">
+                        ${hasPortfolioMarketData ? `
+                        <button onclick="event.stopPropagation(); RebalanceCalculator.openModal('${name}', ${JSON.stringify(data.holdings).replace(/"/g, '"')})" class="px-2 py-1 bg-gradient-to-r from-stock-500 to-stock-600 hover:from-stock-600 hover:to-stock-700 text-white rounded text-[10px] font-bold transition-all">
+                            <i class="fas fa-balance-scale"></i> ปรับ
+                        </button>
+                        ` : ''}
+                        <span class="text-stock-500 text-xs"><i class="fas fa-chart-pie mr-1"></i>ดูรายละเอียด</span>
+                    </div>
+                </div>
             </div>
         `}).join('');
         
         document.getElementById('portfolio-summary').classList.remove('hidden');
+    },
+    
+    getAssetColor(asset) {
+        const colors = ['#3b82f6', '#0ECB81', '#f59e0b', '#8b5cf6', '#ef4444', '#14b8a6', '#ec4899', '#60a5fa', '#FCD535', '#22c55e'];
+        let hash = 0;
+        for (let i = 0; i < asset.length; i++) {
+            hash = asset.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        return colors[Math.abs(hash) % colors.length];
     }
 };
 
@@ -4739,17 +4871,33 @@ const PnLChartModal = {
 
         const palette = ['#3b82f6','#0ECB81','#f59e0b','#8b5cf6','#ef4444','#14b8a6','#ec4899','#60a5fa'];
         const datasets = [];
+        const allLabels = [];
         let pi = 0;
+
+        // Find first date that has any transaction
+        let firstTxnDate = null;
+        Object.values(summaryByPortfolio).forEach(txns => {
+            txns.forEach(t => {
+                if (!firstTxnDate || t.date < firstTxnDate) firstTxnDate = t.date;
+            });
+        });
+
+        const startIdx = Engine.dates.findIndex(d => d >= firstTxnDate);
+        const alignedDates = Engine.dates.slice(startIdx);
 
         Object.entries(summaryByPortfolio).forEach(([name, txns]) => {
             const sorted = [...txns].sort((a,b) => a.date.localeCompare(b.date));
             const holdings = {};
             let costBasis = 0;
             let txnIdx = 0;
-            const pnlData = [];
+            const pnlPctData = [];
+            const pnlDollarData = [];
+            const mktValData = [];
+            const costBasisData = [];
 
-            for (let i = 0; i < Engine.dates.length; i++) {
-                const d = Engine.dates[i];
+            for (let i = 0; i < alignedDates.length; i++) {
+                const d = alignedDates[i];
+                const globalIdx = startIdx + i;
                 while (txnIdx < sorted.length && sorted[txnIdx].date <= d) {
                     const t = sorted[txnIdx];
                     if (!holdings[t.asset]) holdings[t.asset] = 0;
@@ -4760,38 +4908,94 @@ const PnLChartModal = {
                 let mktVal = 0;
                 Object.entries(holdings).forEach(([asset, qty]) => {
                     if (qty > 0 && Engine.marketData[asset]) {
-                        const p = Engine.marketData[asset].prices[i];
+                        const p = Engine.marketData[asset].prices[globalIdx];
                         if (p > 0) mktVal += qty * p;
                     }
                 });
-                pnlData.push(txnIdx > 0 ? mktVal - costBasis : null);
+
+                if (txnIdx > 0) {
+                    const pnlDollar = mktVal - costBasis;
+                    const pnlPct = costBasis > 0 ? (pnlDollar / costBasis * 100) : 0;
+                    pnlPctData.push(pnlPct);
+                    pnlDollarData.push(pnlDollar);
+                    mktValData.push(mktVal);
+                    costBasisData.push(costBasis);
+                } else {
+                    pnlPctData.push(null);
+                    pnlDollarData.push(null);
+                    mktValData.push(null);
+                    costBasisData.push(null);
+                }
             }
             datasets.push({
-                label: name, data: pnlData,
-                borderColor: palette[pi % palette.length], borderWidth: 2,
-                pointRadius: 0, fill: false, tension: 0.1
+                label: name,
+                pnlPct: pnlPctData,
+                pnlDollar: pnlDollarData,
+                mktVal: mktValData,
+                costBasis: costBasisData,
+                borderColor: palette[pi % palette.length],
+                borderWidth: 2,
+                pointRadius: 0,
+                fill: false,
+                tension: 0.1,
+                data: pnlPctData // Used by Chart.js
             });
             pi++;
         });
 
         if (this.chart) this.chart.destroy();
         const ctx = document.getElementById('pnl-chart-canvas').getContext('2d');
+
+        // Store raw data for tooltip
+        const chartDatasets = datasets.map(ds => ({
+            ...ds,
+            _pnlDollar: ds.pnlDollar,
+            _mktVal: ds.mktVal,
+            _costBasis: ds.costBasis
+        }));
+
         this.chart = new Chart(ctx, {
             type: 'line',
-            data: { labels: Engine.dates, datasets },
+            data: { labels: alignedDates, datasets: chartDatasets },
             options: {
                 responsive: true, maintainAspectRatio: false,
                 interaction: { mode: 'nearest', intersect: false, axis: 'x' },
                 scales: {
                     y: { grid: { color: document.body.classList.contains('dark') ? '#2B3139' : '#e2e8f0' },
-                         ticks: { color: '#94a3b8', callback: v => '$' + v.toLocaleString() } },
+                         ticks: { color: '#94a3b8', callback: v => v.toFixed(1) + '%' } },
                     x: { ticks: { color: '#94a3b8', maxTicksLimit: 10, maxRotation: 45 }, grid: { display: false } }
                 },
                 plugins: {
                     legend: { labels: { color: document.body.classList.contains('dark') ? '#EAECEF' : '#1E2329' } },
-                    tooltip: { backgroundColor: 'rgba(0,0,0,0.9)', titleFont: { family: 'JetBrains Mono', size: 11 },
-                        bodyFont: { family: 'JetBrains Mono', size: 10 }, padding: 12, cornerRadius: 8,
-                        callbacks: { label: ctx => `${ctx.dataset.label}: $${(ctx.parsed.y||0).toFixed(2)}` } }
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.95)',
+                        titleFont: { family: 'JetBrains Mono', size: 11 },
+                        bodyFont: { family: 'JetBrains Mono', size: 10 },
+                        padding: 12,
+                        cornerRadius: 8,
+                        displayColors: true,
+                        callbacks: {
+                            label: function(ctx) {
+                                const ds = ctx.dataset;
+                                const idx = ctx.dataIndex;
+                                const pnlPct = ctx.parsed.y;
+                                const pnlDollar = ds._pnlDollar ? ds._pnlDollar[idx] : 0;
+                                const mktVal = ds._mktVal ? ds._mktVal[idx] : 0;
+                                const costBasis = ds._costBasis ? ds._costBasis[idx] : 0;
+
+                                const pnlSign = pnlPct >= 0 ? '+' : '';
+                                const dollarSign = pnlDollar >= 0 ? '+$' : '-$';
+
+                                return [
+                                    `${ctx.dataset.label}`,
+                                    `P&L %: ${pnlSign}${pnlPct.toFixed(2)}%`,
+                                    `P&L $: ${dollarSign}${Math.abs(pnlDollar).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`,
+                                    `Market Value: $${mktVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`,
+                                    `Cost Basis: $${costBasis.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
+                                ];
+                            }
+                        }
+                    }
                 }
             }
         });
@@ -4801,6 +5005,183 @@ const PnLChartModal = {
     close() {
         document.getElementById('pnl-chart-modal').classList.add('hidden');
         if (this.chart) { this.chart.destroy(); this.chart = null; }
+    }
+};
+
+// Portfolio Detail Modal
+const PortfolioDetailModal = {
+    chartValue: null,
+    chartCost: null,
+    currentData: null,
+    currentHoldings: null,
+    
+    show(encodedData) {
+        try {
+            this.currentData = JSON.parse(decodeURIComponent(encodedData));
+        } catch (e) {
+            console.error('Error parsing portfolio data:', e);
+            return;
+        }
+        
+        const data = this.currentData;
+        
+        // Set header
+        document.getElementById('detail-portfolio-name').textContent = data.name;
+        
+        // Set summary stats
+        document.getElementById('detail-cost').textContent = `$${data.cost.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('detail-value').textContent = `$${data.currentValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        
+        const pnlSign = data.pnl >= 0 ? '+' : '';
+        const pnlColor = data.pnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+        document.getElementById('detail-pnl').innerHTML = `<span class="${pnlColor}">${pnlSign}$${Math.abs(data.pnl).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${pnlSign}${data.pnlPct.toFixed(2)}%)</span>`;
+        
+        // Render pie charts
+        this.renderPieCharts(data.holdings);
+        
+        // Render asset table
+        this.renderAssetTable(data.holdings);
+        
+        // Store holdings for rebalance button
+        this.currentHoldings = {};
+        data.holdings.forEach(h => {
+            this.currentHoldings[h.asset] = { quantity: h.quantity, cost: h.cost };
+        });
+        
+        // Show modal
+        document.getElementById('portfolio-detail-modal').classList.remove('hidden');
+    },
+    
+    renderPieCharts(holdings) {
+        // Destroy existing charts
+        if (this.chartValue) { this.chartValue.destroy(); this.chartValue = null; }
+        if (this.chartCost) { this.chartCost.destroy(); this.chartCost = null; }
+        
+        const valueCtx = document.getElementById('detail-value-pie-chart').getContext('2d');
+        const costCtx = document.getElementById('detail-cost-pie-chart').getContext('2d');
+        
+        // Get colors
+        const getColor = (asset) => {
+            const colors = ['#3b82f6', '#0ECB81', '#f59e0b', '#8b5cf6', '#ef4444', '#14b8a6', '#ec4899', '#60a5fa', '#FCD535', '#22c55e'];
+            let hash = 0;
+            for (let i = 0; i < asset.length; i++) {
+                hash = asset.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            return colors[Math.abs(hash) % colors.length];
+        };
+        
+        // Prepare data for pie charts
+        const labels = holdings.map(h => h.asset);
+        const valueData = holdings.map(h => h.value);
+        const costData = holdings.map(h => h.cost);
+        const colors = holdings.map(h => getColor(h.asset));
+        
+        // Value pie chart
+        this.chartValue = new Chart(valueCtx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: valueData,
+                    backgroundColor: colors,
+                    borderWidth: 2,
+                    borderColor: document.body.classList.contains('dark') ? '#1E2329' : '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { 
+                            color: document.body.classList.contains('dark') ? '#EAECEF' : '#1E2329',
+                            font: { size: 10 },
+                            padding: 8
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                const pct = (ctx.parsed / total * 100).toFixed(1);
+                                return `${ctx.label}: $${ctx.parsed.toLocaleString('en-US', {minimumFractionDigits: 2})} (${pct}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Cost pie chart
+        this.chartCost = new Chart(costCtx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: costData,
+                    backgroundColor: colors,
+                    borderWidth: 2,
+                    borderColor: document.body.classList.contains('dark') ? '#1E2329' : '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { 
+                            color: document.body.classList.contains('dark') ? '#EAECEF' : '#1E2329',
+                            font: { size: 10 },
+                            padding: 8
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                const pct = (ctx.parsed / total * 100).toFixed(1);
+                                return `${ctx.label}: $${ctx.parsed.toLocaleString('en-US', {minimumFractionDigits: 2})} (${pct}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    },
+    
+    renderAssetTable(holdings) {
+        const tbody = document.getElementById('detail-asset-table');
+        
+        tbody.innerHTML = holdings.map(h => {
+            const pnlColor = h.pnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+            const pnlSign = h.pnl >= 0 ? '+' : '';
+            
+            return `
+                <tr class="hover:bg-gray-50 dark:hover:bg-dark-600 transition-colors">
+                    <td class="px-3 py-2 font-bold">${h.asset}</td>
+                    <td class="px-3 py-2 text-right mono">${h.quantity.toFixed(4)}</td>
+                    <td class="px-3 py-2 text-right mono">$${h.avgPrice.toFixed(2)}</td>
+                    <td class="px-3 py-2 text-right mono">$${h.cost.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                    <td class="px-3 py-2 text-right mono font-bold text-stock-600">$${h.value.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                    <td class="px-3 py-2 text-right mono font-bold ${pnlColor}">${pnlSign}${h.pnlPct.toFixed(2)}%</td>
+                </tr>
+            `;
+        }).join('');
+    },
+    
+    openRebalance() {
+        this.close();
+        if (this.currentHoldings) {
+            RebalanceCalculator.openModal(this.currentData.name, this.currentHoldings);
+        }
+    },
+    
+    close() {
+        document.getElementById('portfolio-detail-modal').classList.add('hidden');
+        if (this.chartValue) { this.chartValue.destroy(); this.chartValue = null; }
+        if (this.chartCost) { this.chartCost.destroy(); this.chartCost = null; }
     }
 };
 
