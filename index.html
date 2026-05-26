@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<title>Global Portfolio Engine v49.0 — Liquid Alpha Edition (Full Docs)</title>
+<title>Global Portfolio Engine v50.0 — Liquid Alpha Edition (Full Docs)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Advanced Quant Portfolio Backtesting Engine - Liquid Alpha Edition (Volume Filter Integrated)">
 
@@ -1164,7 +1164,7 @@ th.sortable:hover { color: #3b82f6; }
 
 <!-- P&L Chart Modal -->
 <div id="pnl-chart-modal" class="fixed inset-0 bg-black/50 backdrop-filter z-[200] hidden flex items-center justify-center p-4" onclick="if(event.target.id==='pnl-chart-modal') PnLChartModal.close()">
-  <div class="bg-white dark:bg-dark-800 rounded-xl shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden">
+  <div class="bg-white dark:bg-dark-800 rounded-xl shadow-2xl max-w-5xl w-full max-h-[85vh] overflow-hidden">
     <div class="bg-gradient-to-r from-purple-500 to-blue-500 p-4 flex justify-between items-center">
       <h3 class="text-lg font-bold text-white flex items-center gap-2">
         <i class="fas fa-chart-line"></i> P&L Over Time
@@ -1172,8 +1172,16 @@ th.sortable:hover { color: #3b82f6; }
       <button onclick="PnLChartModal.close()" class="text-white hover:text-gray-200 text-2xl leading-none"><i class="fas fa-times"></i></button>
     </div>
     <div class="p-4 overflow-y-auto max-h-[calc(85vh-80px)] custom-scrollbar">
-      <div class="h-[400px]"><canvas id="pnl-chart-canvas"></canvas></div>
-      <p class="text-xs text-gray-500 mt-2 text-center">P&L = (current holdings × current prices) - total cost basis per portfolio</p>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div>
+          <div class="h-[350px]"><canvas id="pnl-chart-canvas"></canvas></div>
+          <p class="text-xs text-gray-500 mt-2 text-center">P&L = (current holdings × current prices) - total cost basis per portfolio</p>
+        </div>
+        <div>
+          <div class="h-[350px]"><canvas id="pnl-pie-chart"></canvas></div>
+          <p class="text-xs text-gray-500 mt-2 text-center">สัดส่วนมูลค่า Portfolio ทั้งหมด</p>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -4857,6 +4865,7 @@ const RebalanceCalculator = {
 // P&L Chart Modal
 const PnLChartModal = {
     chart: null,
+    pieChart: null,
 
     show() {
         const allTxns = PortfolioTracker.getAllTransactions();
@@ -4884,6 +4893,9 @@ const PnLChartModal = {
 
         const startIdx = Engine.dates.findIndex(d => d >= firstTxnDate);
         const alignedDates = Engine.dates.slice(startIdx);
+        
+        // Store final market values for pie chart
+        const portfolioValues = [];
 
         Object.entries(summaryByPortfolio).forEach(([name, txns]) => {
             const sorted = [...txns].sort((a,b) => a.date.localeCompare(b.date));
@@ -4927,6 +4939,14 @@ const PnLChartModal = {
                     costBasisData.push(null);
                 }
             }
+            
+            // Store final market value for pie chart
+            portfolioValues.push({
+                name: name,
+                value: mktValData[mktValData.length - 1] || 0,
+                color: palette[pi % palette.length]
+            });
+            
             datasets.push({
                 label: name,
                 pnlPct: pnlPctData,
@@ -4999,14 +5019,62 @@ const PnLChartModal = {
                 }
             }
         });
+
+        // Render pie chart showing portfolio proportions
+        if (this.pieChart) this.pieChart.destroy();
+        const pieCtx = document.getElementById('pnl-pie-chart').getContext('2d');
+        
+        // Filter out portfolios with zero value
+        const validPortfolios = portfolioValues.filter(p => p.value > 0);
+        
+        if (validPortfolios.length > 0) {
+            this.pieChart = new Chart(pieCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: validPortfolios.map(p => p.name),
+                    datasets: [{
+                        data: validPortfolios.map(p => p.value),
+                        backgroundColor: validPortfolios.map(p => p.color),
+                        borderWidth: 2,
+                        borderColor: document.body.classList.contains('dark') ? '#1E2329' : '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: { 
+                                color: document.body.classList.contains('dark') ? '#EAECEF' : '#1E2329',
+                                font: { size: 11 },
+                                padding: 12
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                    const pct = (ctx.parsed / total * 100).toFixed(1);
+                                    return `${ctx.label}: $${ctx.parsed.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${pct}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
         document.getElementById('pnl-chart-modal').classList.remove('hidden');
     },
 
     close() {
         document.getElementById('pnl-chart-modal').classList.add('hidden');
         if (this.chart) { this.chart.destroy(); this.chart = null; }
+        if (this.pieChart) { this.pieChart.destroy(); this.pieChart = null; }
     }
 };
+
 
 // Portfolio Detail Modal
 const PortfolioDetailModal = {
