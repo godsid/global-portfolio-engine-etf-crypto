@@ -162,6 +162,45 @@ th.sortable:hover { color: #3b82f6; }
   </div>
 </div>
 
+<!-- Encryption Key Setup Modal -->
+<div id="encryption-key-modal" class="fixed inset-0 bg-black/50 z-[250] hidden flex items-center justify-center" onclick="if(event.target.id==='encryption-key-modal') EncryptionKeyManager.closeDialog()">
+  <div class="glass rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
+    <h3 id="ek-modal-title" class="text-lg font-bold mb-4 text-purple-600 dark:text-purple-400 flex items-center gap-2">
+      <i class="fas fa-key"></i> ตั้งค่า Encryption Key
+    </h3>
+    
+    <p id="ek-modal-message" class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+      กรุณากรอก Encryption Key สำหรับเข้ารหัส/ถอดรหัสไฟล์
+    </p>
+    
+    <div class="mb-4">
+      <label class="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">
+        Encryption Key
+      </label>
+      <input id="ek-input" type="password" placeholder="ใส่ key ของคุณ..." class="w-full px-3 py-2 rounded border border-gray-300 dark:border-dark-700 bg-white dark:bg-dark-800 text-sm font-mono" onkeypress="if(event.key==='Enter') EncryptionKeyManager.submitKey()">
+    </div>
+    
+    <div id="ek-replace-checkbox" class="mb-4">
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" id="ek-replace-check" class="w-4 h-4 rounded">
+        <span class="text-sm text-gray-600 dark:text-gray-400">บันทึกเป็น key ใหม่ (Replace ค่าเดิม)</span>
+      </label>
+    </div>
+    
+    <div id="ek-error" class="hidden mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg text-red-600 dark:text-red-400 text-sm">
+    </div>
+    
+    <div class="flex gap-2">
+      <button onclick="EncryptionKeyManager.submitKey()" class="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-2 rounded font-bold text-sm">
+        <i class="fas fa-check mr-1"></i> ยืนยัน
+      </button>
+      <button onclick="EncryptionKeyManager.closeDialog()" class="flex-1 bg-gray-300 hover:bg-gray-400 dark:bg-dark-700 dark:hover:bg-dark-600 py-2 rounded font-bold text-sm">
+        ยกเลิก
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Config Load Modal -->
 <div id="load-config-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center" onclick="if(event.target.id==='load-config-modal') ConfigManager.closeLoadDialog()">
   <div class="glass rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
@@ -270,7 +309,7 @@ th.sortable:hover { color: #3b82f6; }
   <div class="max-w-[1800px] mx-auto px-4 h-14 flex justify-between items-center">
     <div class="flex items-center gap-3">
       <h1 class="font-bold text-base flex items-center gap-2 text-dark-900 dark:text-white">
-        <span class="text-xl">💧</span> GPE <span class="text-[9px] bg-gradient-to-r from-blue-500 to-purple-500 text-white px-1.5 py-0.5 rounded font-bold mono">v49.0</span>
+        <span class="text-xl">💧</span> GPE <span class="text-[9px] bg-gradient-to-r from-blue-500 to-purple-500 text-white px-1.5 py-0.5 rounded font-bold mono">v50.0</span>
       </h1>
       <nav class="hidden md:flex gap-1 ml-4">
           <button id="btn-tab-dashboard" onclick="UI.switchTab('dashboard')" class="px-3 py-1 text-[10px] font-bold rounded bg-white dark:bg-dark-800 shadow-sm text-stock-600 transition-all">DASHBOARD</button>
@@ -333,12 +372,17 @@ th.sortable:hover { color: #3b82f6; }
       <i class="fas fa-folder-open"></i> Load
     </button>
   </div>
-  <div class="grid grid-cols-2 gap-2 mb-3">
+  <div class="grid grid-cols-2 gap-2 mb-2">
     <button onclick="ConfigManager.exportAllConfigs()" class="bg-purple-500 hover:bg-purple-600 text-white py-2 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow flex items-center justify-center gap-1">
       <i class="fas fa-file-export"></i> Export
     </button>
     <button onclick="ConfigManager.importConfigs()" class="bg-orange-500 hover:bg-orange-600 text-white py-2 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow flex items-center justify-center gap-1">
       <i class="fas fa-file-import"></i> Import
+    </button>
+  </div>
+  <div class="grid grid-cols-1 gap-2 mb-3">
+    <button onclick="ConfigManager.showKeySettings()" id="btn-key-settings" class="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white py-2 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow flex items-center justify-center gap-1">
+      <i class="fas fa-key"></i> 🔐 Key Settings
     </button>
   </div>
 
@@ -424,6 +468,7 @@ th.sortable:hover { color: #3b82f6; }
             <option value="DualMom">7. Dual Momentum</option>
             <option value="InvVol">8. Inverse Volatility</option>
             <option value="AAA">9. Adaptive Aggressive</option>
+            <option value="CPPI">10. Tail Risk Hedge (CPPI)</option>
           </select>
       </div>
       <div>
@@ -1279,7 +1324,8 @@ const STRAT_NAMES = {
     AbsMom: "6. Absolute Mom (Trend)",
     DualMom: "7. Dual Momentum",
     InvVol: "8. Inverse Volatility",
-    AAA: "9. Adaptive Aggressive"
+    AAA: "9. Adaptive Aggressive",
+    CPPI: "10. Tail Risk Hedge (CPPI)"
 };
 
 const PROXIES = [
@@ -2222,6 +2268,25 @@ class QuantEngine {
     else if(type === "DualMom") { const act = items.filter(x => x.val > 0); const K = Math.min(act.length, 3); if(act.length) act.slice(0, K).forEach(x => w[x.k] = 1/K); }
     else if(type === "InvVol") { let S = 0; items.forEach(x => S += 1/(x.vol <= 0.0001 ? 0.0001 : x.vol)); items.forEach(x => w[x.k] = (1/(x.vol <= 0.0001 ? 0.0001 : x.vol))/S); }
     else if(type === "AAA") { const pos = items.filter(x => x.val > 0); let target = pos.length ? pos : items.slice(0, 3); let S = 0; target.forEach(x => S += 1/(x.vol <= 0.0001 ? 0.0001 : x.vol)); target.forEach(x => w[x.k] = (1/(x.vol <= 0.0001 ? 0.0001 : x.vol))/S); }
+    else if(type === "CPPI") { 
+        const floorPct = 0.8; // Floor = 80% of initial portfolio
+        const multiple = 3; // Risk multiplier (max 3x cushion)
+        const totalNav = items.reduce((sum, x) => sum + (x.val || 0), 0); // Approximate total
+        // CPPI: Cushion = Portfolio - Floor; Risky = Cushion × Multiple
+        const cushion = Math.max(0, 1 - floorPct); // Normalized cushion
+        const riskyAlloc = Math.min(1, cushion * multiple);
+        const safeAlloc = 1 - riskyAlloc;
+        // Split risky allocation equally among positive momentum assets
+        const posItems = items.filter(x => x.val > 0);
+        if(posItems.length > 0) {
+            const riskyPerAsset = riskyAlloc / posItems.length;
+            posItems.forEach(x => w[x.k] = riskyPerAsset);
+        }
+        // Safe allocation (risk-free) - represented as first asset if any
+        if(items.length > 0 && safeAlloc > 0.01) {
+            w[items[0].k] = (w[items[0].k] || 0) + safeAlloc;
+        }
+    }
     return w;
   }
 
@@ -3496,11 +3561,122 @@ const UI = {
 
 // Config Manager
 /* =========================================================
+   ENCRYPTION KEY MANAGER
+========================================================= */
+const EncryptionKeyManager = {
+    STORAGE_KEY: 'gpe_encryption_key',
+    DEFAULT_KEY: '',
+    
+    getKey() {
+        return localStorage.getItem(this.STORAGE_KEY) || '';
+    },
+    
+    setKey(key) {
+        localStorage.setItem(this.STORAGE_KEY, key);
+    },
+    
+    hasKey() {
+        return this.getKey() !== '';
+    },
+    
+    clearKey() {
+        localStorage.removeItem(this.STORAGE_KEY);
+    },
+    
+    // Check if decrypt result is valid JSON
+    isValidJson(str) {
+        try {
+            JSON.parse(str);
+            return true;
+        } catch (e) {
+            return false;
+        }
+    },
+    
+    // Show setup dialog
+    showSetupDialog(options = {}) {
+        const { onSuccess, onCancel, title, message, showReplaceOption, currentKey } = {
+            onSuccess: () => {},
+            onCancel: () => {},
+            title: 'ตั้งค่า Encryption Key',
+            message: 'กรุณากรอก Encryption Key สำหรับเข้ารหัส/ถอดรหัสไฟล์',
+            showReplaceOption: false,
+            currentKey: '',
+            ...options
+        };
+        
+        const modal = document.getElementById('encryption-key-modal');
+        document.getElementById('ek-modal-title').textContent = title;
+        document.getElementById('ek-modal-message').textContent = message;
+        document.getElementById('ek-input').value = '';
+        document.getElementById('ek-replace-checkbox').checked = false;
+        document.getElementById('ek-replace-checkbox').parentElement.classList.toggle('hidden', !showReplaceOption);
+        document.getElementById('ek-error').classList.add('hidden');
+        
+        this._onSuccess = onSuccess;
+        this._onCancel = onCancel;
+        
+        modal.classList.remove('hidden');
+    },
+    
+    closeDialog() {
+        document.getElementById('encryption-key-modal').classList.add('hidden');
+        if (this._onCancel) this._onCancel();
+    },
+    
+    submitKey() {
+        const key = document.getElementById('ek-input').value.trim();
+        const replaceOld = document.getElementById('ek-replace-checkbox').checked;
+        
+        if (!key) {
+            document.getElementById('ek-error').textContent = 'กรุณากรอก Encryption Key';
+            document.getElementById('ek-error').classList.remove('hidden');
+            return;
+        }
+        
+        if (replaceOld) {
+            this.setKey(key);
+        }
+        
+        document.getElementById('encryption-key-modal').classList.add('hidden');
+        if (this._onSuccess) this._onSuccess(key);
+    },
+    
+    // Try to decrypt with a given key
+    tryDecrypt(encryptedData, key) {
+        const decrypted = CryptoUtils.decrypt(encryptedData, key);
+        if (decrypted && this.isValidJson(decrypted)) {
+            return { success: true, data: JSON.parse(decrypted) };
+        }
+        return { success: false, error: 'Decryption failed or invalid key' };
+    }
+};
+
+/* =========================================================
    CRYPTO UTILITIES - XOR Cipher + Base64
 ========================================================= */
 const CryptoUtils = {
-    ENCRYPTION_KEY: 'tui@10naja',
     ENCRYPTION_PREFIX: 'GPEENC::',
+    STORAGE_KEY: 'gpe_encryption_key',
+    DEFAULT_KEY: '',
+    
+    getKey() {
+        // Priority: 1. User-set key in localStorage, 2. Default key
+        const storedKey = localStorage.getItem(this.STORAGE_KEY);
+        return storedKey || this.DEFAULT_KEY;
+    },
+    
+    setKey(key) {
+        localStorage.setItem(this.STORAGE_KEY, key);
+    },
+    
+    hasKey() {
+        return localStorage.getItem(this.STORAGE_KEY) !== null;
+    },
+    
+    clearKey() {
+        localStorage.removeItem(this.STORAGE_KEY);
+    },
     
     // XOR cipher with repeating key
     xorCipher(data, key) {
@@ -3512,16 +3688,18 @@ const CryptoUtils = {
     },
     
     // Encrypt string to Base64
-    encrypt(data, key = this.ENCRYPTION_KEY) {
-        const encrypted = this.xorCipher(data, key);
+    encrypt(data, key) {
+        const k = key || this.getKey();
+        const encrypted = this.xorCipher(data, k);
         return btoa(unescape(encodeURIComponent(encrypted)));
     },
     
     // Decrypt Base64 to string
-    decrypt(encryptedData, key = this.ENCRYPTION_KEY) {
+    decrypt(encryptedData, key) {
         try {
+            const k = key || this.getKey();
             const decoded = decodeURIComponent(escape(atob(encryptedData)));
-            return this.xorCipher(decoded, key);
+            return this.xorCipher(decoded, k);
         } catch (e) {
             return null;
         }
@@ -3821,6 +3999,30 @@ const ConfigManager = {
             return;
         }
         
+        // Check if encryption key is set, if not prompt user to set one
+        if (!CryptoUtils.hasKey()) {
+            EncryptionKeyManager.showSetupDialog({
+                title: '🔐 ตั้งค่า Key สำหรับ Export',
+                message: 'คุณยังไม่ได้ตั้งค่า Encryption Key\n\nกรุณากรอก Key ที่ต้องการใช้เข้ารหัสไฟล์ Export\n(จำ Key นี้ไว้เพื่อใช้ Decrypt ตอน Import)',
+                showReplaceOption: false,
+                onSuccess: (key) => {
+                    // IMPORTANT: Save key to localStorage for future use
+                    CryptoUtils.setKey(key);
+                    EncryptionKeyManager.setKey(key);
+                    this._doExport(configs, transactions, key);
+                },
+                onCancel: () => {
+                    // User cancelled, do not proceed
+                }
+            });
+            return;
+        }
+        
+        // Key exists, proceed with export
+        this._doExport(configs, transactions, CryptoUtils.getKey());
+    },
+    
+    _doExport(configs, transactions, key) {
         // Create export object with both configs and transactions
         const exportData = {
             configs: configs,
@@ -3832,8 +4034,8 @@ const ConfigManager = {
         // Create JSON string with pretty formatting
         const jsonString = JSON.stringify(exportData, null, 2);
         
-        // Encrypt the data with key "tui@10naja"
-        const encrypted = CryptoUtils.ENCRYPTION_PREFIX + CryptoUtils.encrypt(jsonString, CryptoUtils.ENCRYPTION_KEY);
+        // Encrypt the data with the provided key
+        const encrypted = CryptoUtils.ENCRYPTION_PREFIX + CryptoUtils.encrypt(jsonString, key);
         
         // Create blob and download as .gpe (encrypted) file
         const blob = new Blob([encrypted], { type: 'text/plain' });
@@ -3846,7 +4048,24 @@ const ConfigManager = {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
         
-        alert(`Exported ${Object.keys(configs).length} configuration(s) and ${transactions.length} transaction(s)\n\nFile is encrypted with your key.\nFile saved as: gpe_configs_${new Date().toISOString().slice(0,10)}.gpe`);
+        alert(`✅ Exported ${Object.keys(configs).length} configuration(s) and ${transactions.length} transaction(s)\n\n🔐 File is encrypted with your key.\n📁 Saved as: gpe_configs_${new Date().toISOString().slice(0,10)}.gpe\n\n⚠️ จดจำ Key ของคุณไว้: ${key}`);
+    },
+    
+    showKeySettings() {
+        const hasKey = CryptoUtils.hasKey();
+        const currentKey = CryptoUtils.getKey();
+        const maskedKey = currentKey ? currentKey.substring(0, 3) + '***' + currentKey.substring(currentKey.length - 2) : '(ยังไม่ได้ตั้งค่า)';
+        
+        EncryptionKeyManager.showSetupDialog({
+            title: '🔐 Encryption Key Settings',
+            message: `Key ปัจจุบัน: ${maskedKey}\n\n${hasKey ? 'คุณสามารถเปลี่ยน Key ใหม่ได้' : 'กรุณาตั้งค่า Key สำหรับเข้ารหัส/ถอดรหัสไฟล์'}`,
+            showReplaceOption: true,
+            onSuccess: (key) => {
+                CryptoUtils.setKey(key);
+                alert(`✅ Encryption Key ถูกบันทึกแล้ว\n\n🔐 Key: ${key}\n\n⚠️ จดจำ Key นี้ไว้ให้ดี! หากลืมจะไม่สามารถ Decrypt ไฟล์ที่ Export ไว้ได้`);
+            },
+            onCancel: () => {}
+        });
     },
 
     importConfigs() {
@@ -3869,6 +4088,11 @@ const ConfigManager = {
         }
         
         const reader = new FileReader();
+        reader.onerror = () => {
+            alert('Error reading file. Please try again.');
+            event.target.value = '';
+        };
+        
         reader.onload = (e) => {
             try {
                 let importedData;
@@ -3878,15 +4102,23 @@ const ConfigManager = {
                 if (CryptoUtils.isEncrypted(rawContent)) {
                     // Decrypt the data
                     const encryptedContent = CryptoUtils.getEncryptedContent(rawContent);
-                    const decryptedJson = CryptoUtils.decrypt(encryptedContent, CryptoUtils.ENCRYPTION_KEY);
+                    const decryptedJson = CryptoUtils.decrypt(encryptedContent, CryptoUtils.getKey());
                     
                     if (!decryptedJson) {
                         throw new Error('Failed to decrypt file. Wrong key or corrupted file.');
                     }
                     
+                    // Validate decrypted content is valid JSON before parsing
+                    if (!EncryptionKeyManager.isValidJson(decryptedJson)) {
+                        throw new Error('Decryption failed: Invalid key or corrupted file. Please check your Encryption Key.');
+                    }
+                    
                     importedData = JSON.parse(decryptedJson);
                 } else {
-                    // Legacy unencrypted JSON file
+                    // Legacy unencrypted JSON file - validate first
+                    if (!EncryptionKeyManager.isValidJson(rawContent)) {
+                        throw new Error('Invalid JSON format in file.');
+                    }
                     importedData = JSON.parse(rawContent);
                 }
                 
@@ -4197,7 +4429,7 @@ const PortfolioTracker = {
         const date = document.getElementById('txn-date').value;
         const select = document.getElementById('txn-portfolio-select');
         const input = document.getElementById('txn-portfolio-input');
-        const portfolio = (select.classList.contains('hidden') ? input.value : select.value).trim();
+        const portfolio = (select.classList.contains('hidden') ? input?.value : select.value).trim();
         const asset = document.getElementById('txn-asset').value.trim().toUpperCase();
         const price = parseFloat(document.getElementById('txn-price').value);
         let quantity = parseFloat(document.getElementById('txn-quantity').value);

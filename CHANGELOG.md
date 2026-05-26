@@ -1,5 +1,23 @@
 # Changelog
 
+## v50.0 — 2026-05-26
+
+### Added
+- เพิ่มระบบ **Encryption Key Manager** — Dialog สำหรับตั้งค่า/จัดการ Encryption Key
+- เพิ่ม Dialog สำหรับ **Export Configs พร้อม Encryption** — รองรับ .gpe (encrypted) format
+- เพิ่มระบบ **Import Configs พร้อม Decryption** — รองรับทั้ง .json (legacy) และ .gpe (encrypted)
+- เพิ่ม `CryptoUtils` — XOR cipher สำหรับเข้า/ถอดรหัสไฟล์ export
+- เพิ่มปุ่ม **Key Settings** ใน sidebar สำหรับจัดการ Encryption Key
+- เพิ่ม **Portfolio Rebalance Calculator** — Modal สำหรับคำนวณและแสดงรายการซื้อ/ขายเพื่อปรับสัดส่วน
+
+### Changed
+- **Version bump:** v49.0 → v50.0 (Liquid Alpha Edition)
+- ปรับ `exportAllConfigs()` ให้เข้ารหัสไฟล์ด้วย Encryption Key ก่อน export
+- ปรับ `importConfigs()` ให้ถอดรหัสไฟล์ .gpe อัตโนมัติหากมี Encryption Key
+- ปรับ title และ branding เป็น "Liquid Alpha Edition"
+
+---
+
 ## v49.0 — 2026-05-21
 
 ### Added
