@@ -393,6 +393,7 @@ th.sortable:hover { color: #3b82f6; }
           <select id="cfg-market-type" onchange="UI.changeMarketMode(this.value)" class="opt-input font-bold text-stock-600 dark:text-stock-400 cursor-pointer bg-white dark:bg-dark-900">
             <option value="ETF" selected>Global ETF (Yahoo)</option>
             <option value="CRYPTO">Crypto (Binance)</option>
+            <option value="THAI">Thai Market (Yahoo)</option>
           </select>
           <div class="text-[8px] text-gray-400 font-bold mt-1 tracking-tighter" id="trading-days-info">* 252 Trading Days/Year</div>
       </div>
@@ -1314,6 +1315,7 @@ th.sortable:hover { color: #3b82f6; }
 
 const CRYPTO_UNIVERSE = ["BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "DOGE", "DOT", "AVAX", "LINK", "UNI", "LTC", "ATOM"];
 const ETF_UNIVERSE = ["SPY", "QQQ", "IWM", "EFA", "EEM", "GLD", "TLT", "VNQ", "LQD", "HYG", "XLE", "XLF", "XLK", "XLV"];
+const THAI_UNIVERSE = ["PTT.BK", "CPF.BK", "BDMS.BK", "KBANK.BK", "SCB.BK", "AOT.BK", "CPALL.BK", "TRUE.BK", "ADVANC.BK", "TOP.BK", "EGCO.BK", "BCPG.BK", "^SET.BK", "^SET50.BK"];
 
 const STRAT_NAMES = {
     Equal: "1. Equal Weight (1/N)",
@@ -1487,7 +1489,9 @@ class QuantEngine {
   }
 
   normalizeMarketMode(mode) {
-      return mode === "CRYPTO" ? "CRYPTO" : "ETF";
+      if (mode === "CRYPTO") return "CRYPTO";
+      if (mode === "THAI") return "THAI";
+      return "ETF";
   }
 
   rebuildAssetRegistry(configs = {}, runtimeEntries = []) {
@@ -1548,11 +1552,17 @@ class QuantEngine {
           this.tradingDays = 252;
           document.getElementById('cfg-bench').value = 'SPY';
           document.getElementById('trading-days-info').innerText = "* 252 Trading Days/Year";
-      } else {
+      } else if(this.marketMode === "CRYPTO") {
           this.universe = this.getKnownUniverse("CRYPTO");
           this.tradingDays = 365;
           document.getElementById('cfg-bench').value = 'BTC';
           document.getElementById('trading-days-info').innerText = "* 365 Trading Days/Year";
+      } else {
+          // THAI Market - SET Index
+          this.universe = this.getKnownUniverse("THAI");
+          this.tradingDays = 250;
+          document.getElementById('cfg-bench').value = '^SET.BK';
+          document.getElementById('trading-days-info').innerText = "* 250 Trading Days/Year";
       }
       this.dataStatus = {};
       UI.renderAssets();
@@ -2392,7 +2402,7 @@ const UI = {
                 <option value="GLD">GLD (Gold)</option>
                 <option value="VNQ">VNQ (Real Estate)</option>
             </optgroup>`;
-        } else {
+        } else if (Engine.marketMode === "CRYPTO") {
             sel.innerHTML = `
             <option value="">+ Quick Add (Crypto)</option>
             <optgroup label="Blue Chips">
@@ -2411,6 +2421,37 @@ const UI = {
                 <option value="UNI">UNI (Uniswap)</option>
                 <option value="DOGE">DOGE (Dogecoin)</option>
                 <option value="XRP">XRP (Ripple)</option>
+            </optgroup>`;
+        } else {
+            // THAI Market
+            sel.innerHTML = `
+            <option value="">+ Quick Add (ไทย)</option>
+            <optgroup label="SET Index">
+                <option value="^SET.BK">^SET.BK (SET Index)</option>
+                <option value="^SET50.BK">^SET50.BK (SET50)</option>
+                <option value="^SET100.BK">^SET100.BK (SET100)</option>
+            </optgroup>
+            <optgroup label="Energy">
+                <option value="PTT.BK">PTT.BK</option>
+                <option value="EGCO.BK">EGCO.BK</option>
+                <option value="BCPG.BK">BCPG.BK</option>
+            </optgroup>
+            <optgroup label="Agribusiness">
+                <option value="CPF.BK">CPF.BK</option>
+                <option value="TOP.BK">TOP.BK</option>
+            </optgroup>
+            <optgroup label="Healthcare">
+                <option value="BDMS.BK">BDMS.BK</option>
+            </optgroup>
+            <optgroup label="Banking">
+                <option value="KBANK.BK">KBANK.BK</option>
+                <option value="SCB.BK">SCB.BK</option>
+            </optgroup>
+            <optgroup label="Services">
+                <option value="AOT.BK">AOT.BK</option>
+                <option value="CPALL.BK">CPALL.BK</option>
+                <option value="TRUE.BK">TRUE.BK</option>
+                <option value="ADVANC.BK">ADVANC.BK</option>
             </optgroup>`;
         }
     },
