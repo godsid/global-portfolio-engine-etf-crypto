@@ -90,7 +90,7 @@ const thaiQuickAddAssets = [
 
 ### 4️⃣ วิเคราะห์และ Optimize การ Fetch ข้อมูล
 
-**Status:** ⏳ Pending  
+**Status:** 🚧 In Progress  
 **Priority:** 🟡 Medium  
 **Estimated Time:** 3-4 hours  
 **Files to Modify:** `index.html` (JavaScript section)

@@ -1811,7 +1811,7 @@ class QuantEngine {
     let desiredTickers = [...new Set([...this.getAllKnownAssets(), ...this.universe, ...trackerAssets, cfg.bench])];
       
       // --- NEW: Batch Processing to prevent UI Freeze ---
-      const batchSize = 3; 
+      const batchSize = 5; // Increased from 3 to 5 for faster fetching
       const availableTickers = [];
       const availableData = [];
       
