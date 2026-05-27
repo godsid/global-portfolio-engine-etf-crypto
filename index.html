@@ -1313,6 +1313,13 @@ th.sortable:hover { color: #3b82f6; }
    QUANT ENGINE CORE V48.6 (INDEXEDDB + ENHANCED DCA)
 ========================================================= */
 
+// Cache configuration - 24 hour TTL for market data
+const CACHE_CONFIG = {
+    TTL: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
+    STALE_THRESHOLD: 12 * 60 * 60 * 1000, // 12 hours = stale but usable
+    MIN_VALID_DAYS: 365 // Minimum data points required
+};
+
 const CRYPTO_UNIVERSE = ["BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "DOGE", "DOT", "AVAX", "LINK", "UNI", "LTC", "ATOM"];
 const ETF_UNIVERSE = ["SPY", "QQQ", "IWM", "EFA", "EEM", "GLD", "TLT", "VNQ", "LQD", "HYG", "XLE", "XLF", "XLK", "XLV"];
 const THAI_UNIVERSE = ["PTT.BK", "CPF.BK", "BDMS.BK", "KBANK.BK", "SCB.BK", "AOT.BK", "CPALL.BK", "TRUE.BK", "ADVANC.BK", "TOP.BK", "EGCO.BK", "BCPG.BK", "^SET.BK", "^SET50.BK"];
@@ -1652,6 +1659,22 @@ class QuantEngine {
       if (!lastDate) return false;
       const expectedLatest = this.getExpectedLatestDateByMode(mode);
       return lastDate >= expectedLatest;
+  }
+
+  // Check cache freshness with TTL
+  isCacheFresh(data, mode = this.marketMode) {
+      if (!Array.isArray(data) || data.length === 0) return false;
+      // Check if data meets minimum days requirement
+      if (data.length < CACHE_CONFIG.MIN_VALID_DAYS) return false;
+      // Check if cache is up-to-date (within expected market time)
+      return this.isCacheUpToDate(data, mode);
+  }
+
+  // Check if cache is stale (older than TTL but still usable)
+  isCacheStale(data) {
+      if (!Array.isArray(data) || data.length === 0) return true;
+      // If has minimum required days, consider usable even if not fully up-to-date
+      return data.length >= CACHE_CONFIG.MIN_VALID_DAYS;
   }
 
   mergeHistoryData(existingData, newData) {
