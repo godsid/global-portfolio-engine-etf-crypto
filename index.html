@@ -130,7 +130,7 @@ th.sortable:hover { color: #3b82f6; }
 <div id="global-tooltip"></div>
 
 <!-- Hidden File Input for Import -->
-<input type="file" id="config-import-file" accept=".json" style="display: none;" onchange="ConfigManager.handleImportFile(event)">
+<input type="file" id="config-import-file" accept=".json,.gpe,application/json" style="display: none;" onchange="ConfigManager.handleImportFile(event)">
 
 <!-- Config Save Modal -->
 <div id="save-config-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center" onclick="if(event.target.id==='save-config-modal') ConfigManager.closeSaveDialog()">
