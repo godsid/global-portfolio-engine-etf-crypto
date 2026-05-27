@@ -1504,7 +1504,8 @@ class QuantEngine {
   rebuildAssetRegistry(configs = {}, runtimeEntries = []) {
       const known = {
           ETF: new Set(ETF_UNIVERSE),
-          CRYPTO: new Set(CRYPTO_UNIVERSE)
+          CRYPTO: new Set(CRYPTO_UNIVERSE),
+          THAI: new Set(THAI_UNIVERSE || [])
       };
       const assetTypeMap = {};
 
