@@ -1,5 +1,20 @@
 # Changelog
 
+## v51.0 — 2026-05-27
+
+### Added
+- **Thai Market Support**: New market type option for SET (Thailand) with 250 trading days/year
+- **Thai Universe**: Pre-configured Thai stocks (PTT.BK, CPF.BK, BDMS.BK, KBANK.BK, etc.)
+- **Thai Market Quick Add**: Quick add dropdown with SET Index, Energy, Banking, Services categories
+- **THAI_UNIVERSE constant**: 14 popular Thai stocks with .BK suffix
+
+### Changed
+- **Version bump**: v50.0 → v51.0
+- **normalizeMarketMode()**: Now handles "THAI" mode
+- **setMarketMode()**: Updated to handle Thai market with 250 trading days
+
+---
+
 ## v50.0 — 2026-05-26
 
 ### Added
