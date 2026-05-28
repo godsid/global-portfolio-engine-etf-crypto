@@ -1,5 +1,13 @@
 # Changelog
 
+## v52.0 — 2026-05-28
+
+### Changed
+- **Version bump**: v51.0 → v52.0
+- **P&L Chart Modal layout**: Changed pie chart section from 50% to 30% width (7:3 ratio) for better chart visibility
+
+---
+
 ## v51.0 — 2026-05-27
 
 ### Added
