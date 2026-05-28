@@ -5272,6 +5272,57 @@ const PnLChartModal = {
             pi++;
         });
 
+        // --- Add Combined Total Line (All Portfolios) ---
+        const combinedCostBasis = new Array(alignedDates.length).fill(null);
+        const combinedMktVal = new Array(alignedDates.length).fill(null);
+        const combinedPnlPct = new Array(alignedDates.length).fill(null);
+        const combinedPnlDollar = new Array(alignedDates.length).fill(null);
+        const hasAnyData = new Array(alignedDates.length).fill(false);
+
+        datasets.forEach(ds => {
+            ds.pnlPct.forEach((val, idx) => {
+                if (val !== null) {
+                    if (combinedCostBasis[idx] === null) combinedCostBasis[idx] = 0;
+                    if (combinedMktVal[idx] === null) combinedMktVal[idx] = 0;
+                    if (combinedPnlDollar[idx] === null) combinedPnlDollar[idx] = 0;
+                    combinedCostBasis[idx] += (ds.costBasis[idx] || 0);
+                    combinedMktVal[idx] += (ds.mktVal[idx] || 0);
+                    combinedPnlDollar[idx] += (ds.pnlDollar[idx] || 0);
+                    hasAnyData[idx] = true;
+                }
+            });
+        });
+
+        combinedPnlPct.forEach((_, idx) => {
+            if (hasAnyData[idx] && combinedCostBasis[idx] > 0) {
+                combinedPnlPct[idx] = combinedPnlDollar[idx] / combinedCostBasis[idx] * 100;
+            }
+        });
+
+        const totalPortfolioValue = combinedMktVal.filter(v => v !== null).pop() || 0;
+        if (totalPortfolioValue > 0) {
+            portfolioValues.unshift({
+                name: '📦 ผลรวมทุก Portfolio',
+                value: totalPortfolioValue,
+                color: '#FCD535'
+            });
+        }
+
+        datasets.push({
+            label: '📦 ผลรวมทุก Portfolio',
+            pnlPct: combinedPnlPct,
+            pnlDollar: combinedPnlDollar,
+            mktVal: combinedMktVal,
+            costBasis: combinedCostBasis,
+            borderColor: '#FCD535',
+            borderWidth: 3,
+            borderDash: [8, 4],
+            pointRadius: 0,
+            fill: false,
+            tension: 0.1,
+            data: combinedPnlPct
+        });
+
         if (this.chart) this.chart.destroy();
         const ctx = document.getElementById('pnl-chart-canvas').getContext('2d');
 
