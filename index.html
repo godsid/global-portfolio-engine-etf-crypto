@@ -4260,7 +4260,19 @@ const ConfigManager = {
                         importSummary.push(`${importedTransactions.length} transaction(s)`);
                     }
                     
-                    alert(`Successfully imported ${importSummary.join(' and ')}!`);
+                    // Format the exported timestamp for display
+                    const timestampInfo = importedData.exportedAt 
+                        ? `\n\n📅 Exported: ${new Date(importedData.exportedAt).toLocaleString('th-TH', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit'
+                        })}`
+                        : '\n\n📅 Exported: (Legacy file - no timestamp)';
+
+                    alert(`✅ Successfully imported ${importSummary.join(' and ')}!${timestampInfo}`);
                     
                     // Refresh tracker if it's currently visible
                     if (document.getElementById('view-tracker') && !document.getElementById('view-tracker').classList.contains('hidden')) {
