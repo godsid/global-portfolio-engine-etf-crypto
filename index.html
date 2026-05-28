@@ -5299,14 +5299,6 @@ const PnLChartModal = {
             }
         });
 
-        const totalPortfolioValue = combinedMktVal.filter(v => v !== null).pop() || 0;
-        if (totalPortfolioValue > 0) {
-            portfolioValues.unshift({
-                name: '📦 ผลรวมทุก Portfolio',
-                value: totalPortfolioValue,
-                color: '#FCD535'
-            });
-        }
 
         datasets.push({
             label: '📦 ผลรวมทุก Portfolio',
