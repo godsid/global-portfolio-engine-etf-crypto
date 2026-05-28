@@ -1218,12 +1218,12 @@ th.sortable:hover { color: #3b82f6; }
       <button onclick="PnLChartModal.close()" class="text-white hover:text-gray-200 text-2xl leading-none"><i class="fas fa-times"></i></button>
     </div>
     <div class="p-4 overflow-y-auto max-h-[calc(85vh-80px)] custom-scrollbar">
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div>
+      <div class="grid grid-cols-1 lg:grid-cols-10 gap-6">
+        <div class="lg:col-span-7">
           <div class="h-[350px]"><canvas id="pnl-chart-canvas"></canvas></div>
           <p class="text-xs text-gray-500 mt-2 text-center">P&L = (current holdings × current prices) - total cost basis per portfolio</p>
         </div>
-        <div>
+        <div class="lg:col-span-3">
           <div class="h-[350px]"><canvas id="pnl-pie-chart"></canvas></div>
           <p class="text-xs text-gray-500 mt-2 text-center">สัดส่วนมูลค่า Portfolio ทั้งหมด</p>
         </div>
