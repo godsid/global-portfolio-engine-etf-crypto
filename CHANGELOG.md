@@ -1,5 +1,19 @@
 # Changelog
 
+## v53.0 — 2026-05-29
+
+### Fixed
+- **Portfolio value not decreasing on sell (critical bug fix)**: เมื่อขาย asset แล้วมูลค่า portfolio ไม่ควรลดลง เพราะเงินจากการขายกลายเป็น USD cash
+  - `updateSummary()`: แยกคำนวณ `totalInvested` (buy only) และ `totalCashFromSales` (sell only) แทนการใช้ net cost
+  - `updateSummary()`: คำนวณ `totalValue = holdings market value + cash from sales` แทนการใช้ holdings เฉยๆ
+  - `renderPortfolioSummary()`: เพิ่ม `cashFromSales` field และคำนวณ cost แบบ proportional (ลดต้นทุนตามสัดส่วนเมื่อขาย)
+  - Holdings cost tracking: ใช้ average cost method — เมื่อขายจะลด cost ตามสัดส่วนของจำนวนที่ขาย
+
+### Changed
+- **Version bump**: v52.0 → v53.0
+
+---
+
 ## v52.0 — 2026-05-28
 
 ### Changed

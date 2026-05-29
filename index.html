@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<title>Global Portfolio Engine v52.0 — Liquid Alpha Edition (Full Docs)</title>
+<title>Global Portfolio Engine v53.0 — Liquid Alpha Edition (Full Docs)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Advanced Quant Portfolio Backtesting Engine - Liquid Alpha Edition (Volume Filter Integrated)">
 
@@ -309,7 +309,7 @@ th.sortable:hover { color: #3b82f6; }
   <div class="max-w-[1800px] mx-auto px-4 h-14 flex justify-between items-center">
     <div class="flex items-center gap-3">
       <h1 class="font-bold text-base flex items-center gap-2 text-dark-900 dark:text-white">
-        <span class="text-xl">💧</span> GPE <span class="text-[9px] bg-gradient-to-r from-blue-500 to-purple-500 text-white px-1.5 py-0.5 rounded font-bold mono">v52.0</span>
+        <span class="text-xl">💧</span> GPE <span class="text-[9px] bg-gradient-to-r from-blue-500 to-purple-500 text-white px-1.5 py-0.5 rounded font-bold mono">v53.0</span>
       </h1>
       <nav class="hidden md:flex gap-1 ml-4">
           <button id="btn-tab-dashboard" onclick="UI.switchTab('dashboard')" class="px-3 py-1 text-[10px] font-bold rounded bg-white dark:bg-dark-800 shadow-sm text-stock-600 transition-all">DASHBOARD</button>
@@ -4679,8 +4679,14 @@ const PortfolioTracker = {
     },
 
     updateSummary(transactions) {
-        const totalCost = transactions.reduce((sum, t) => {
-            return sum + (t.type === 'buy' ? t.total : -t.total);
+        // FIX: Total invested = sum of BUY transactions only (not reduced by sells)
+        const totalInvested = transactions.reduce((sum, t) => {
+            return sum + (t.type === 'buy' ? t.total : 0);
+        }, 0);
+        
+        // FIX: Cash from sales = sum of SELL transactions (converted to cash/USD)
+        const totalCashFromSales = transactions.reduce((sum, t) => {
+            return sum + (t.type === 'sell' ? t.total : 0);
         }, 0);
         
         // Calculate total commission
@@ -4688,41 +4694,52 @@ const PortfolioTracker = {
             return sum + (t.commission || 0);
         }, 0);
         
-        // Calculate holdings
+        // Calculate holdings with proportional cost tracking
         const holdings = {};
         transactions.forEach(t => {
             if (!holdings[t.asset]) {
                 holdings[t.asset] = { quantity: 0, cost: 0 };
             }
-            holdings[t.asset].quantity += t.quantity;
-            holdings[t.asset].cost += (t.type === 'buy' ? t.total : -t.total);
+            if (t.type === 'buy') {
+                holdings[t.asset].quantity += t.quantity;
+                holdings[t.asset].cost += t.total;
+            } else {
+                // Sell: reduce cost proportionally to quantity sold
+                if (holdings[t.asset].quantity > 0) {
+                    const avgCost = holdings[t.asset].cost / holdings[t.asset].quantity;
+                    holdings[t.asset].cost -= avgCost * Math.abs(t.quantity);
+                }
+                holdings[t.asset].quantity += t.quantity; // negative for sell
+            }
         });
         
         const marketData = this.getMarketDataForAssets(Object.keys(holdings));
         const hasMarketData = Object.keys(marketData).length > 0;
         
-        let currentValue = 0;
+        let currentHoldingsValue = 0;
         
         if (hasMarketData) {
             Object.entries(holdings).forEach(([asset, data]) => {
                 if (data.quantity > 0) {
                     const currentPrice = this.getLatestPriceFromData(asset, marketData);
                     if (currentPrice > 0) {
-                        currentValue += data.quantity * currentPrice;
+                        currentHoldingsValue += data.quantity * currentPrice;
                     }
                 }
             });
         }
         
-        const pnl = hasMarketData ? currentValue - totalCost : 0;
-        const pnlPct = totalCost > 0 ? (pnl / totalCost * 100) : 0;
+        // FIX: Total portfolio value = holdings market value + cash from sales (USD)
+        const totalValue = hasMarketData ? currentHoldingsValue + totalCashFromSales : 0;
+        const pnl = totalValue - totalInvested;
+        const pnlPct = totalInvested > 0 ? (pnl / totalInvested * 100) : 0;
         
-        document.getElementById('summary-total').textContent = `$${totalCost.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('summary-total').textContent = `$${totalInvested.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
         document.getElementById('summary-count').textContent = transactions.length;
         document.getElementById('summary-commission').textContent = `$${totalCommission.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
         
         if (hasMarketData) {
-            document.getElementById('summary-current').textContent = `$${currentValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('summary-current').textContent = `$${totalValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
             
             const pnlEl = document.getElementById('summary-pnl');
             const pnlPctEl = document.getElementById('summary-pnl-pct');
@@ -4759,18 +4776,32 @@ const PortfolioTracker = {
         const summaryByPortfolio = {};
         transactions.forEach(txn => {
             if (!summaryByPortfolio[txn.portfolio]) {
-                summaryByPortfolio[txn.portfolio] = { cost: 0, count: 0, commission: 0, holdings: {} };
+                summaryByPortfolio[txn.portfolio] = { cost: 0, cashFromSales: 0, count: 0, commission: 0, holdings: {} };
             }
-            summaryByPortfolio[txn.portfolio].cost += (txn.type === 'buy' ? txn.total : -txn.total);
+            // FIX: cost = total invested (buy only), cashFromSales = total from sells
+            if (txn.type === 'buy') {
+                summaryByPortfolio[txn.portfolio].cost += txn.total;
+            } else {
+                summaryByPortfolio[txn.portfolio].cashFromSales += txn.total;
+            }
             summaryByPortfolio[txn.portfolio].commission += (txn.commission || 0);
             summaryByPortfolio[txn.portfolio].count += 1;
             
-            // Calculate holdings
+            // Calculate holdings with proportional cost tracking
             if (!summaryByPortfolio[txn.portfolio].holdings[txn.asset]) {
                 summaryByPortfolio[txn.portfolio].holdings[txn.asset] = { quantity: 0, cost: 0, avgPrice: 0 };
             }
             summaryByPortfolio[txn.portfolio].holdings[txn.asset].quantity += txn.quantity;
-            summaryByPortfolio[txn.portfolio].holdings[txn.asset].cost += (txn.type === 'buy' ? txn.total : -txn.total);
+            if (txn.type === 'buy') {
+                summaryByPortfolio[txn.portfolio].holdings[txn.asset].cost += txn.total;
+            } else {
+                // Sell: reduce cost proportionally
+                const holding = summaryByPortfolio[txn.portfolio].holdings[txn.asset];
+                if (holding.quantity > 0) {
+                    const avgCost = holding.cost / holding.quantity;
+                    holding.cost -= avgCost * Math.abs(txn.quantity);
+                }
+            }
         });
         
         const allAssets = new Set();
