@@ -1338,9 +1338,61 @@ const STRAT_NAMES = {
 };
 
 const PROXIES = [
-    url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    // url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
     url => `https://corsproxy.io/?${encodeURIComponent(url)}`
 ];
+
+/* =========================================================
+   DEBUG LOGGER - Console Debug Logging for Fetch & Cache
+========================================================= */
+const GPE_DEBUG = true; // Set to false to disable debug logging
+
+const DebugLogger = {
+    _ts() { return new Date().toISOString(); },
+    _style(category) {
+        const styles = {
+            FETCH: 'color: #3b82f6; font-weight: bold',
+            CACHE: 'color: #8b5cf6; font-weight: bold',
+            PERF:  'color: #f59e0b; font-weight: bold',
+            ERROR: 'color: #ef4444; font-weight: bold',
+            MERGE: 'color: #06b6d4; font-weight: bold',
+            BATCH: 'color: #10b981; font-weight: bold'
+        };
+        return styles[category] || 'color: #6b7280';
+    },
+    log(category, message, data) {
+        if (!GPE_DEBUG) return;
+        console.log(`%c[${this._ts()}] [${category}] ${message}`, this._style(category), data !== undefined ? data : '');
+    },
+    warn(category, message, data) {
+        if (!GPE_DEBUG) return;
+        console.warn(`%c[${this._ts()}] [${category}] ${message}`, this._style(category), data !== undefined ? data : '');
+    },
+    error(category, message, error) {
+        // Always log errors regardless of GPE_DEBUG
+        console.error(`%c[${this._ts()}] [${category}] ${message}`, this._style('ERROR'), error || '');
+    },
+    time(label) {
+        if (!GPE_DEBUG) return;
+        console.time(label);
+    },
+    timeEnd(label) {
+        if (!GPE_DEBUG) return;
+        console.timeEnd(label);
+    },
+    group(label) {
+        if (!GPE_DEBUG) return;
+        console.group(label);
+    },
+    groupEnd() {
+        if (!GPE_DEBUG) return;
+        console.groupEnd();
+    },
+    table(data) {
+        if (!GPE_DEBUG) return;
+        console.table(data);
+    }
+};
 
 /* =========================================================
    INDEXEDDB MANAGER (Replaces localStorage for large data)
@@ -1588,15 +1640,19 @@ class QuantEngine {
 
   // Cache Management - Using IndexedDB
   async initCache() {
+      const t0 = performance.now();
       try {
           await IndexedDBManager.init();
+          DebugLogger.log('CACHE', '✅ IndexedDB initialized', { timeMs: (performance.now() - t0).toFixed(1) });
       } catch(e) {
-          console.warn('IndexedDB not available, using localStorage fallback');
+          DebugLogger.warn('CACHE', '⚠️ IndexedDB unavailable, using localStorage fallback', { error: e.message });
       }
   }
 
   getCacheKey(symbol, mode = this.marketMode) {
-      return `gpe_cache_${mode}_${symbol}`;
+      const key = `gpe_cache_${mode}_${symbol}`;
+      DebugLogger.log('CACHE', `🔑 Cache key: ${key}`, { symbol, mode });
+      return key;
   }
 
   async getCachedData(symbol, mode = this.marketMode) {
@@ -1604,25 +1660,42 @@ class QuantEngine {
       
       // Try IndexedDB first
       if (IndexedDBManager.db) {
+          const t0 = performance.now();
           const cached = await IndexedDBManager.get(IndexedDBManager.STORES.CACHE, cacheKey);
-          if (cached && Array.isArray(cached)) return cached;
+          const elapsed = (performance.now() - t0).toFixed(1);
+          if (cached && Array.isArray(cached)) {
+              const lastDate = cached.length > 0 ? cached[cached.length - 1]?.date : 'N/A';
+              DebugLogger.log('CACHE', `📦 IndexedDB HIT: ${symbol} [${mode}] (${cached.length} days, last: ${lastDate})`, { timeMs: elapsed });
+              return cached;
+          }
+          DebugLogger.log('CACHE', `📭 IndexedDB MISS: ${symbol} [${mode}]`, { timeMs: elapsed });
       }
       
       // Fallback to localStorage
-      return IndexedDBManager.fallbackGet(cacheKey);
+      const fallback = IndexedDBManager.fallbackGet(cacheKey);
+      if (fallback && Array.isArray(fallback)) {
+          DebugLogger.log('CACHE', `📦 localStorage HIT: ${symbol} [${mode}] (${fallback.length} days)`);
+      } else {
+          DebugLogger.log('CACHE', `📭 Cache MISS (all sources): ${symbol} [${mode}]`);
+      }
+      return fallback;
   }
 
   async setCachedData(symbol, data, mode = this.marketMode) {
       const cacheKey = this.getCacheKey(symbol, mode);
+      const dataSize = Array.isArray(data) ? data.length : 0;
+      const t0 = performance.now();
       
       // Try IndexedDB first
       if (IndexedDBManager.db) {
           await IndexedDBManager.set(IndexedDBManager.STORES.CACHE, cacheKey, data);
+          DebugLogger.log('CACHE', `💾 Cached → IndexedDB: ${symbol} [${mode}] (${dataSize} days, ${((performance.now() - t0)).toFixed(1)}ms)`);
           return;
       }
       
       // Fallback to localStorage
-      IndexedDBManager.fallbackSet(cacheKey, data);
+      const ok = IndexedDBManager.fallbackSet(cacheKey, data);
+      DebugLogger.log('CACHE', `${ok ? '💾' : '❌'} Cached → localStorage: ${symbol} [${mode}] (${dataSize} days, ok=${ok})`);
   }
 
   getBangkokDateParts() {
@@ -1659,7 +1732,9 @@ class QuantEngine {
       const lastDate = data[data.length - 1]?.date;
       if (!lastDate) return false;
       const expectedLatest = this.getExpectedLatestDateByMode(mode);
-      return lastDate >= expectedLatest;
+      const isUpToDate = lastDate >= expectedLatest;
+      DebugLogger.log('CACHE', `${isUpToDate ? '✅' : '⏰'} Cache freshness: lastDate=${lastDate}, expected=${expectedLatest}, upToDate=${isUpToDate}`);
+      return isUpToDate;
   }
 
   // Check cache freshness with TTL
@@ -1679,25 +1754,32 @@ class QuantEngine {
   }
 
   mergeHistoryData(existingData, newData) {
+      const t0 = performance.now();
       const merged = new Map();
       (existingData || []).forEach(row => {
           if (row && row.date) merged.set(row.date, row);
       });
+      const beforeCount = merged.size;
       (newData || []).forEach(row => {
           if (row && row.date) merged.set(row.date, row);
       });
-      return [...merged.values()].sort((a, b) => a.date.localeCompare(b.date));
+      const result = [...merged.values()].sort((a, b) => a.date.localeCompare(b.date));
+      DebugLogger.log('MERGE', `🔀 Merged: existing=${(existingData||[]).length}, new=${(newData||[]).length}, final=${result.length}, added=${result.length - beforeCount} new`, { timeMs: (performance.now() - t0).toFixed(1) });
+      return result;
   }
 
   async clearCache() {
+      DebugLogger.log('CACHE', '🗑️ Clearing all cache...');
       // Clear IndexedDB cache
       if (IndexedDBManager.db) {
           await IndexedDBManager.clear(IndexedDBManager.STORES.CACHE);
+          DebugLogger.log('CACHE', '🗑️ IndexedDB cache cleared');
       }
       // Also clear legacy localStorage cache
       const keys = Object.keys(localStorage);
       const cacheKeys = keys.filter(key => key.startsWith('gpe_cache_'));
       cacheKeys.forEach(key => localStorage.removeItem(key));
+      DebugLogger.log('CACHE', `🗑️ localStorage cache cleared (${cacheKeys.length} keys)`);
       alert(`Cache cleared (${cacheKeys.length} localStorage + IndexedDB)`);
   }
 
@@ -1771,6 +1853,7 @@ class QuantEngine {
   }
 
   async fetchBinanceData(symbol, fromDate = null){
+    const t0 = performance.now();
     try {
         const pair = `${symbol.toUpperCase()}USDT`;
         let url = `https://api.binance.com/api/v3/klines?symbol=${pair}&interval=1d&limit=1000`;
@@ -1779,19 +1862,29 @@ class QuantEngine {
             start.setUTCDate(start.getUTCDate() + 1);
             url += `&startTime=${start.getTime()}`;
         }
+        DebugLogger.log('FETCH', `🌐 Binance API: ${symbol}${fromDate ? ` (from ${fromDate})` : ' (full)'}`, { url });
         const response = await this.fetchWithTimeout(url);
-        if(!response.ok) throw new Error(`Fetch failed`);
+        if(!response.ok) throw new Error(`Fetch failed (status ${response.status})`);
         const data = await response.json();
-        return data.map(d => ({ 
+        const result = data.map(d => ({ 
             date: new Date(d[0]).toISOString().slice(0, 10), 
             price: parseFloat(d[4]),
             volume: parseFloat(d[5])
         }));
-    } catch(e) { return null; }
+        DebugLogger.log('FETCH', `✅ Binance: ${symbol} → ${result.length} days (${(performance.now()-t0).toFixed(0)}ms)`);
+        return result;
+    } catch(e) {
+        DebugLogger.error('FETCH', `❌ Binance: ${symbol} failed`, e.message);
+        return null;
+    }
   }
 
   async fetchYahooDataRecursive(symbol, proxyIdx, fromDate = null){
-      if(proxyIdx >= PROXIES.length) return null;
+      const t0 = performance.now();
+      if(proxyIdx >= PROXIES.length) {
+          DebugLogger.error('FETCH', `❌ Yahoo: ${symbol} — all proxies exhausted`);
+          return null;
+      }
       try {
           let yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol.toUpperCase()}?interval=1d&range=5y`;
           if (fromDate) {
@@ -1800,11 +1893,12 @@ class QuantEngine {
               yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol.toUpperCase()}?interval=1d&period1=${period1}&period2=${period2}`;
           }
           const proxyUrl = PROXIES[proxyIdx](yahooUrl);
+          DebugLogger.log('FETCH', `🌐 Yahoo API [proxy ${proxyIdx}]: ${symbol}${fromDate ? ` (from ${fromDate})` : ' (full)'}`);
           const response = await this.fetchWithTimeout(proxyUrl);
-          if(!response.ok) throw new Error(`Proxy ${proxyIdx} failed`);
+          if(!response.ok) throw new Error(`Proxy ${proxyIdx} failed (status ${response.status})`);
           const data = await response.json();
           const result = data.chart.result[0];
-          if(!result || !result.timestamp) throw new Error(`No data`);
+          if(!result || !result.timestamp) throw new Error(`No data returned`);
           const timestamps = result.timestamp;
           const prices = result.indicators.quote[0].close;
           const volumes = result.indicators.quote[0].volume; 
@@ -1820,11 +1914,16 @@ class QuantEngine {
                   });
               }
           }
+          DebugLogger.log('FETCH', `✅ Yahoo [proxy ${proxyIdx}]: ${symbol} → ${history.length} days (${(performance.now()-t0).toFixed(0)}ms)`);
           return history;
-      } catch(e) { return await this.fetchYahooDataRecursive(symbol, proxyIdx + 1, fromDate); }
+      } catch(e) {
+          DebugLogger.warn('FETCH', `⚠️ Yahoo [proxy ${proxyIdx}]: ${symbol} failed — ${e.message}, trying next...`);
+          return await this.fetchYahooDataRecursive(symbol, proxyIdx + 1, fromDate);
+      }
   }
 
   async fetchData() {
+      const batchStart = performance.now();
       UI.loading(true, "INITIALIZING...");
       document.getElementById('status-log').innerHTML = '';
       UI.setSystemStatus('loading');
@@ -1834,14 +1933,20 @@ class QuantEngine {
       // Fetch all known assets (ETF + Crypto) plus user assets/universe/benchmark
     let desiredTickers = [...new Set([...this.getAllKnownAssets(), ...this.universe, ...trackerAssets, cfg.bench])];
       
+      DebugLogger.log('BATCH', `🚀 Starting batch fetch: ${desiredTickers.length} tickers`, { tickers: desiredTickers });
+      
       // --- NEW: Batch Processing to prevent UI Freeze ---
       const batchSize = 5; // Increased from 3 to 5 for faster fetching
       const availableTickers = [];
       const availableData = [];
+      let successCount = 0, failCount = 0;
       
       for (let i = 0; i < desiredTickers.length; i += batchSize) {
           const batch = desiredTickers.slice(i, i + batchSize);
-          UI.loading(true, `FETCHING ${i + 1}/${desiredTickers.length}...`);
+          const batchNum = Math.floor(i / batchSize) + 1;
+          const totalBatches = Math.ceil(desiredTickers.length / batchSize);
+          UI.loading(true, `FETCHING ${i + 1}-${Math.min(i + batchSize, desiredTickers.length)}/${desiredTickers.length}...`);
+          DebugLogger.log('BATCH', `📦 Batch ${batchNum}/${totalBatches}: [${batch.join(', ')}]`);
           
           // Yield to UI thread
           await new Promise(r => setTimeout(r, 50)); 
@@ -1852,9 +1957,16 @@ class QuantEngine {
               if (res && res.length > 50) {
                   availableTickers.push(batch[idx]);
                   availableData.push(res);
+                  successCount++;
+              } else {
+                  failCount++;
+                  DebugLogger.warn('BATCH', `⚠️ ${batch[idx]}: insufficient data (${res ? res.length : 0} days)`);
               }
           });
       }
+
+      const totalBatchTime = ((performance.now() - batchStart) / 1000).toFixed(1);
+      DebugLogger.log('BATCH', `🏁 Batch complete: ✅ ${successCount} ok, ❌ ${failCount} failed, ⏱️ ${totalBatchTime}s`);
 
       if(availableData.length < 2) {
           alert("Not enough data loaded. Please add more valid assets.");
