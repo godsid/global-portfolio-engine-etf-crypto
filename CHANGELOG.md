@@ -1,5 +1,21 @@
 # Changelog
 
+## v54.0 — 2026-06-03
+
+### Added
+- **Transaction Type "Capital Addition" (เพิ่มทุน)**: รองรับประเภทรายการใหม่นอกเหนือจาก Buy/Sell
+- **Notes Field**: เพิ่ม field สำหรับใส่หมายเหตุแต่ละ transaction (max 500 chars)
+- **Cash Balance Tracking**: แสดงยอดเงินสดคงเหลือแยกจากมูลค่า holdings
+- **Cash Warning**: แสดง warning เมื่อ cash balance ติดลบ
+
+### Changed
+- **Auto-hide Asset field**: เมื่อเลือก "เพิ่มทุน" จะซ่อน Asset field และ auto-set เป็น CASH
+- **Color-coded badges**: Buy=เขียว, Sell=แดง, Capital=น้ำเงิน
+- **Notes icon**: แสดง 📝 icon ใน transaction table เมื่อมี notes
+- **Version bump**: v53.0 → v54.0
+
+---
+
 ## v53.0 — 2026-05-29
 
 ### Fixed

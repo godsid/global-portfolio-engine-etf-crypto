@@ -1,7 +1,7 @@
 # 📋 Global Portfolio Engine - Progress Tracker
 
 **Project:** global-portfolio-engine-etf-crypto  
-**Last Updated:** 2026-05-27  
+**Last Updated:** 2026-06-03  
 **Status:** Implementation In Progress
 
 ---
@@ -157,8 +157,27 @@ function isCacheValid(cache) {
 2. ✅ System Diagrams (COMPLETED)
 3. ✅ Thai market support (COMPLETED)
 4. ✅ Fetch optimization (COMPLETED)
+5. ✅ Portfolio Tracker enhancements (COMPLETED)
 
-🎉 ALL TASKS COMPLETED!
+---
+
+### 5️⃣ Portfolio Tracker: Transaction Types + Full Cash Management
+
+**Status:** ✅ Complete
+**Priority:** 🔴 High
+**Date:** 2026-06-03
+**Files Modified:** `index.html`
+**Version:** v54.0
+
+**Changes Made:**
+- [x] เพิ่ม transaction type ที่ 3: `เพิ่มทุน (Capital Addition)` นอกจาก Buy/Sell
+- [x] เพิ่ม Notes field สำหรับแต่ละ transaction (max 500 chars)
+- [x] ซ่อน Asset field เมื่อเลือก "เพิ่มทุน" (auto-set to CASH)
+- [x] แก้ไข `updateSummary()` - Cash Balance Tracking (Capital+=cash, Buy-=cash, Sell+=cash)
+- [x] แก้ไข `renderPortfolioSummary()` - แสดง Cash Balance แยก + warning เมื่อติดลบ
+- [x] ซ่อน CASH จาก asset holdings table
+- [x] แสดง notes icon (📝) ใน transaction table
+- [x] Color-coded badges: Buy=เขียว, Sell=แดง, Capital=น้ำเงิน
 
 ---
 
@@ -183,4 +202,4 @@ function isCacheValid(cache) {
 
 ---
 
-**Next Step:** เริ่มทำ Thai market support ต่อไป
+**Next Step:** Continue with remaining improvements
