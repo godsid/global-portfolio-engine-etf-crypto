@@ -5480,21 +5480,28 @@ const PnLChartModal = {
                     txnIdx++;
                 }
                 let mktVal = 0;
+                let hasValidPrice = false;
                 Object.entries(holdings).forEach(([asset, qty]) => {
                     if (qty > 0 && Engine.marketData[asset]) {
                         const p = Engine.marketData[asset].prices[globalIdx];
-                        if (p > 0) mktVal += qty * p;
+                        if (p > 0 && Number.isFinite(p)) {
+                            mktVal += qty * p;
+                            hasValidPrice = true;
+                        }
                     }
                 });
 
-                if (txnIdx > 0) {
+                // Only push data if we have valid costBasis AND valid market data
+                // If costBasis > 0 but no valid prices, show null to avoid spike
+                if (txnIdx > 0 && hasValidPrice && costBasis > 0) {
                     const pnlDollar = mktVal - costBasis;
-                    const pnlPct = costBasis > 0 ? (pnlDollar / costBasis * 100) : 0;
+                    const pnlPct = (pnlDollar / costBasis) * 100;
                     pnlPctData.push(pnlPct);
                     pnlDollarData.push(pnlDollar);
                     mktValData.push(mktVal);
                     costBasisData.push(costBasis);
                 } else {
+                    // No valid data - push null to prevent incorrect spikes
                     pnlPctData.push(null);
                     pnlDollarData.push(null);
                     mktValData.push(null);
