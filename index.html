@@ -239,18 +239,21 @@ th.sortable:hover { color: #3b82f6; }
       </div>
       
       <div>
-        <label class="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">Type</label>
-        <div class="grid grid-cols-2 gap-2">
-          <button type="button" id="txn-type-buy" onclick="PortfolioTracker.setType('buy')" class="px-4 py-2 rounded border-2 border-green-500 bg-green-500 text-white font-bold transition-all">
-            <i class="fas fa-plus-circle mr-1"></i> ซื้อ (Buy)
+        <label class="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">ประเภทรายการ</label>
+        <div class="grid grid-cols-3 gap-2">
+          <button type="button" id="txn-type-buy" onclick="PortfolioTracker.setType('buy')" class="px-3 py-2 rounded border-2 border-green-500 bg-green-500 text-white font-bold transition-all text-xs">
+            <i class="fas fa-plus-circle mr-1"></i> ซื้อ Asset
           </button>
-          <button type="button" id="txn-type-sell" onclick="PortfolioTracker.setType('sell')" class="px-4 py-2 rounded border-2 border-gray-300 dark:border-dark-700 text-gray-600 dark:text-gray-400 font-bold transition-all">
-            <i class="fas fa-minus-circle mr-1"></i> ขาย (Sell)
+          <button type="button" id="txn-type-sell" onclick="PortfolioTracker.setType('sell')" class="px-3 py-2 rounded border-2 border-gray-300 dark:border-dark-700 text-gray-600 dark:text-gray-400 font-bold transition-all text-xs">
+            <i class="fas fa-minus-circle mr-1"></i> ขาย
+          </button>
+          <button type="button" id="txn-type-capital" onclick="PortfolioTracker.setType('capital')" class="px-3 py-2 rounded border-2 border-gray-300 dark:border-dark-700 text-gray-600 dark:text-gray-400 font-bold transition-all text-xs">
+            <i class="fas fa-wallet mr-1"></i> เพิ่มทุน
           </button>
         </div>
       </div>
       
-      <div>
+      <div id="txn-asset-section">
         <label class="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">Asset</label>
         <input id="txn-asset" type="text" placeholder="e.g., SPY, BTC" class="w-full px-3 py-2 rounded border border-gray-300 dark:border-dark-700 bg-white dark:bg-dark-800 text-sm">
       </div>
@@ -266,7 +269,7 @@ th.sortable:hover { color: #3b82f6; }
         </div>
       </div>
       
-      <div>
+      <div id="txn-commission-section">
         <label class="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300 flex items-center gap-2">
           <i class="fas fa-percent text-orange-500"></i>
           Commission ($)
@@ -275,6 +278,15 @@ th.sortable:hover { color: #3b82f6; }
         <input id="txn-commission" type="number" step="0.01" placeholder="0.00" value="0" class="w-full px-3 py-2 rounded border border-gray-300 dark:border-dark-700 bg-white dark:bg-dark-800 text-sm">
       </div>
       
+      <!-- Notes Field -->
+      <div>
+        <label class="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">
+          <i class="fas fa-sticky-note mr-1 text-yellow-500"></i> Notes
+          <span class="text-xs font-normal text-gray-500">หมายเหตุ (ถ้ามี)</span>
+        </label>
+        <input id="txn-notes" type="text" maxlength="500" placeholder="เช่น เพิ่มทุนรายเดือน, DCA, ปันผล..." class="w-full px-3 py-2 rounded border border-gray-300 dark:border-dark-700 bg-white dark:bg-dark-800 text-sm">
+      </div>
+
       <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
         <div class="grid grid-cols-2 gap-4 text-sm">
           <div>
@@ -4478,13 +4490,33 @@ const PortfolioTracker = {
         this.currentType = type;
         const buyBtn = document.getElementById('txn-type-buy');
         const sellBtn = document.getElementById('txn-type-sell');
+        const capitalBtn = document.getElementById('txn-type-capital');
+        const assetSection = document.getElementById('txn-asset-section');
+        const priceInput = document.getElementById('txn-price');
+        const qtyInput = document.getElementById('txn-quantity');
+        
+        // Reset all buttons
+        const inactiveClass = 'px-3 py-2 rounded border-2 border-gray-300 dark:border-dark-700 text-gray-600 dark:text-gray-400 font-bold transition-all text-xs';
+        buyBtn.className = inactiveClass;
+        sellBtn.className = inactiveClass;
+        capitalBtn.className = inactiveClass;
         
         if (type === 'buy') {
-            buyBtn.className = 'px-4 py-2 rounded border-2 border-green-500 bg-green-500 text-white font-bold transition-all';
-            sellBtn.className = 'px-4 py-2 rounded border-2 border-gray-300 dark:border-dark-700 text-gray-600 dark:text-gray-400 font-bold transition-all';
-        } else {
-            buyBtn.className = 'px-4 py-2 rounded border-2 border-gray-300 dark:border-dark-700 text-gray-600 dark:text-gray-400 font-bold transition-all';
-            sellBtn.className = 'px-4 py-2 rounded border-2 border-red-500 bg-red-500 text-white font-bold transition-all';
+            buyBtn.className = 'px-3 py-2 rounded border-2 border-green-500 bg-green-500 text-white font-bold transition-all text-xs';
+            assetSection?.classList.remove('hidden');
+            priceInput.closest('.grid')?.classList.remove('hidden');
+            document.getElementById('txn-asset').required = true;
+        } else if (type === 'sell') {
+            sellBtn.className = 'px-3 py-2 rounded border-2 border-red-500 bg-red-500 text-white font-bold transition-all text-xs';
+            assetSection?.classList.remove('hidden');
+            priceInput.closest('.grid')?.classList.remove('hidden');
+            document.getElementById('txn-asset').required = true;
+        } else if (type === 'capital') {
+            capitalBtn.className = 'px-3 py-2 rounded border-2 border-blue-500 bg-blue-500 text-white font-bold transition-all text-xs';
+            assetSection?.classList.add('hidden');
+            document.getElementById('txn-asset').value = 'CASH';
+            document.getElementById('txn-asset').required = false;
+            document.getElementById('txn-quantity').value = '1';
         }
     },
 
@@ -4520,6 +4552,7 @@ const PortfolioTracker = {
         
         this.setType('buy');
         document.getElementById('txn-asset').value = '';
+        document.getElementById('txn-notes').value = '';
         document.getElementById('txn-price').value = '';
         document.getElementById('txn-quantity').value = '';
         document.getElementById('txn-commission').value = '0';
@@ -4579,6 +4612,7 @@ const PortfolioTracker = {
         
         this.setType(txn.type);
         document.getElementById('txn-asset').value = txn.asset;
+        document.getElementById('txn-notes').value = txn.notes || '';
         document.getElementById('txn-price').value = txn.price;
         document.getElementById('txn-quantity').value = Math.abs(txn.quantity);
         document.getElementById('txn-commission').value = txn.commission || 0;
@@ -4623,10 +4657,52 @@ const PortfolioTracker = {
         const price = parseFloat(document.getElementById('txn-price').value);
         let quantity = parseFloat(document.getElementById('txn-quantity').value);
         const commission = parseFloat(document.getElementById('txn-commission').value) || 0;
+        const notes = (document.getElementById('txn-notes').value || '').trim().slice(0, 500);
         const type = this.currentType;
 
-        // Validation
-        if (!date || !portfolio || portfolio === '__new__' || !asset || !price || !quantity) {
+        // Validation - asset not required for capital type
+        if (!date || !portfolio || portfolio === '__new__') {
+            alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+            return;
+        }
+
+        if (type === 'capital') {
+            // Capital addition: amount = price, no asset needed
+            if (!price || price <= 0) {
+                alert('กรุณาระบุจำนวนเงินที่เพิ่มทุน');
+                return;
+            }
+            const transactions = this.getAllTransactions();
+            const txnData = {
+                id: this.editingId || Date.now(),
+                date,
+                portfolio,
+                asset: 'CASH',
+                type: 'capital',
+                price: price,
+                quantity: 1,
+                commission: 0,
+                total: price,
+                notes: notes,
+                updatedAt: new Date().toISOString()
+            };
+            if (this.editingId !== null) {
+                const index = transactions.findIndex(t => t.id === this.editingId);
+                if (index !== -1) transactions[index] = txnData;
+            } else {
+                txnData.createdAt = new Date().toISOString();
+                delete txnData.updatedAt;
+                transactions.push(txnData);
+            }
+            this.saveAllTransactions(transactions);
+            this.closeDialog();
+            this.renderTransactions();
+            alert(this.editingId ? 'แก้ไขรายการสำเร็จ' : 'เพิ่มทุนสำเร็จ');
+            return;
+        }
+
+        // Buy/Sell validation
+        if (!asset || !price || !quantity) {
             alert('กรุณากรอกข้อมูลให้ครบถ้วน');
             return;
         }
@@ -4659,6 +4735,7 @@ const PortfolioTracker = {
                     quantity,
                     commission,
                     total: price * Math.abs(quantity),
+                    notes,
                     updatedAt: new Date().toISOString()
                 };
             }
@@ -4674,6 +4751,7 @@ const PortfolioTracker = {
                 quantity,
                 commission,
                 total: price * Math.abs(quantity),
+                notes,
                 createdAt: new Date().toISOString()
             };
             transactions.push(newTxn);
@@ -4754,6 +4832,8 @@ const PortfolioTracker = {
         tbody.innerHTML = sorted.map(txn => {
             const typeLabel = txn.type === 'buy' ? 
                 '<span class="inline-block bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-1 rounded text-xs font-bold"><i class="fas fa-plus-circle mr-1"></i>ซื้อ</span>' :
+                txn.type === 'capital' ?
+                '<span class="inline-block bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded text-xs font-bold"><i class="fas fa-wallet mr-1"></i>เพิ่มทุน</span>' :
                 '<span class="inline-block bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-1 rounded text-xs font-bold"><i class="fas fa-minus-circle mr-1"></i>ขาย</span>';
             
             const commission = txn.commission || 0;
@@ -4770,12 +4850,13 @@ const PortfolioTracker = {
                     </span>
                 </td>
                 <td class="px-4 py-3 text-center">${typeLabel}</td>
-                <td class="px-4 py-3 font-bold">${txn.asset}</td>
+                <td class="px-4 py-3 font-bold">${txn.asset === 'CASH' ? '<span class="text-blue-500">💵 เงินสด</span>' : txn.asset}</td>
                 <td class="px-4 py-3 text-right mono">$${formatDisplayPrice(txn.price)}</td>
                 <td class="px-4 py-3 text-right mono">${Math.abs(txn.quantity).toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4})}</td>
                 <td class="px-4 py-3 text-right font-bold text-stock-600 dark:text-stock-400 mono">$${txn.total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                 <td class="px-4 py-3 text-right mono">${commissionDisplay}</td>
                 <td class="px-4 py-3 text-center">
+                    ${txn.notes ? `<span class="text-yellow-500 mr-1" title="${txn.notes}"><i class="fas fa-sticky-note"></i></span>` : ''}
                     <button onclick="PortfolioTracker.showEditDialog(${txn.id})" class="text-blue-500 hover:text-blue-700 px-2 py-1 text-xs" title="แก้ไข">
                         <i class="fas fa-edit"></i>
                     </button>
@@ -4791,9 +4872,9 @@ const PortfolioTracker = {
     },
 
     updateSummary(transactions) {
-        // FIX: Total invested = sum of BUY transactions only (not reduced by sells)
+        // Total invested = sum of BUY + CAPITAL_ADDITION transactions
         const totalInvested = transactions.reduce((sum, t) => {
-            return sum + (t.type === 'buy' ? t.total : 0);
+            return sum + ((t.type === 'buy' || t.type === 'capital') ? t.total : 0);
         }, 0);
         
         // FIX: Cash from sales = sum of SELL transactions (converted to cash/USD)
@@ -4891,7 +4972,7 @@ const PortfolioTracker = {
                 summaryByPortfolio[txn.portfolio] = { cost: 0, cashFromSales: 0, count: 0, commission: 0, holdings: {} };
             }
             // FIX: cost = total invested (buy only), cashFromSales = total from sells
-            if (txn.type === 'buy') {
+            if (txn.type === 'buy' || txn.type === 'capital') {
                 summaryByPortfolio[txn.portfolio].cost += txn.total;
             } else {
                 summaryByPortfolio[txn.portfolio].cashFromSales += txn.total;
