@@ -4872,39 +4872,35 @@ const PortfolioTracker = {
     },
 
     updateSummary(transactions) {
-        // Total invested = sum of BUY + CAPITAL_ADDITION transactions
-        const totalInvested = transactions.reduce((sum, t) => {
-            return sum + ((t.type === 'buy' || t.type === 'capital') ? t.total : 0);
-        }, 0);
+        // Cash Balance Tracking
+        let cashBalance = 0;
+        let totalInvested = 0;
+        const holdings = {};
         
-        // FIX: Cash from sales = sum of SELL transactions (converted to cash/USD)
-        const totalCashFromSales = transactions.reduce((sum, t) => {
-            return sum + (t.type === 'sell' ? t.total : 0);
-        }, 0);
+        transactions.forEach(t => {
+            if (t.type === 'capital') {
+                cashBalance += t.total;
+                totalInvested += t.total;
+            } else if (t.type === 'buy') {
+                cashBalance -= t.total;
+                if (!holdings[t.asset]) holdings[t.asset] = { quantity: 0, cost: 0 };
+                holdings[t.asset].quantity += t.quantity;
+                holdings[t.asset].cost += t.total;
+            } else if (t.type === 'sell') {
+                cashBalance += t.total;
+                if (!holdings[t.asset]) holdings[t.asset] = { quantity: 0, cost: 0 };
+                if (holdings[t.asset].quantity > 0) {
+                    const avgCost = holdings[t.asset].cost / holdings[t.asset].quantity;
+                    holdings[t.asset].cost -= avgCost * Math.abs(t.quantity);
+                }
+                holdings[t.asset].quantity += t.quantity;
+            }
+        });
         
         // Calculate total commission
         const totalCommission = transactions.reduce((sum, t) => {
             return sum + (t.commission || 0);
         }, 0);
-        
-        // Calculate holdings with proportional cost tracking
-        const holdings = {};
-        transactions.forEach(t => {
-            if (!holdings[t.asset]) {
-                holdings[t.asset] = { quantity: 0, cost: 0 };
-            }
-            if (t.type === 'buy') {
-                holdings[t.asset].quantity += t.quantity;
-                holdings[t.asset].cost += t.total;
-            } else {
-                // Sell: reduce cost proportionally to quantity sold
-                if (holdings[t.asset].quantity > 0) {
-                    const avgCost = holdings[t.asset].cost / holdings[t.asset].quantity;
-                    holdings[t.asset].cost -= avgCost * Math.abs(t.quantity);
-                }
-                holdings[t.asset].quantity += t.quantity; // negative for sell
-            }
-        });
         
         const marketData = this.getMarketDataForAssets(Object.keys(holdings));
         const hasMarketData = Object.keys(marketData).length > 0;
@@ -4922,8 +4918,8 @@ const PortfolioTracker = {
             });
         }
         
-        // FIX: Total portfolio value = holdings market value + cash from sales (USD)
-        const totalValue = hasMarketData ? currentHoldingsValue + totalCashFromSales : 0;
+        // Total value = holdings market value + cash balance (floored at 0)
+        const totalValue = hasMarketData ? currentHoldingsValue + Math.max(cashBalance, 0) : 0;
         const pnl = totalValue - totalInvested;
         const pnlPct = totalInvested > 0 ? (pnl / totalInvested * 100) : 0;
         
@@ -4969,16 +4965,31 @@ const PortfolioTracker = {
         const summaryByPortfolio = {};
         transactions.forEach(txn => {
             if (!summaryByPortfolio[txn.portfolio]) {
-                summaryByPortfolio[txn.portfolio] = { cost: 0, cashFromSales: 0, count: 0, commission: 0, holdings: {} };
+                summaryByPortfolio[txn.portfolio] = { cost: 0, cashBalance: 0, totalInvested: 0, count: 0, commission: 0, holdings: {} };
             }
-            // FIX: cost = total invested (buy only), cashFromSales = total from sells
-            if (txn.type === 'buy' || txn.type === 'capital') {
+            
+            // Cash Balance Tracking: capital adds cash, buy subtracts, sell adds back
+            if (txn.type === 'capital') {
+                summaryByPortfolio[txn.portfolio].cashBalance += txn.total;
+                summaryByPortfolio[txn.portfolio].totalInvested += txn.total;
+            } else if (txn.type === 'buy') {
+                summaryByPortfolio[txn.portfolio].cashBalance -= txn.total;
                 summaryByPortfolio[txn.portfolio].cost += txn.total;
-            } else {
-                summaryByPortfolio[txn.portfolio].cashFromSales += txn.total;
+            } else if (txn.type === 'sell') {
+                summaryByPortfolio[txn.portfolio].cashBalance += txn.total;
+                // Sell: reduce cost proportionally
+                const holding = summaryByPortfolio[txn.portfolio].holdings[txn.asset];
+                if (holding && holding.quantity > 0) {
+                    const avgCost = holding.cost / holding.quantity;
+                    holding.cost -= avgCost * Math.abs(txn.quantity);
+                }
             }
+            
             summaryByPortfolio[txn.portfolio].commission += (txn.commission || 0);
             summaryByPortfolio[txn.portfolio].count += 1;
+            
+            // Skip CASH from holdings tracking
+            if (txn.asset === 'CASH') return;
             
             // Calculate holdings with proportional cost tracking
             if (!summaryByPortfolio[txn.portfolio].holdings[txn.asset]) {
@@ -4987,13 +4998,6 @@ const PortfolioTracker = {
             summaryByPortfolio[txn.portfolio].holdings[txn.asset].quantity += txn.quantity;
             if (txn.type === 'buy') {
                 summaryByPortfolio[txn.portfolio].holdings[txn.asset].cost += txn.total;
-            } else {
-                // Sell: reduce cost proportionally
-                const holding = summaryByPortfolio[txn.portfolio].holdings[txn.asset];
-                if (holding.quantity > 0) {
-                    const avgCost = holding.cost / holding.quantity;
-                    holding.cost -= avgCost * Math.abs(txn.quantity);
-                }
             }
         });
         
@@ -5058,10 +5062,13 @@ const PortfolioTracker = {
                 });
             }
             
-            const pnl = hasPortfolioMarketData ? currentValue - data.cost : 0;
-            const pnlPct = data.cost > 0 ? (pnl / data.cost * 100) : 0;
+            const totalValueWithCash = hasPortfolioMarketData ? currentValue + Math.max(data.cashBalance, 0) : 0;
+            const totalCost = data.cost;
+            const pnl = hasPortfolioMarketData ? totalValueWithCash - data.totalInvested : 0;
+            const pnlPct = data.totalInvested > 0 ? (pnl / data.totalInvested * 100) : 0;
             const pnlColor = pnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
             const pnlSign = pnl >= 0 ? '+' : '';
+            const cashWarning = data.cashBalance < 0;
             
             // Encode data for modal
             const encodedData = encodeURIComponent(JSON.stringify({
@@ -5080,16 +5087,23 @@ const PortfolioTracker = {
                 <div class="flex items-center justify-between mb-3">
                     <div>
                         <div class="text-xs text-gray-600 dark:text-gray-400">${name}</div>
-                        <div class="text-lg font-bold text-stock-600 dark:text-stock-400 mono">ต้นทุน: $${data.cost.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                        <div class="text-lg font-bold text-stock-600 dark:text-stock-400 mono">ต้นทุน: $${data.totalInvested.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
                     </div>
                     <div class="text-right">
                         ${hasPortfolioMarketData ? `
-                            <div class="text-sm font-bold text-gray-700 dark:text-gray-300">มูลค่า: $${currentValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                            <div class="text-sm font-bold text-gray-700 dark:text-gray-300">มูลค่า: $${totalValueWithCash.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
                             <div class="text-sm font-bold ${pnlColor}">${pnlSign}$${Math.abs(pnl).toFixed(2)} (${pnlSign}${pnlPct.toFixed(2)}%)</div>
                         ` : `
                             <div class="text-xs text-orange-500">รัน Fetch Data</div>
                         `}
                     </div>
+                </div>
+                <div class="flex items-center gap-2 mb-2 text-xs">
+                    <span class="text-gray-500">💵 Cash:</span>
+                    <span class="font-bold ${data.cashBalance >= 0 ? 'text-green-600' : 'text-red-600'}">
+                        $${Math.max(data.cashBalance, 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </span>
+                    ${cashWarning ? '<span class="text-red-500 text-[10px] bg-red-100 dark:bg-red-900/30 px-1 rounded">⚠️ ขาดทุน</span>' : ''}
                 </div>
                 
                 ${hasPortfolioMarketData && assetData.length > 0 ? `
