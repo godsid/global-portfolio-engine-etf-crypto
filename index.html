@@ -1940,10 +1940,11 @@ class QuantEngine {
       document.getElementById('status-log').innerHTML = '';
       UI.setSystemStatus('loading');
       
-      const cfg = UI.getParams();
-      const trackerAssets = [...new Set((PortfolioTracker.getAllTransactions() || []).map(t => (t.asset || '').toUpperCase()).filter(Boolean))];
-      // Fetch all known assets (ETF + Crypto) plus user assets/universe/benchmark
-    let desiredTickers = [...new Set([...this.getAllKnownAssets(), ...this.universe, ...trackerAssets, cfg.bench])];
+        const cfg = UI.getParams();
+        // Filter out CASH from tracker assets (it's just a virtual asset for capital transactions, not real market data)
+        const trackerAssets = [...new Set((PortfolioTracker.getAllTransactions() || []).map(t => (t.asset || '').toUpperCase()).filter(Boolean))].filter(a => a !== 'CASH');
+        // Fetch all known assets (ETF + Crypto) plus user assets/universe/benchmark
+        let desiredTickers = [...new Set([...this.getAllKnownAssets(), ...this.universe, ...trackerAssets, cfg.bench])];
       
       DebugLogger.log('BATCH', `🚀 Starting batch fetch: ${desiredTickers.length} tickers`, { tickers: desiredTickers });
       

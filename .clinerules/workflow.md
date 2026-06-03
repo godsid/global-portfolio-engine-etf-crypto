@@ -12,7 +12,7 @@ Workflow rules for managing tasks, versioning, and git operations in the Global 
 - **PATCH** (x.y.Z): Bug fixes, minor UI corrections
 - **MINOR** (x.Y.z): New features, new transaction types, new UI sections
 - **MAJOR** (X.y.z): Breaking changes, data model changes requiring migration
-- Update version in `index.html` title tag: `Global Portfolio Engine vX.Y.Z`
+- Update version in `index.html` title tag: `Global Portfolio Engine vX.Y.Z` and on head tag: GPE `vX.Y.Z`
 - Version format in title: `v53.0` → increment appropriately
 
 ## Git Commit & Push
