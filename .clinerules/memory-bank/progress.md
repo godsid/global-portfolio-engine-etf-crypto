@@ -168,6 +168,7 @@ function isCacheValid(cache) {
 **Date:** 2026-06-03
 **Files Modified:** `index.html`
 **Version:** v54.0
+**Git Commit:** ✅ Pushed to origin/main
 
 **Changes Made:**
 - [x] เพิ่ม transaction type ที่ 3: `เพิ่มทุน (Capital Addition)` นอกจาก Buy/Sell

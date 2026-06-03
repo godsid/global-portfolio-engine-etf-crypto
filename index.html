@@ -5070,13 +5070,15 @@ const PortfolioTracker = {
             const pnlSign = pnl >= 0 ? '+' : '';
             const cashWarning = data.cashBalance < 0;
             
-            // Encode data for modal
+            // Encode data for modal (include totalInvested and cash for accurate display)
             const encodedData = encodeURIComponent(JSON.stringify({
                 name,
+                totalInvested: data.totalInvested,
+                cashBalance: data.cashBalance,
                 cost: data.cost,
                 commission: data.commission,
                 count: data.count,
-                currentValue,
+                currentValue: totalValueWithCash,  // Include cash in current value
                 pnl,
                 pnlPct,
                 holdings: assetData
@@ -5686,8 +5688,8 @@ const PortfolioDetailModal = {
         // Set header
         document.getElementById('detail-portfolio-name').textContent = data.name;
         
-        // Set summary stats
-        document.getElementById('detail-cost').textContent = `$${data.cost.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        // Set summary stats (use totalInvested for cost display, include cash in current value)
+        document.getElementById('detail-cost').textContent = `$${(data.totalInvested || data.cost).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
         document.getElementById('detail-value').textContent = `$${data.currentValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
         
         const pnlSign = data.pnl >= 0 ? '+' : '';
@@ -5812,7 +5814,15 @@ const PortfolioDetailModal = {
     renderAssetTable(holdings) {
         const tbody = document.getElementById('detail-asset-table');
         
-        tbody.innerHTML = holdings.map(h => {
+        // Filter out CASH from holdings display
+        const filteredHoldings = holdings.filter(h => h.asset !== 'CASH');
+        
+        if (filteredHoldings.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-400">ไม่มีรายการ Asset (เฉพาะ Cash)</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = filteredHoldings.map(h => {
             const pnlColor = h.pnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
             const pnlSign = h.pnl >= 0 ? '+' : '';
             
