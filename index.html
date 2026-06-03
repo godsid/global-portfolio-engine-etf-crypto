@@ -5461,9 +5461,22 @@ const PnLChartModal = {
                 const globalIdx = startIdx + i;
                 while (txnIdx < sorted.length && sorted[txnIdx].date <= d) {
                     const t = sorted[txnIdx];
+                    // Skip capital transactions for P&L calculation (they're just cash additions)
+                    if (t.type === 'capital') {
+                        txnIdx++;
+                        continue;
+                    }
                     if (!holdings[t.asset]) holdings[t.asset] = 0;
                     holdings[t.asset] += t.quantity;
-                    costBasis += (t.type === 'buy' ? t.total + (t.commission || 0) : -(t.total - (t.commission || 0)));
+                    // Only buy transactions add to costBasis; sell reduces it proportionally
+                    if (t.type === 'buy') {
+                        costBasis += t.total + (t.commission || 0);
+                    } else if (t.type === 'sell') {
+                        // Sell: reduce costBasis by the proportional cost of shares sold
+                        const avgCost = holdings[t.asset] > 0 ? costBasis / holdings[t.asset] : t.price;
+                        costBasis -= Math.abs(t.quantity) * avgCost;
+                        costBasis = Math.max(0, costBasis); // Ensure costBasis doesn't go negative
+                    }
                     txnIdx++;
                 }
                 let mktVal = 0;
