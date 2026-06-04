@@ -4532,25 +4532,53 @@ const PortfolioTracker = {
         }
     },
 
+    // Shared preview calculator bound to the 3 input fields.
+    // We use oninput (which replaces any existing handler) so opening the
+    // dialog multiple times does not stack duplicate listeners.
+    _updateTotalsPreview() {
+        const priceInput = document.getElementById('txn-price');
+        const qtyInput = document.getElementById('txn-quantity');
+        const commissionInput = document.getElementById('txn-commission');
+        if (!priceInput || !qtyInput || !commissionInput) return;
+        const price = parseFloat(priceInput.value) || 0;
+        const qty = parseFloat(qtyInput.value) || 0;
+        const commission = parseFloat(commissionInput.value) || 0;
+        const total = price * Math.abs(qty);
+        const net = total + commission;
+        const fmt = (v) => `$${v.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('txn-total-preview').textContent = fmt(total);
+        document.getElementById('txn-commission-preview').textContent = fmt(commission);
+        document.getElementById('txn-net-preview').textContent = fmt(net);
+    },
+
+    _bindPreviewInputs() {
+        const priceInput = document.getElementById('txn-price');
+        const qtyInput = document.getElementById('txn-quantity');
+        const commissionInput = document.getElementById('txn-commission');
+        if (priceInput) priceInput.oninput = () => this._updateTotalsPreview();
+        if (qtyInput) qtyInput.oninput = () => this._updateTotalsPreview();
+        if (commissionInput) commissionInput.oninput = () => this._updateTotalsPreview();
+    },
+
     showAddDialog() {
         this.editingId = null;
         this.currentType = 'buy';
         document.getElementById('transaction-modal-title').textContent = 'เพิ่มรายการลงทุน';
         document.getElementById('txn-date').value = new Date().toISOString().slice(0, 10);
-        
+
         // Populate portfolio dropdown
         const select = document.getElementById('txn-portfolio-select');
         const input = document.getElementById('txn-portfolio-input');
         const configNames = this.getConfigNames();
-        
-        select.innerHTML = '<option value="">-- เลือก Portfolio --</option>' + 
+
+        select.innerHTML = '<option value="">-- เลือก Portfolio --</option>' +
             configNames.map(name => `<option value="${name}">${name}</option>`).join('') +
             '<option value="__new__">+ สร้างใหม่</option>';
         select.value = '';
         select.classList.remove('hidden');
         input.classList.add('hidden');
         input.value = '';
-        
+
         this.setType('buy');
         document.getElementById('txn-asset').value = '';
         document.getElementById('txn-notes').value = '';
@@ -4561,24 +4589,9 @@ const PortfolioTracker = {
         document.getElementById('txn-commission-preview').textContent = '$0.00';
         document.getElementById('txn-net-preview').textContent = '$0.00';
         document.getElementById('transaction-modal').classList.remove('hidden');
-        
-        // Add event listeners for real-time total calculation
-        const priceInput = document.getElementById('txn-price');
-        const qtyInput = document.getElementById('txn-quantity');
-        const commissionInput = document.getElementById('txn-commission');
-        const updateTotal = () => {
-            const price = parseFloat(priceInput.value) || 0;
-            const qty = parseFloat(qtyInput.value) || 0;
-            const commission = parseFloat(commissionInput.value) || 0;
-            const total = price * Math.abs(qty);
-            const net = total + commission;
-            document.getElementById('txn-total-preview').textContent = `$${total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            document.getElementById('txn-commission-preview').textContent = `$${commission.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            document.getElementById('txn-net-preview').textContent = `$${net.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-        };
-        priceInput.oninput = updateTotal;
-        qtyInput.oninput = updateTotal;
-        commissionInput.oninput = updateTotal;
+
+        // Replace any previous handlers and bind a single shared handler
+        this._bindPreviewInputs();
     },
 
     showEditDialog(id) {
@@ -4590,16 +4603,16 @@ const PortfolioTracker = {
         this.currentType = txn.type;
         document.getElementById('transaction-modal-title').textContent = 'แก้ไขรายการลงทุน';
         document.getElementById('txn-date').value = txn.date;
-        
+
         // Setup portfolio selection
         const select = document.getElementById('txn-portfolio-select');
         const input = document.getElementById('txn-portfolio-input');
         const configNames = this.getConfigNames();
-        
-        select.innerHTML = '<option value="">-- เลือก Portfolio --</option>' + 
+
+        select.innerHTML = '<option value="">-- เลือก Portfolio --</option>' +
             configNames.map(name => `<option value="${name}">${name}</option>`).join('') +
             '<option value="__new__">+ สร้างใหม่</option>';
-        
+
         if (configNames.includes(txn.portfolio)) {
             select.value = txn.portfolio;
             select.classList.remove('hidden');
@@ -4610,43 +4623,47 @@ const PortfolioTracker = {
             input.classList.remove('hidden');
             input.value = txn.portfolio;
         }
-        
+
         this.setType(txn.type);
         document.getElementById('txn-asset').value = txn.asset;
         document.getElementById('txn-notes').value = txn.notes || '';
         document.getElementById('txn-price').value = txn.price;
         document.getElementById('txn-quantity').value = Math.abs(txn.quantity);
         document.getElementById('txn-commission').value = txn.commission || 0;
-        const total = txn.price * Math.abs(txn.quantity);
-        const commission = txn.commission || 0;
-        const net = total + commission;
-        document.getElementById('txn-total-preview').textContent = `$${total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-        document.getElementById('txn-commission-preview').textContent = `$${commission.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-        document.getElementById('txn-net-preview').textContent = `$${net.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
         document.getElementById('transaction-modal').classList.remove('hidden');
-        
-        // Add event listeners for real-time total calculation
-        const priceInput = document.getElementById('txn-price');
-        const qtyInput = document.getElementById('txn-quantity');
-        const commissionInput = document.getElementById('txn-commission');
-        const updateTotal = () => {
-            const price = parseFloat(priceInput.value) || 0;
-            const qty = parseFloat(qtyInput.value) || 0;
-            const commission = parseFloat(commissionInput.value) || 0;
-            const total = price * Math.abs(qty);
-            const net = total + commission;
-            document.getElementById('txn-total-preview').textContent = `$${total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            document.getElementById('txn-commission-preview').textContent = `$${commission.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            document.getElementById('txn-net-preview').textContent = `$${net.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-        };
-        priceInput.oninput = updateTotal;
-        qtyInput.oninput = updateTotal;
-        commissionInput.oninput = updateTotal;
+
+        // Run preview once to fill the initial totals, then bind inputs
+        // through the shared helper so we never accumulate duplicate handlers.
+        this._updateTotalsPreview();
+        this._bindPreviewInputs();
     },
 
     closeDialog() {
         document.getElementById('transaction-modal').classList.add('hidden');
         this.editingId = null;
+    },
+
+    /**
+     * Set the save button into a "loading" state to give visual feedback and
+     * prevent double-submission (which would create duplicate transactions
+     * because Date.now() is used as the new id).
+     */
+    _setSavingState(saving) {
+        const saveBtn = document.getElementById('txn-save-btn');
+        const cancelBtn = document.querySelector('#transaction-modal button[onclick="PortfolioTracker.closeDialog()"]');
+        if (!saveBtn) return;
+        if (saving) {
+            saveBtn.dataset.origText = saveBtn.dataset.origText || saveBtn.innerHTML;
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> กำลังบันทึก...';
+            saveBtn.classList.add('opacity-60', 'cursor-not-allowed');
+            if (cancelBtn) cancelBtn.disabled = true;
+        } else {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = saveBtn.dataset.origText || '<i class="fas fa-save mr-1"></i> บันทึก';
+            saveBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+            if (cancelBtn) cancelBtn.disabled = false;
+        }
     },
 
     saveTransaction() {
@@ -4667,67 +4684,93 @@ const PortfolioTracker = {
             return;
         }
 
-        if (type === 'capital') {
-            // Capital addition: amount = price, no asset needed
-            if (!price || price <= 0) {
-                alert('กรุณาระบุจำนวนเงินที่เพิ่มทุน');
+        // Engage loading state so a fast double-click can't create
+        // duplicate transactions (Date.now() collisions were rare but real).
+        this._setSavingState(true);
+        // Use a microtask so the button visually updates before any
+        // potentially-blocking sync work runs.
+        setTimeout(() => this._doSaveTransaction({ date, portfolio, asset, price, quantity, commission, notes, type }), 0);
+    },
+
+    _doSaveTransaction({ date, portfolio, asset, price, quantity, commission, notes, type }) {
+        try {
+            if (type === 'capital') {
+                // Capital addition: amount = price, no asset needed
+                if (!price || price <= 0) {
+                    alert('กรุณาระบุจำนวนเงินที่เพิ่มทุน');
+                    return;
+                }
+                const transactions = this.getAllTransactions();
+                const txnData = {
+                    id: this.editingId || Date.now(),
+                    date,
+                    portfolio,
+                    asset: 'CASH',
+                    type: 'capital',
+                    price: price,
+                    quantity: 1,
+                    commission: 0,
+                    total: price,
+                    notes: notes,
+                    updatedAt: new Date().toISOString()
+                };
+                if (this.editingId !== null) {
+                    const index = transactions.findIndex(t => t.id === this.editingId);
+                    if (index !== -1) transactions[index] = txnData;
+                } else {
+                    txnData.createdAt = new Date().toISOString();
+                    delete txnData.updatedAt;
+                    transactions.push(txnData);
+                }
+                this.saveAllTransactions(transactions);
+                this.closeDialog();
+                this._refreshAfterMutation();
+                alert(this.editingId ? 'แก้ไขรายการสำเร็จ' : 'เพิ่มทุนสำเร็จ');
                 return;
             }
-            const transactions = this.getAllTransactions();
-            const txnData = {
-                id: this.editingId || Date.now(),
-                date,
-                portfolio,
-                asset: 'CASH',
-                type: 'capital',
-                price: price,
-                quantity: 1,
-                commission: 0,
-                total: price,
-                notes: notes,
-                updatedAt: new Date().toISOString()
-            };
-            if (this.editingId !== null) {
-                const index = transactions.findIndex(t => t.id === this.editingId);
-                if (index !== -1) transactions[index] = txnData;
-            } else {
-                txnData.createdAt = new Date().toISOString();
-                delete txnData.updatedAt;
-                transactions.push(txnData);
+
+            // Buy/Sell validation
+            if (!asset || !price || !quantity) {
+                alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+                return;
             }
-            this.saveAllTransactions(transactions);
-            this.closeDialog();
-            this.renderTransactions();
-            alert(this.editingId ? 'แก้ไขรายการสำเร็จ' : 'เพิ่มทุนสำเร็จ');
-            return;
-        }
 
-        // Buy/Sell validation
-        if (!asset || !price || !quantity) {
-            alert('กรุณากรอกข้อมูลให้ครบถ้วน');
-            return;
-        }
+            if (price <= 0 || quantity <= 0) {
+                alert('ราคาและจำนวนต้องมากกว่า 0');
+                return;
+            }
 
-        if (price <= 0 || quantity <= 0) {
-            alert('ราคาและจำนวนต้องมากกว่า 0');
-            return;
-        }
+            // Apply sign based on type
+            if (type === 'sell') {
+                quantity = -Math.abs(quantity);
+            } else {
+                quantity = Math.abs(quantity);
+            }
 
-        // Apply sign based on type
-        if (type === 'sell') {
-            quantity = -Math.abs(quantity);
-        } else {
-            quantity = Math.abs(quantity);
-        }
+            const transactions = this.getAllTransactions();
 
-        const transactions = this.getAllTransactions();
-        
-        if (this.editingId !== null) {
-            // Edit existing
-            const index = transactions.findIndex(t => t.id === this.editingId);
-            if (index !== -1) {
-                transactions[index] = {
-                    id: this.editingId,
+            if (this.editingId !== null) {
+                // Edit existing
+                const index = transactions.findIndex(t => t.id === this.editingId);
+                if (index !== -1) {
+                    transactions[index] = {
+                        id: this.editingId,
+                        date,
+                        portfolio,
+                        asset,
+                        type,
+                        price,
+                        quantity,
+                        commission,
+                        total: price * Math.abs(quantity),
+                        notes,
+                        updatedAt: new Date().toISOString()
+                    };
+                }
+            } else {
+                // Add new
+                const newTxn = {
+                    id: Date.now(),
                     date,
                     portfolio,
                     asset,
@@ -4737,54 +4780,77 @@ const PortfolioTracker = {
                     commission,
                     total: price * Math.abs(quantity),
                     notes,
-                    updatedAt: new Date().toISOString()
+                    createdAt: new Date().toISOString()
                 };
+                transactions.push(newTxn);
             }
-        } else {
-            // Add new
-            const newTxn = {
-                id: Date.now(),
-                date,
-                portfolio,
-                asset,
-                type,
-                price,
-                quantity,
-                commission,
-                total: price * Math.abs(quantity),
-                notes,
-                createdAt: new Date().toISOString()
-            };
-            transactions.push(newTxn);
-        }
 
-        this.saveAllTransactions(transactions);
-        this.closeDialog();
-        this.renderTransactions();
-        alert(this.editingId ? 'แก้ไขรายการสำเร็จ' : 'เพิ่มรายการสำเร็จ');
+            this.saveAllTransactions(transactions);
+            this.closeDialog();
+            this._refreshAfterMutation();
+            alert(this.editingId ? 'แก้ไขรายการสำเร็จ' : 'เพิ่มรายการสำเร็จ');
+        } finally {
+            // Always release the button so the user can try again if
+            // validation or an exception left the dialog still open.
+            this._setSavingState(false);
+        }
     },
 
     deleteTransaction(id) {
         if (!confirm('ต้องการลบรายการนี้หรือไม่?')) return;
-        
+
         let transactions = this.getAllTransactions();
         transactions = transactions.filter(t => t.id !== id);
         this.saveAllTransactions(transactions);
-        this.renderTransactions();
+        // Refresh the table while preserving the user's current filter
+        // selection so they don't lose their place after a delete.
+        this._refreshAfterMutation();
         alert('ลบรายการสำเร็จ');
+    },
+
+    /**
+     * Re-apply the current filter inputs to a list of transactions.
+     * The DOM (#filter-portfolio / #filter-asset) is the source of truth
+     * for the user's current filter selection, so this helper just
+     * reads from there. Used to keep filters applied after mutations
+     * like save / delete.
+     */
+    _applyCurrentFilters(transactions) {
+        const portfolioFilter = document.getElementById('filter-portfolio').value;
+        const assetFilter = document.getElementById('filter-asset').value.toUpperCase();
+        return transactions.filter(t => {
+            const matchPortfolio = !portfolioFilter || t.portfolio === portfolioFilter;
+            const matchAsset = !assetFilter || t.asset === assetFilter;
+            return matchPortfolio && matchAsset;
+        });
+    },
+
+    /**
+     * Refresh the table after the underlying transaction list changed
+     * (save / delete / import). Always re-renders the portfolio dropdown
+     * (so newly-added portfolios appear) but then re-applies the active
+     * filter so the user keeps the view they had before clicking save.
+     */
+    _refreshAfterMutation() {
+        this.updatePortfolioFilter();
+        this.renderTransactions(this._applyCurrentFilters(this.getAllTransactions()));
     },
 
     filterTransactions() {
         const portfolioFilter = document.getElementById('filter-portfolio').value;
         const assetFilter = document.getElementById('filter-asset').value.toUpperCase();
-        
+
         const transactions = this.getAllTransactions();
+        // Use exact match for both portfolio and asset so the filter behaviour
+        // is consistent (typing "SPY" won't also match "SPY500" etc.).
+        // Users who want partial matches can still use the search behaviour
+        // by clearing the portfolio filter and browsing the full list.
         const filtered = transactions.filter(t => {
             const matchPortfolio = !portfolioFilter || t.portfolio === portfolioFilter;
-            const matchAsset = !assetFilter || t.asset.includes(assetFilter);
+            const matchAsset = !assetFilter || t.asset === assetFilter;
             return matchPortfolio && matchAsset;
         });
-        
+
         this.renderTransactions(filtered);
     },
 
@@ -4799,12 +4865,17 @@ const PortfolioTracker = {
         const transactions = filteredTransactions || allTransactions;
         const tbody = document.getElementById('transactions-table');
         const emptyDiv = document.getElementById('transactions-empty');
-        
+
         // Update summary
         this.updateSummary(transactions);
-        
-        // Update portfolio filter dropdown
-        this.updatePortfolioFilter();
+
+        // Only refresh the portfolio filter dropdown when rendering the FULL list.
+        // When `filteredTransactions` is passed (from filterTransactions), the
+        // portfolio options are already correct and re-rendering would clobber
+        // the user's current selection.
+        if (!filteredTransactions) {
+            this.updatePortfolioFilter();
+        }
         
         if (transactions.length === 0) {
             tbody.innerHTML = '';
@@ -4877,7 +4948,7 @@ const PortfolioTracker = {
         let cashBalance = 0;
         let totalInvested = 0;
         const holdings = {};
-        
+
         transactions.forEach(t => {
             if (t.type === 'capital') {
                 cashBalance += t.total;
@@ -4888,13 +4959,18 @@ const PortfolioTracker = {
                 holdings[t.asset].quantity += t.quantity;
                 holdings[t.asset].cost += t.total;
             } else if (t.type === 'sell') {
+                // For sell: t.quantity is already negative (saved as -Math.abs).
+                // We use the absolute value for proportional cost reduction so
+                // that `avgCost * soldQty` correctly reduces the running cost.
+                const soldQty = Math.abs(t.quantity);
                 cashBalance += t.total;
                 if (!holdings[t.asset]) holdings[t.asset] = { quantity: 0, cost: 0 };
-                if (holdings[t.asset].quantity > 0) {
+                if (holdings[t.asset].quantity > 0 && soldQty > 0) {
                     const avgCost = holdings[t.asset].cost / holdings[t.asset].quantity;
-                    holdings[t.asset].cost -= avgCost * Math.abs(t.quantity);
+                    const costReduction = Math.min(avgCost * soldQty, holdings[t.asset].cost);
+                    holdings[t.asset].cost -= costReduction;
                 }
-                holdings[t.asset].quantity += t.quantity;
+                holdings[t.asset].quantity += t.quantity; // already negative
             }
         });
         
@@ -4978,11 +5054,13 @@ const PortfolioTracker = {
                 summaryByPortfolio[txn.portfolio].cost += txn.total;
             } else if (txn.type === 'sell') {
                 summaryByPortfolio[txn.portfolio].cashBalance += txn.total;
-                // Sell: reduce cost proportionally
+                // Sell: reduce cost proportionally (use absolute quantity for math)
                 const holding = summaryByPortfolio[txn.portfolio].holdings[txn.asset];
-                if (holding && holding.quantity > 0) {
+                const soldQty = Math.abs(txn.quantity);
+                if (holding && holding.quantity > 0 && soldQty > 0) {
                     const avgCost = holding.cost / holding.quantity;
-                    holding.cost -= avgCost * Math.abs(txn.quantity);
+                    const costReduction = Math.min(avgCost * soldQty, holding.cost);
+                    holding.cost -= costReduction;
                 }
             }
             

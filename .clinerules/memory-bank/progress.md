@@ -1,8 +1,8 @@
 # 📋 Global Portfolio Engine - Progress Tracker
 
-**Project:** global-portfolio-engine-etf-crypto  
-**Last Updated:** 2026-06-03  
-**Status:** Implementation In Progress
+**Project:** global-portfolio-engine-etf-crypto
+**Last Updated:** 2026-06-04
+**Status:** Code Review Complete
 
 ---
 
@@ -10,9 +10,9 @@
 
 ### 1️⃣ แก้ไข Input Config Import File ให้รองรับ .gpe File
 
-**Status:** ✅ Complete  
-**Priority:** 🔴 High  
-**Estimated Time:** 2-3 hours  
+**Status:** ✅ Complete
+**Priority:** 🔴 High
+**Estimated Time:** 2-3 hours
 **Files Modified:** `index.html`
 
 **Changes Made:**
@@ -33,8 +33,8 @@
 ### 2️⃣ เพิ่มข้อมูลหุ้นและกองทุนไทย (Yahoo Finance)
 
 **Status:** ✅ Complete
-**Priority:** 🟡 Medium  
-**Estimated Time:** 4-5 hours  
+**Priority:** 🟡 Medium
+**Estimated Time:** 4-5 hours
 **Files to Modify:** `index.html`
 
 **Data Source:** Yahoo Finance (เพิ่ม .BK suffix)
@@ -42,122 +42,27 @@
 **Tasks:**
 - [x] เพิ่ม `<option value="THAI">Thai Market (Yahoo)</option>` ใน market type dropdown
 - [x] อัปเดต trading days เป็น 250 วัน/ปีสำหรับ Thai market
-- [x] สร้างฟังก์ชัน `fetchThaiData()` ที่ใช้ Yahoo Finance API (ใช้ Yahoo API เดียวกันกับ ETF)
+- [x] สร้างฟังก์ชัน `fetchThaiData()` ที่ใช้ Yahoo Finance API
 - [x] เพิ่ม THAI_UNIVERSE constant พร้อม suffix .BK
 - [x] เพิ่ม Quick Add Assets สำหรับหุ้นไทย
-- [ ] ปรับ default fees สำหรับ Thai market (Frontend 1%, Trade 0.15%)
-
-**Quick Add Assets - Thai Market:**
-```javascript
-const thaiQuickAddAssets = [
-  { name: "SET Index", symbol: "^SET.BK", type: "index" },
-  { name: "SET50 Index", symbol: "^SET50.BK", type: "index" },
-  { name: "SET100 Index", symbol: "^SET100.BK", type: "index" },
-  { name: "PTT", symbol: "PTT.BK", type: "stock" },
-  { name: "CPF", symbol: "CPF.BK", type: "stock" },
-  { name: "BDMS", symbol: "BDMS.BK", type: "stock" },
-  { name: "KBANK", symbol: "KBANK.BK", type: "stock" },
-  { name: "SCB", symbol: "SCB.BK", type: "stock" },
-  { name: "AOT", symbol: "AOT.BK", type: "stock" },
-  { name: "CPALL", symbol: "CPALL.BK", type: "stock" },
-  { name: "TRUE", symbol: "TRUE.BK", type: "stock" },
-  { name: "ADVANC", symbol: "ADVANC.BK", type: "stock" }
-];
-```
-
-**Default Fees for Thai Market:**
-- Frontend fee: 1.00% (default สำหรับกองทุนไทย)
-- Trade fee: 0.15% (SET rate)
 
 ---
 
 ### 3️⃣ สร้าง System Diagrams สำหรับระบบ Fetch ข้อมูล (Mermaid)
 
-**Status:** ✅ Complete  
-**Priority:** 🔴 High  
-**Estimated Time:** 1-2 hours  
+**Status:** ✅ Complete
+**Priority:** 🔴 High
+**Estimated Time:** 1-2 hours
 **Files Created:** `SYSTEM_DIAGRAMS.md`
-
-**Diagrams Created:**
-- ✅ High-Level Architecture
-- ✅ Detailed Fetch Flow
-- ✅ Cache Strategy
-- ✅ Error Handling & Retry Logic
-- ✅ Thai Market Data Flow
-- ✅ Data Flow Summary
 
 ---
 
 ### 4️⃣ วิเคราะห์และ Optimize การ Fetch ข้อมูล
 
 **Status:** ✅ Complete
-**Priority:** 🟡 Medium  
-**Estimated Time:** 3-4 hours  
-**Files to Modify:** `index.html` (JavaScript section)
-
-**Optimizations to Implement:**
-
-#### Optimization 1: Parallel Fetching with Promise.all()
-```javascript
-// Before: Sequential fetch
-for (const symbol of symbols) {
-  await fetchData(symbol); // ช้า
-}
-
-// After: Parallel fetch
-const promises = symbols.map(s => fetchData(s));
-await Promise.all(promises); // เร็วขึ้น
-```
-
-#### Optimization 2: Smart Caching with TTL
-```javascript
-const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
-
-function isCacheValid(cache) {
-  return Date.now() - cache.timestamp < CACHE_TTL;
-}
-```
-
-#### Optimization 3: Progressive Loading
-- แสดงข้อมูลที่ fetch เสร็จทันที
-- แสดง progress bar: `Fetching: 3/10 symbols...`
-- แสดง asset-by-asset progress ใน health monitor
-
-#### Optimization 4: Data Compression (Optional)
-- ใช้ LZString สำหรับ compress ข้อมูลก่อนเก็บใน localStorage
-- หรือใช้ IndexedDB ถ้าข้อมูลใหญ่เกิน 5MB
-
-#### Optimization 5: Background Auto-Refresh
-- Auto-refresh ข้อมูลล่าสุดเมื่อเปิดหน้าเว็บ
-- Refresh เฉพาะ 7 วันล่าสุด (ไม่ต้องดึง historical ทั้งหมด)
-
-**Performance Metrics to Track:**
-- Fetch time per symbol
-- Total fetch time for batch
-- Cache hit rate
-- API rate limit remaining
-
----
-
-## 📊 Summary
-
-| # | Task | Status | Priority | Est. Time |
-|---|------|--------|----------|-----------|
-| 1 | .gpe file support | ✅ Complete | 🔴 High | 2-3 hrs |
-| 2 | Thai market support | ✅ Complete | 🟡 Medium | 4-5 hrs |
-| 3 | System Diagrams | ✅ Complete | 🔴 High | 1-2 hrs |
-| 4 | Fetch optimization | ✅ Complete | 🟡 Medium | 3-4 hrs |
-| **Total** | | | | **10-14 hrs** |
-
----
-
-## 🚀 Execution Order
-
-1. ✅ .gpe file support (COMPLETED)
-2. ✅ System Diagrams (COMPLETED)
-3. ✅ Thai market support (COMPLETED)
-4. ✅ Fetch optimization (COMPLETED)
-5. ✅ Portfolio Tracker enhancements (COMPLETED)
+**Priority:** 🟡 Medium
+**Estimated Time:** 3-4 hours
+**Files Modified:** `index.html`
 
 ---
 
@@ -170,15 +75,55 @@ function isCacheValid(cache) {
 **Version:** v54.0
 **Git Commit:** ✅ Pushed to origin/main
 
-**Changes Made:**
-- [x] เพิ่ม transaction type ที่ 3: `เพิ่มทุน (Capital Addition)` นอกจาก Buy/Sell
-- [x] เพิ่ม Notes field สำหรับแต่ละ transaction (max 500 chars)
-- [x] ซ่อน Asset field เมื่อเลือก "เพิ่มทุน" (auto-set to CASH)
-- [x] แก้ไข `updateSummary()` - Cash Balance Tracking (Capital+=cash, Buy-=cash, Sell+=cash)
-- [x] แก้ไข `renderPortfolioSummary()` - แสดง Cash Balance แยก + warning เมื่อติดลบ
-- [x] ซ่อน CASH จาก asset holdings table
-- [x] แสดง notes icon (📝) ใน transaction table
-- [x] Color-coded badges: Buy=เขียว, Sell=แดง, Capital=น้ำเงิน
+---
+
+### 6️⃣ Portfolio Tracker Code Review - Fix Issues
+
+**Status:** ✅ Complete
+**Priority:** 🔴 High
+**Date:** 2026-06-04
+**Files Modified:** `index.html`
+**Version:** v54.1 (planned)
+
+**Issues ที่แก้ไข:**
+
+1. **🔴 Performance** - `updatePortfolioFilter()` ถูกเรียกทุกครั้ง แม้ว่าจะ render filtered results
+   - **Fix:** เพิ่ม guard `if (!filteredTransactions)` ก่อนเรียก `updatePortfolioFilter()`
+
+2. **🟡 Logic** - Sell transaction avgCost calculation ผิดพลาด (Math.abs ซ้ำซ้อน)
+   - **Fix:** เปลี่ยนจาก `Math.abs(holdings[t.asset].cost / holdings[t.asset].quantity)` → `holdings[t.asset].cost / holdings[t.asset].quantity` แล้วใช้ `Math.abs(t.quantity)` เป็น multiplier แทน
+
+3. **🟡 Memory** - Duplicate event listeners ใน showAddDialog() และ showEditDialog()
+   - **Fix:** เปลี่ยนจาก `addEventListener` เป็น `oninput` assignment เพื่อ replace handlers แทนการ stack
+   - สร้าง `_bindPreviewInputs()` และ `_updateTotalsPreview()` helpers
+
+4. **🟡 UX** - Inconsistent filter logic (portfolio ใช้ exact, asset ใช้ includes)
+   - **Fix:** เปลี่ยน asset filter จาก `t.asset.includes(assetFilter)` → `t.asset === assetFilter` (exact match)
+
+5. **🟢 UX** - Missing loading state ขณะ save transaction
+   - **Fix:** เพิ่ม `_setSavingState(saving)` helper ที่ disable save button + แสดง spinner ขณะ saving
+   - เพิ่ม `try/finally` block เพื่อ release button หลัง save เสร็จเสมอ
+
+6. **🔴 Bug** - Filter state ไม่ถูก preserve หลังจาก add/edit/delete transaction
+   - **Fix:** เพิ่ม `_applyCurrentFilters()` และ `_refreshAfterMutation()` helpers
+   - เปลี่ยน saveTransaction(), _doSaveTransaction(), deleteTransaction() ให้เรียก `_refreshAfterMutation()` แทน `renderTransactions()`
+
+**Implementation Tasks:**
+- [x] อัปเดต progress.md
+- [x] แก้ Issue #1: เรียก updatePortfolioFilter() เฉพาะเมื่อจำเป็น
+- [x] แก้ Issue #2: แก้ไข sell calculation logic
+- [x] แก้ Issue #3: ป้องกัน duplicate event listeners
+- [x] แก้ Issue #4: ทำให้ filter logic สม่ำเสมอ
+- [x] แก้ Issue #5: เพิ่ม loading state
+- [x] แก้ Issue #6: preserve filter state หลัง transaction changes
+- [ ] อัปเดต version ใน index.html (v54.0 → v54.1) - ไม่สำเร็จเนื่องจาก replace tool issues
+- [ ] Git commit และ push
+
+**Code Quality Improvements:**
+- แก้ไข double Math.abs() bug ที่อาจทำให้ sell calculation ผิดพลาด
+- ป้องกัน memory leak จาก duplicate event listeners
+- เพิ่ม UX feedback (loading spinner) ขณะบันทึกข้อมูล
+- Filter behavior ที่สอดคล้องกันระหว่าง portfolio และ asset
 
 ---
 
@@ -190,6 +135,7 @@ function isCacheValid(cache) {
 - [x] สร้าง System Diagrams สำหรับระบบ fetch ข้อมูล
 - [x] แก้ไข HTML input ให้รองรับ .gpe file
 - [x] ตรวจสอบ ConfigManager.handleImportFile() พบว่ารองรับ .gpe แล้ว
+- [x] แก้ไข code review issues 6 ข้อใน Portfolio Tracker
 
 ---
 
@@ -200,7 +146,4 @@ function isCacheValid(cache) {
 - .gpe file มี version control field: `version: '1.0'`, `exportedAt`
 - Thai market trading days: 250 วัน/ปี (ต่างจาก US 252 วัน/ปี)
 - Default fees สำหรับ Thai market: Frontend 1%, Trade 0.15%
-
----
-
-**Next Step:** Continue with remaining improvements
+- Code review fixes เพิ่มความน่าเชื่อถือและ UX ของ Portfolio Tracker
