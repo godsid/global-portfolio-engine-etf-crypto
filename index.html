@@ -5528,12 +5528,15 @@ const PnLChartModal = {
         Object.entries(summaryByPortfolio).forEach(([name, txns]) => {
             const sorted = [...txns].sort((a,b) => a.date.localeCompare(b.date));
             const holdings = {};
-            let costBasis = 0;
+            // Per-asset cost basis tracking (FIX: was global, caused wrong avgCost for multi-asset portfolios)
+            const assetCostBasis = {};
             let txnIdx = 0;
             const pnlPctData = [];
             const pnlDollarData = [];
             const mktValData = [];
             const costBasisData = [];
+            // Minimum cost basis threshold to avoid division-by-near-zero spikes
+            const MIN_COST_BASIS = 1.0;
 
             for (let i = 0; i < alignedDates.length; i++) {
                 const d = alignedDates[i];
@@ -5546,18 +5549,38 @@ const PnLChartModal = {
                         continue;
                     }
                     if (!holdings[t.asset]) holdings[t.asset] = 0;
-                    holdings[t.asset] += t.quantity;
-                    // Only buy transactions add to costBasis; sell reduces it proportionally
+                    if (!assetCostBasis[t.asset]) assetCostBasis[t.asset] = 0;
+                    // Average Cost Method:
+                    // 1) Compute avg cost per share BEFORE updating holdings
+                    // 2) On SELL, reduce cost basis by (sold shares × avg cost per share)
+                    //    This correctly represents the proportional cost of shares sold,
+                    //    not the sale proceeds (which would be wrong).
                     if (t.type === 'buy') {
-                        costBasis += t.total + (t.commission || 0);
+                        holdings[t.asset] += t.quantity;
+                        assetCostBasis[t.asset] += t.total + (t.commission || 0);
                     } else if (t.type === 'sell') {
-                        // Sell: reduce costBasis by the proportional cost of shares sold
-                        const avgCost = holdings[t.asset] > 0 ? costBasis / holdings[t.asset] : t.price;
-                        costBasis -= Math.abs(t.quantity) * avgCost;
-                        costBasis = Math.max(0, costBasis); // Ensure costBasis doesn't go negative
+                        // Calculate avg cost per share for THIS asset before selling
+                        const currentQty = holdings[t.asset];
+                        const avgCostPerShare = currentQty > 0
+                            ? assetCostBasis[t.asset] / currentQty
+                            : t.price;
+                        const soldQty = Math.abs(t.quantity);
+                        // Reduce cost basis proportionally to shares sold
+                        assetCostBasis[t.asset] -= soldQty * avgCostPerShare;
+                        if (assetCostBasis[t.asset] < 0) assetCostBasis[t.asset] = 0;
+                        // Update holdings (t.quantity is negative for sell)
+                        holdings[t.asset] += t.quantity;
+                        // If position is fully closed, reset cost basis to 0
+                        if (holdings[t.asset] <= 0) {
+                            holdings[t.asset] = 0;
+                            assetCostBasis[t.asset] = 0;
+                        }
                     }
                     txnIdx++;
                 }
+                // Aggregate cost basis across all assets
+                let costBasis = 0;
+                Object.values(assetCostBasis).forEach(cb => { costBasis += cb; });
                 let mktVal = 0;
                 let hasValidPrice = false;
                 Object.entries(holdings).forEach(([asset, qty]) => {
@@ -5571,8 +5594,8 @@ const PnLChartModal = {
                 });
 
                 // Only push data if we have valid costBasis AND valid market data
-                // If costBasis > 0 but no valid prices, show null to avoid spike
-                if (txnIdx > 0 && hasValidPrice && costBasis > 0) {
+                // If costBasis < MIN threshold, push null to avoid spike
+                if (txnIdx > 0 && hasValidPrice && costBasis >= MIN_COST_BASIS) {
                     const pnlDollar = mktVal - costBasis;
                     const pnlPct = (pnlDollar / costBasis) * 100;
                     pnlPctData.push(pnlPct);
