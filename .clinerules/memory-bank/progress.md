@@ -83,7 +83,7 @@
 **Priority:** 🔴 High
 **Date:** 2026-06-04
 **Files Modified:** `index.html`
-**Version:** v54.1 (planned)
+**Version:** v54.2 (planned)
 
 **Issues ที่แก้ไข:**
 
@@ -116,14 +116,27 @@
 - [x] แก้ Issue #4: ทำให้ filter logic สม่ำเสมอ
 - [x] แก้ Issue #5: เพิ่ม loading state
 - [x] แก้ Issue #6: preserve filter state หลัง transaction changes
-- [ ] อัปเดต version ใน index.html (v54.0 → v54.1) - ไม่สำเร็จเนื่องจาก replace tool issues
-- [ ] Git commit และ push
+- [x] อัปเดต version ใน index.html (v54.1 → v54.2)
+- [x] Git commit และ push
 
 **Code Quality Improvements:**
 - แก้ไข double Math.abs() bug ที่อาจทำให้ sell calculation ผิดพลาด
 - ป้องกัน memory leak จาก duplicate event listeners
 - เพิ่ม UX feedback (loading spinner) ขณะบันทึกข้อมูล
 - Filter behavior ที่สอดคล้องกันระหว่าง portfolio และ asset
+
+### 7️⃣ DCA Logic Fix - Daily Accumulation + Multiplier
+
+**Status:** ✅ Complete
+**Priority:** 🔴 High
+**Date:** 2026-06-14
+**Files Modified:** `index.html`
+**Version:** v54.2
+**Git Commit:** ✅ Pushed to origin/main
+
+**Changes:**
+- แก้ไข DCA logic ให้สะสมรายวันแล้วคูณ multiplier ก่อน rebalance
+- สะสม `dailyDCABase` ทุกวัน → วัน rebalance นำไปคูณ multiplier → ลงทุน → reset
 
 ---
 
