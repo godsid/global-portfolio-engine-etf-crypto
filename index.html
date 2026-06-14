@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<title>Global Portfolio Engine v54.1 — Liquid Alpha Edition (Full Docs)</title>
+        <title>Global Portfolio Engine v54.2 — Liquid Alpha Edition (Full Docs)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Advanced Quant Portfolio Backtesting Engine - Liquid Alpha Edition (Volume Filter Integrated)">
 
@@ -321,7 +321,7 @@ th.sortable:hover { color: #3b82f6; }
   <div class="max-w-[1800px] mx-auto px-4 h-14 flex justify-between items-center">
     <div class="flex items-center gap-3">
       <h1 class="font-bold text-base flex items-center gap-2 text-dark-900 dark:text-white">
-        <span class="text-xl">💧</span> GPE <span class="text-[9px] bg-gradient-to-r from-blue-500 to-purple-500 text-white px-1.5 py-0.5 rounded font-bold mono">v54.1</span>
+        <span class="text-xl">💧</span> GPE <span class="text-[9px] bg-gradient-to-r from-blue-500 to-purple-500 text-white px-1.5 py-0.5 rounded font-bold mono">v54.2</span>
       </h1>
       <nav class="hidden md:flex gap-1 ml-4">
           <button id="btn-tab-dashboard" onclick="UI.switchTab('dashboard')" class="px-3 py-1 text-[10px] font-bold rounded bg-white dark:bg-dark-800 shadow-sm text-stock-600 transition-all">DASHBOARD</button>
@@ -705,6 +705,14 @@ th.sortable:hover { color: #3b82f6; }
             <div id="drawdown-wrap" class="h-[100px] w-full border-t dark:border-dark-700 pt-2"><canvas id="chart-drawdown"></canvas></div>
         </div>
 
+        <!-- Transaction Logs -->
+        <div class="glass rounded-2xl overflow-hidden shadow-lg border border-gray-100 dark:border-dark-700 h-[400px] flex flex-col">
+            <div class="px-6 py-4 border-b dark:border-dark-700 bg-gray-50/30 flex items-center gap-2">
+                <h3 class="text-xs font-bold uppercase text-gray-500 tracking-widest">Transaction Logs</h3>
+            </div>
+            <div class="overflow-x-auto custom-scrollbar flex-1"><table class="w-full text-[10px] mono"><tbody id="log-table" class="divide-y dark:divide-dark-700"></tbody></table></div>
+        </div>
+
         <!-- Matrix Table -->
         <div class="glass rounded-2xl overflow-hidden shadow-lg border border-gray-100 dark:border-dark-700 flex flex-col min-h-[500px]">
             <div class="px-6 py-4 border-b dark:border-dark-700 bg-gray-50/50 dark:bg-dark-800/50 flex justify-between items-center">
@@ -807,30 +815,21 @@ th.sortable:hover { color: #3b82f6; }
             </div>
         </div>
 
-        <!-- Monte Carlo & Logs -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="glass p-6 rounded-2xl shadow-xl h-[400px] flex flex-col relative overflow-hidden">
-                <div class="flex justify-between items-center mb-2 z-10 border-b dark:border-dark-700 pb-2">
-                    <div class="flex items-center gap-2">
-                        <h3 class="font-bold text-xs">🎲 Monte Carlo Forecast</h3>
-                    </div>
-                    <div class="flex items-center gap-1"><span class="text-[9px] text-gray-400">Years:</span><input type="number" id="cfg-mc-years" value="1" min="1" max="5" class="w-8 text-center text-[9px] bg-gray-100 dark:bg-dark-700 rounded border dark:border-dark-600"><button onclick="UI.runMonteCarlo()" class="text-[9px] bg-stock-500 text-white px-2 py-0.5 rounded font-bold hover:scale-105 shadow">Sim</button></div>
+        <!-- Monte Carlo Forecast (Full Width) -->
+        <div class="glass p-6 rounded-2xl shadow-xl h-[500px] flex flex-col relative overflow-hidden">
+            <div class="flex justify-between items-center mb-2 z-10 border-b dark:border-dark-700 pb-2">
+                <div class="flex items-center gap-2">
+                    <h3 class="font-bold text-xs">🎲 Monte Carlo Forecast</h3>
                 </div>
-                <div class="grid grid-cols-4 gap-2 mb-2 z-10">
-                    <div class="mc-stat-box"><div class="text-[8px] text-gray-400 uppercase">Avg Sharpe</div><div id="mc-avg-sharpe" class="text-[10px] font-bold text-stock-600">-</div></div>
-                    <div class="mc-stat-box"><div class="text-[8px] text-gray-400 uppercase">Avg CAGR</div><div id="mc-avg-cagr" class="text-[10px] font-bold text-acc-green">-</div></div>
-                    <div class="mc-stat-box"><div class="text-[8px] text-gray-400 uppercase">Avg Vol</div><div id="mc-avg-vol" class="text-[10px] font-bold text-gray-300">-</div></div>
-                    <div class="mc-stat-box"><div class="text-[8px] text-gray-400 uppercase">Avg MDD</div><div id="mc-avg-mdd" class="text-[10px] font-bold text-acc-red">-</div></div>
-                </div>
-                <div id="viz-monte-dashboard" class="flex-1 z-10"></div>
+                <div class="flex items-center gap-1"><span class="text-[9px] text-gray-400">Years:</span><input type="number" id="cfg-mc-years" value="1" min="1" max="5" class="w-8 text-center text-[9px] bg-gray-100 dark:bg-dark-700 rounded border dark:border-dark-600"><button onclick="UI.runMonteCarlo()" class="text-[9px] bg-stock-500 text-white px-2 py-0.5 rounded font-bold hover:scale-105 shadow">Sim</button></div>
             </div>
-
-            <div class="glass rounded-2xl overflow-hidden shadow-lg border border-gray-100 dark:border-dark-700 h-[400px] flex flex-col">
-                <div class="px-6 py-4 border-b dark:border-dark-700 bg-gray-50/30 flex items-center gap-2">
-                    <h3 class="text-xs font-bold uppercase text-gray-500 tracking-widest">Transaction Logs</h3>
-                </div>
-                <div class="overflow-x-auto custom-scrollbar flex-1"><table class="w-full text-[10px] mono"><tbody id="log-table" class="divide-y dark:divide-dark-700"></tbody></table></div>
+            <div class="grid grid-cols-4 gap-2 mb-2 z-10">
+                <div class="mc-stat-box"><div class="text-[8px] text-gray-400 uppercase">Avg Sharpe</div><div id="mc-avg-sharpe" class="text-[10px] font-bold text-stock-600">-</div></div>
+                <div class="mc-stat-box"><div class="text-[8px] text-gray-400 uppercase">Avg CAGR</div><div id="mc-avg-cagr" class="text-[10px] font-bold text-acc-green">-</div></div>
+                <div class="mc-stat-box"><div class="text-[8px] text-gray-400 uppercase">Avg Vol</div><div id="mc-avg-vol" class="text-[10px] font-bold text-gray-300">-</div></div>
+                <div class="mc-stat-box"><div class="text-[8px] text-gray-400 uppercase">Avg MDD</div><div id="mc-avg-mdd" class="text-[10px] font-bold text-acc-red">-</div></div>
             </div>
+            <div id="viz-monte-dashboard" class="flex-1 z-10"></div>
         </div>
 
     </div>
@@ -2279,16 +2278,26 @@ class QuantEngine {
                           // ทุกวัน DCA จะสะสมเข้า accumulatedDailyDCA
                           // วัน rebalance นำ accumulatedDailyDCA × dcaMultiplier มาใช้
                           let dcaInflow = 0, dcaMultiplier = 1.0, dcaAllocationPcts = {};
+                          
+                          // Enhanced Dynamic DCA Logic:
+                          // - ทุกวัน: สะสม DCA เข้า accumulatedDailyDCA
+                          // - วัน Rebalance: นำยอดสะสม × multiplier มาลงทุน แล้ว reset
                           if (cfg.dca > 0) {
-                              // สะสม DCA ต่อวัน (เพิ่มก่อนถึงวัน rebalance)
-                              // เพราะ rebalance จะนำยอดสะสมตั้งแต่ rebalance ครั้งก่อนมาใช้
-                              accumulatedDailyDCA += dailyDCABase;
-                              daysSinceLastRebal++;
-
-                              const benchmarkPrices = this.marketData[cfg.bench]?.prices || this.marketData[activeUniverse[0]].prices;
-                              dcaMultiplier = this.calculateDCAMultiplier(cfg, benchmarkPrices, t);
+                              // สะสม DCA ต่อวัน (ยกเว้นวันแรกของ simulation)
+                              if ((t - startIdx) > 0) {
+                                  accumulatedDailyDCA += dailyDCABase;
+                                  daysSinceLastRebal++;
+                              }
+                              
+                              // คำนวณ multiplier จาก benchmark หรือ asset แรก
+                              const benchPrices = this.marketData[cfg.bench]?.prices;
+                              const fallbackPrices = benchPrices || (this.marketData[activeUniverse[0]]?.prices || []);
+                              dcaMultiplier = this.calculateDCAMultiplier(cfg, fallbackPrices, t);
+                              
                               // DCA จริง = ยอดสะสม × multiplier (dynamic)
                               dcaInflow = accumulatedDailyDCA * dcaMultiplier;
+                              
+                              // เพิ่มเงิน DCA เข้า portfolio
                               cash += dcaInflow;
                               totalNav += dcaInflow;
                               dcaCount++;
