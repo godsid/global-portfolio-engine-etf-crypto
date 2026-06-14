@@ -4043,9 +4043,11 @@ const SnapshotManager = {
 const TelegramScheduler = {
     LOCK_KEY: 'gpe_telegram_lock',
     CONFIG_KEY: 'gpe_telegram_config',
+    LAST_REPORT_DATE_KEY: 'gpe_telegram_last_report',
     intervalId: null,
     LOCK_TIMEOUT: 10 * 60 * 1000, // 10 minutes
     REPORT_INTERVAL: 5 * 60 * 1000, // 5 minutes
+    REPORT_HOUR: 7, // Run after 07:00
 
     getConfig() {
         const stored = localStorage.getItem(this.CONFIG_KEY);
@@ -4140,11 +4142,33 @@ const TelegramScheduler = {
             console.log('[Telegram] Another instance is running, skipping...');
             return;
         }
-        try {
-            await this.runDailyReport();
-        } finally {
-            setTimeout(() => this.releaseLock(), 1000);
+        
+        // Check if it's after 07:00 and we haven't reported today
+        const now = new Date();
+        const today = now.toISOString().slice(0, 10);
+        const hour = now.getHours();
+        
+        // Get last report date from localStorage
+        const lastReportDate = localStorage.getItem(this.LAST_REPORT_DATE_KEY);
+        
+        if (hour >= this.REPORT_HOUR && lastReportDate !== today) {
+            try {
+                await this.runDailyReport();
+                // Save today's date as last report date
+                localStorage.setItem(this.LAST_REPORT_DATE_KEY, today);
+                console.log(`[Telegram] Daily report sent for ${today}`);
+            } catch (e) {
+                console.error('[Telegram] Error running daily report:', e);
+            }
+        } else {
+            if (hour < this.REPORT_HOUR) {
+                console.log(`[Telegram] Too early (${hour}:00), waiting until ${this.REPORT_HOUR}:00...`);
+            } else if (lastReportDate === today) {
+                console.log(`[Telegram] Already sent report today (${today}), skipping...`);
+            }
         }
+        
+        setTimeout(() => this.releaseLock(), 1000);
     },
 
     async runDailyReport() {
@@ -5759,7 +5783,7 @@ const PortfolioTracker = {
                     </div>
                     <div class="flex items-center gap-2">
                         ${hasPortfolioMarketData ? `
-                        <button onclick="event.stopPropagation(); RebalanceCalculator.openModal('${name}', ${JSON.stringify(data.holdings).replace(/"/g, '"')})" class="px-2 py-1 bg-gradient-to-r from-stock-500 to-stock-600 hover:from-stock-600 hover:to-stock-700 text-white rounded text-[10px] font-bold transition-all">
+                        <button onclick="event.stopPropagation(); RebalanceCalculator.openModalFromData('${name}', '${name}')" class="px-2 py-1 bg-gradient-to-r from-stock-500 to-stock-600 hover:from-stock-600 hover:to-stock-700 text-white rounded text-[10px] font-bold transition-all">
                             <i class="fas fa-balance-scale"></i> ปรับ
                         </button>
                         ` : ''}
@@ -5823,6 +5847,46 @@ const RebalanceCalculator = {
     currentPortfolio: null,
     currentHoldings: {},
     isDirty: false,
+    
+    // Open modal from portfolio name - loads holdings from transaction data
+    openModalFromData(portfolioName, unused) {
+        // Get all transactions for this portfolio
+        const allTransactions = PortfolioTracker.getAllTransactions().filter(t => t.portfolio === portfolioName);
+        
+        if (allTransactions.length === 0) {
+            alert('ไม่พบรายการสำหรับ Portfolio นี้');
+            return;
+        }
+        
+        // Calculate holdings from transactions
+        const holdings = {};
+        allTransactions.forEach(t => {
+            if (t.type === 'buy') {
+                if (!holdings[t.asset]) holdings[t.asset] = { quantity: 0, cost: 0 };
+                holdings[t.asset].quantity += t.quantity;
+                holdings[t.asset].cost += t.total;
+            } else if (t.type === 'sell') {
+                if (holdings[t.asset]) {
+                    const avgCost = holdings[t.asset].quantity > 0 ? holdings[t.asset].cost / holdings[t.asset].quantity : 0;
+                    holdings[t.asset].cost -= avgCost * Math.abs(t.quantity);
+                    holdings[t.asset].quantity += t.quantity;
+                    if (Math.abs(holdings[t.asset].quantity) < 0.0001) delete holdings[t.asset];
+                }
+            }
+        });
+        
+        // Filter out zero quantity holdings
+        Object.keys(holdings).forEach(asset => {
+            if (Math.abs(holdings[asset].quantity) < 0.0001) delete holdings[asset];
+        });
+        
+        if (Object.keys(holdings).length === 0) {
+            alert('ไม่พบ Holdings สำหรับ Portfolio นี้');
+            return;
+        }
+        
+        this.openModal(portfolioName, holdings);
+    },
     
     openModal(portfolioName, holdings) {
         this.currentPortfolio = portfolioName;
