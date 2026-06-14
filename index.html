@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-        <title>Global Portfolio Engine v54.2 — Liquid Alpha Edition (Full Docs)</title>
+        <title>Global Portfolio Engine v54.3 — Liquid Alpha Edition (Full Docs)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Advanced Quant Portfolio Backtesting Engine - Liquid Alpha Edition (Volume Filter Integrated)">
 
@@ -321,7 +321,7 @@ th.sortable:hover { color: #3b82f6; }
   <div class="max-w-[1800px] mx-auto px-4 h-14 flex justify-between items-center">
     <div class="flex items-center gap-3">
       <h1 class="font-bold text-base flex items-center gap-2 text-dark-900 dark:text-white">
-        <span class="text-xl">💧</span> GPE <span class="text-[9px] bg-gradient-to-r from-blue-500 to-purple-500 text-white px-1.5 py-0.5 rounded font-bold mono">v54.2</span>
+        <span class="text-xl">💧</span> GPE <span class="text-[9px] bg-gradient-to-r from-blue-500 to-purple-500 text-white px-1.5 py-0.5 rounded font-bold mono">v54.3</span>
       </h1>
       <nav class="hidden md:flex gap-1 ml-4">
           <button id="btn-tab-dashboard" onclick="UI.switchTab('dashboard')" class="px-3 py-1 text-[10px] font-bold rounded bg-white dark:bg-dark-800 shadow-sm text-stock-600 transition-all">DASHBOARD</button>
@@ -705,56 +705,59 @@ th.sortable:hover { color: #3b82f6; }
             <div id="drawdown-wrap" class="h-[100px] w-full border-t dark:border-dark-700 pt-2"><canvas id="chart-drawdown"></canvas></div>
         </div>
 
-        <!-- Transaction Logs -->
-        <div class="glass rounded-2xl overflow-hidden shadow-lg border border-gray-100 dark:border-dark-700 h-[400px] flex flex-col">
-            <div class="px-6 py-4 border-b dark:border-dark-700 bg-gray-50/30 flex items-center gap-2">
-                <h3 class="text-xs font-bold uppercase text-gray-500 tracking-widest">Transaction Logs</h3>
-            </div>
-            <div class="overflow-x-auto custom-scrollbar flex-1"><table class="w-full text-[10px] mono"><tbody id="log-table" class="divide-y dark:divide-dark-700"></tbody></table></div>
-        </div>
-
-        <!-- Matrix Table -->
-        <div class="glass rounded-2xl overflow-hidden shadow-lg border border-gray-100 dark:border-dark-700 flex flex-col min-h-[500px]">
-            <div class="px-6 py-4 border-b dark:border-dark-700 bg-gray-50/50 dark:bg-dark-800/50 flex justify-between items-center">
-                <div class="flex items-center gap-2">
-                    <h3 class="text-xs font-black uppercase text-gray-600 dark:text-gray-300 tracking-widest">Strategy Matrix</h3>
+        <!-- Transaction Logs & Strategy Matrix (Side by Side) -->
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <!-- Transaction Logs -->
+            <div class="glass rounded-2xl overflow-hidden shadow-lg border border-gray-100 dark:border-dark-700 h-[450px] flex flex-col">
+                <div class="px-4 py-3 border-b dark:border-dark-700 bg-gray-50/30 flex items-center gap-2">
+                    <h3 class="text-xs font-bold uppercase text-gray-500 tracking-widest">Transaction Logs</h3>
                 </div>
-                <button onclick="UI.clearFilters()" class="text-[9px] bg-white dark:bg-dark-700 px-3 py-1 rounded border dark:border-dark-600 font-bold hover:text-stock-500">RESET</button>
+                <div class="overflow-x-auto custom-scrollbar flex-1"><table class="w-full text-[10px] mono"><tbody id="log-table" class="divide-y dark:divide-dark-700"></tbody></table></div>
             </div>
-            <div class="overflow-x-auto custom-scrollbar flex-1">
-              <table class="w-full text-[10px] mono border-collapse" id="batch-matrix-table">
-                <thead class="bg-gray-100 dark:bg-dark-900 text-gray-400 text-right sticky top-0 z-10 shadow-sm">
-                  <tr>
-                    <th class="text-left p-3 sortable" onclick="UI.sortBatch('stratFull')">Strategy <i class="fas fa-sort"></i></th>
-                    <th class="p-3 sortable" onclick="UI.sortBatch('liqLB')">Liq.W <i class="fas fa-sort"></i></th>
-                    <th class="p-3 sortable" onclick="UI.sortBatch('lb')">LB <i class="fas fa-sort"></i></th>
-                    <th class="p-3 sortable" onclick="UI.sortBatch('rb')">RB <i class="fas fa-sort"></i></th>
-                    <th class="p-3 sortable" onclick="UI.sortBatch('cagr')">CAGR <i class="fas fa-sort"></i></th>
-                    <th class="p-3 sortable" onclick="UI.sortBatch('sharpe')">Sharpe <i class="fas fa-sort"></i></th>
-                    <th class="p-3 sortable" onclick="UI.sortBatch('sortino')">Sortino <i class="fas fa-sort"></i></th>
-                    <th class="p-3 sortable" onclick="UI.sortBatch('calmar')">Calmar <i class="fas fa-sort"></i></th>
-                    <th class="p-3 sortable" onclick="UI.sortBatch('mdd')">MDD <i class="fas fa-sort"></i></th>
-                  </tr>
-                  <!-- Filter Row -->
-                  <tr class="filter-row">
-                      <th><select id="f-strat" onchange="UI.applyBatchFilters()" class="filter-input text-left"><option value="">All</option></select></th>
-                      <th><input id="f-liqlb" onkeyup="UI.applyBatchFilters()" class="filter-input" placeholder=">="></th>
-                      <th><input id="f-lb" onkeyup="UI.applyBatchFilters()" class="filter-input" placeholder=">="></th>
-                      <th><input id="f-rb" onkeyup="UI.applyBatchFilters()" class="filter-input" placeholder=">="></th>
-                      <th><input id="f-cagr" onkeyup="UI.applyBatchFilters()" class="filter-input" placeholder=">="></th>
-                      <th><input id="f-sharpe" onkeyup="UI.applyBatchFilters()" class="filter-input" placeholder=">="></th>
-                      <th><input id="f-sortino" onkeyup="UI.applyBatchFilters()" class="filter-input" placeholder=">="></th>
-                      <th><input id="f-calmar" onkeyup="UI.applyBatchFilters()" class="filter-input" placeholder=">="></th>
-                      <th><input id="f-mdd" onkeyup="UI.applyBatchFilters()" class="filter-input" placeholder="<="></th>
-                  </tr>
-                </thead>
-                <tbody id="batch-table-body" class="divide-y dark:divide-dark-700 text-right font-medium"></tbody>
-                <tfoot id="batch-table-foot" class="bg-gray-50 dark:bg-dark-800 font-bold text-gray-500 border-t-2 border-gray-200 dark:border-dark-600 sticky bottom-0 z-10"></tfoot>
-              </table>
-            </div>
-             <div class="px-4 py-2 border-t dark:border-dark-700 bg-gray-50 dark:bg-dark-800 flex justify-between items-center text-[9px] text-gray-500 font-bold">
-                <span id="pagination-info">0-0 of 0</span>
-                <div class="flex gap-1"><button onclick="UI.prevPage()" id="btn-prev" class="pagination-btn" disabled>Prev</button><button onclick="UI.nextPage()" id="btn-next" class="pagination-btn" disabled>Next</button></div>
+
+            <!-- Strategy Matrix -->
+            <div class="glass rounded-2xl overflow-hidden shadow-lg border border-gray-100 dark:border-dark-700 flex flex-col min-h-[450px]">
+                <div class="px-4 py-3 border-b dark:border-dark-700 bg-gray-50/50 dark:bg-dark-800/50 flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <h3 class="text-xs font-black uppercase text-gray-600 dark:text-gray-300 tracking-widest">Strategy Matrix</h3>
+                    </div>
+                    <button onclick="UI.clearFilters()" class="text-[9px] bg-white dark:bg-dark-700 px-3 py-1 rounded border dark:border-dark-600 font-bold hover:text-stock-500">RESET</button>
+                </div>
+                <div class="overflow-x-auto custom-scrollbar flex-1">
+                  <table class="w-full text-[10px] mono border-collapse" id="batch-matrix-table">
+                    <thead class="bg-gray-100 dark:bg-dark-900 text-gray-400 text-right sticky top-0 z-10 shadow-sm">
+                      <tr>
+                        <th class="text-left p-2 sortable" onclick="UI.sortBatch('stratFull')">Strategy <i class="fas fa-sort"></i></th>
+                        <th class="p-2 sortable" onclick="UI.sortBatch('liqLB')">Liq.W <i class="fas fa-sort"></i></th>
+                        <th class="p-2 sortable" onclick="UI.sortBatch('lb')">LB <i class="fas fa-sort"></i></th>
+                        <th class="p-2 sortable" onclick="UI.sortBatch('rb')">RB <i class="fas fa-sort"></i></th>
+                        <th class="p-2 sortable" onclick="UI.sortBatch('cagr')">CAGR <i class="fas fa-sort"></i></th>
+                        <th class="p-2 sortable" onclick="UI.sortBatch('sharpe')">Sharpe <i class="fas fa-sort"></i></th>
+                        <th class="p-2 sortable" onclick="UI.sortBatch('sortino')">Sortino <i class="fas fa-sort"></i></th>
+                        <th class="p-2 sortable" onclick="UI.sortBatch('calmar')">Calmar <i class="fas fa-sort"></i></th>
+                        <th class="p-2 sortable" onclick="UI.sortBatch('mdd')">MDD <i class="fas fa-sort"></i></th>
+                      </tr>
+                      <!-- Filter Row -->
+                      <tr class="filter-row">
+                          <th><select id="f-strat" onchange="UI.applyBatchFilters()" class="filter-input text-left"><option value="">All</option></select></th>
+                          <th><input id="f-liqlb" onkeyup="UI.applyBatchFilters()" class="filter-input" placeholder=">="></th>
+                          <th><input id="f-lb" onkeyup="UI.applyBatchFilters()" class="filter-input" placeholder=">="></th>
+                          <th><input id="f-rb" onkeyup="UI.applyBatchFilters()" class="filter-input" placeholder=">="></th>
+                          <th><input id="f-cagr" onkeyup="UI.applyBatchFilters()" class="filter-input" placeholder=">="></th>
+                          <th><input id="f-sharpe" onkeyup="UI.applyBatchFilters()" class="filter-input" placeholder=">="></th>
+                          <th><input id="f-sortino" onkeyup="UI.applyBatchFilters()" class="filter-input" placeholder=">="></th>
+                          <th><input id="f-calmar" onkeyup="UI.applyBatchFilters()" class="filter-input" placeholder=">="></th>
+                          <th><input id="f-mdd" onkeyup="UI.applyBatchFilters()" class="filter-input" placeholder="<="></th>
+                      </tr>
+                    </thead>
+                    <tbody id="batch-table-body" class="divide-y dark:divide-dark-700 text-right font-medium"></tbody>
+                    <tfoot id="batch-table-foot" class="bg-gray-50 dark:bg-dark-800 font-bold text-gray-500 border-t-2 border-gray-200 dark:border-dark-600 sticky bottom-0 z-10"></tfoot>
+                  </table>
+                </div>
+                 <div class="px-3 py-2 border-t dark:border-dark-700 bg-gray-50 dark:bg-dark-800 flex justify-between items-center text-[9px] text-gray-500 font-bold">
+                    <span id="pagination-info">0-0 of 0</span>
+                    <div class="flex gap-1"><button onclick="UI.prevPage()" id="btn-prev" class="pagination-btn" disabled>Prev</button><button onclick="UI.nextPage()" id="btn-next" class="pagination-btn" disabled>Next</button></div>
+                </div>
             </div>
         </div>
         
@@ -2250,6 +2253,13 @@ class QuantEngine {
                       const mgmtFactor = 1 - dailyMgmtFee;
                       activeUniverse.forEach(k => shares[k] *= mgmtFactor);
                       
+                      // --- DCA: สะสมทุกวัน (ไม่ใช่แค่วัน rebalance) ---
+                      let dcaInflow = 0, dcaMultiplier = 1.0, dcaAllocationPcts = {};
+                      if (cfg.dca > 0) {
+                          accumulatedDailyDCA += dailyDCABase;
+                          daysSinceLastRebal++;
+                      }
+                      
                       let equityValue = 0;
                       activeUniverse.forEach(k => equityValue += shares[k] * this.marketData[k].prices[t]);
                       let nav = cash + equityValue;
@@ -2272,37 +2282,62 @@ class QuantEngine {
                           let totalNav = nav;
                           const dayPrices = Object.fromEntries(activeUniverse.map(k => [k, this.marketData[k].prices[t]]));
 
-                          // --- DCA inflow added to NAV before rebalance ---
-                          // Logic ใหม่: cfg.dca เป็น monthly budget
-                          // แปลงเป็น daily budget = cfg.dca / (tradingDays / 12)
-                          // ทุกวัน DCA จะสะสมเข้า accumulatedDailyDCA
-                          // วัน rebalance นำ accumulatedDailyDCA × dcaMultiplier มาใช้
-                          let dcaInflow = 0, dcaMultiplier = 1.0, dcaAllocationPcts = {};
-                          
-                          // Enhanced Dynamic DCA Logic:
-                          // - ทุกวัน: สะสม DCA เข้า accumulatedDailyDCA
-                          // - วัน Rebalance: นำยอดสะสม × multiplier มาลงทุน แล้ว reset
+                          // --- Enhanced Dynamic DCA: ใช้ยอดสะสม × multiplier วัน rebalance ---
                           if (cfg.dca > 0) {
-                              // สะสม DCA ต่อวัน (ยกเว้นวันแรกของ simulation)
-                              if ((t - startIdx) > 0) {
-                                  accumulatedDailyDCA += dailyDCABase;
-                                  daysSinceLastRebal++;
-                              }
+                              // เก็บยอดสะสมก่อน reset สำหรับ log
+                              const accumulatedBeforeReset = accumulatedDailyDCA;
                               
                               // คำนวณ multiplier จาก benchmark หรือ asset แรก
                               const benchPrices = this.marketData[cfg.bench]?.prices;
                               const fallbackPrices = benchPrices || (this.marketData[activeUniverse[0]]?.prices || []);
                               dcaMultiplier = this.calculateDCAMultiplier(cfg, fallbackPrices, t);
                               
-                              // DCA จริง = ยอดสะสม × multiplier (dynamic)
+                              // DCA จริง = ยอดสะสม (หลายวัน) × multiplier (dynamic)
                               dcaInflow = accumulatedDailyDCA * dcaMultiplier;
                               
                               // เพิ่มเงิน DCA เข้า portfolio
                               cash += dcaInflow;
                               totalNav += dcaInflow;
                               dcaCount++;
-                          }
+                              
+                              // Reset หลังจากใช้งานแล้ว (เริ่มสะสมรอบใหม่)
+                              accumulatedDailyDCA = 0;
+                              daysSinceLastRebal = 0;
+                              
+                              // คำนวณ allocation pcts สำหรับ log
+                              const deficits = {};
+                              let totalDeficit = 0;
+                              activeUniverse.forEach(k => {
+                                  const ideal = totalNav * targetWeights[k];
+                                  const diff = ideal - currentVal[k];
+                                  deficits[k] = diff > 0 ? diff : 0;
+                                  totalDeficit += deficits[k];
+                              });
+                              activeUniverse.forEach(k => {
+                                  const amount = totalDeficit > 0 ? dcaInflow * (deficits[k] / totalDeficit) : dcaInflow * targetWeights[k];
+                                  dcaAllocationPcts[k] = dcaInflow > 0 ? (amount / dcaInflow) * 100 : 0;
+                              });
 
+                              // --- Single merged log entry per day ---
+                              const logEntry = {
+                                  date: this.dates[t],
+                                  type: 'DCA_REBAL',
+                                  nav: cash,
+                                  shares: {...shares},
+                                  prices: dayPrices
+                              };
+                              logEntry.inflow = dcaInflow;
+                              logEntry.baseDCA = cfg.dca;
+                              // accumulatedBeforeMultiplier: ยอดสะสมหลายวัน (ก่อนคูณ multiplier)
+                              logEntry.accumulatedBeforeMultiplier = accumulatedBeforeReset;
+                              // dailyDCA: DCA ต่อวัน
+                              logEntry.dailyDCA = dailyDCABase;
+                              // daysAccumulated: จำนวนวันที่สะสมในรอบนี้
+                              logEntry.daysAccumulated = daysSinceLastRebal; // จำนวนวันที่สะสม (daysSinceLastRebal ถูก increment ก่อนเข้า rebalance block)
+                              logEntry.multiplier = dcaMultiplier;
+                              logEntry.allocation = dcaAllocationPcts;
+                              logs.push(logEntry);
+                          }
 
                           // --- Rebalance ---
                           let diffPct = {}, realTO = 0, buySellAmounts = {};
@@ -2344,66 +2379,16 @@ class QuantEngine {
                               didRebal = true;
                           }
 
-                          // --- Reset DCA accumulation หลัง rebalance (เสร็จสิ้น 1 รอบ) ---
-                          // วัน rebalance จะนำ accumulatedDailyDCA × multiplier มาใช้แล้ว
-                          // จากนั้น reset เพื่อเริ่มสะสมรอบใหม่
-                          if (cfg.dca > 0 && (t - startIdx) > 0 && (t - startIdx) % rb === 0) {
-                              accumulatedDailyDCA = 0;
-                              daysSinceLastRebal = 0;
-                          }
-
-
                           // --- Combined sharesChange (DCA + Rebal) vs pre-event state ---
                           const combinedSharesChange = {};
                           activeUniverse.forEach(k => { combinedSharesChange[k] = shares[k] - sharesBefore[k]; });
-
-                          // --- DCA allocation pcts based on deficit proportions ---
-                          if (cfg.dca > 0) {
-                              const deficits = {};
-                              let totalDeficit = 0;
-                              activeUniverse.forEach(k => {
-                                  const ideal = totalNav * targetWeights[k];
-                                  const diff = ideal - currentVal[k];
-                                  deficits[k] = diff > 0 ? diff : 0;
-                                  totalDeficit += deficits[k];
-                              });
-                              activeUniverse.forEach(k => {
-                                  const amount = totalDeficit > 0 ? dcaInflow * (deficits[k] / totalDeficit) : dcaInflow * targetWeights[k];
-                                  dcaAllocationPcts[k] = dcaInflow > 0 ? (amount / dcaInflow) * 100 : 0;
-                              });
+                          
+                          // Update last log entry with combined sharesChange and diff
+                          if (cfg.dca > 0 && logs.length > 0) {
+                              const lastLog = logs[logs.length - 1];
+                              lastLog.sharesChange = combinedSharesChange;
+                              lastLog.diff = diffPct;
                           }
-
-                          // --- Final NAV ---
-                          let navAfter = cash;
-                          activeUniverse.forEach(k => { navAfter += shares[k] * this.marketData[k].prices[t]; });
-
-                          // --- Single merged log entry per day ---
-                          if (cfg.dca > 0 || didRebal) {
-                              const logType = cfg.dca > 0 && didRebal ? 'DCA_REBAL' : cfg.dca > 0 ? 'DCA' : 'REBAL';
-                              const logEntry = {
-                                  date: this.dates[t],
-                                  type: logType,
-                                  nav: navAfter,
-                                  shares: {...shares},
-                                  sharesChange: combinedSharesChange,
-                                  prices: dayPrices,
-                                  diff: diffPct
-                              };
-                              if (cfg.dca > 0) {
-                                  logEntry.inflow = dcaInflow;
-                                  logEntry.baseDCA = cfg.dca;
-                                  // accumulatedBeforeMultiplier: ยอดสะสมที่ใช้ในรอบนี้ (ก่อนคูณ multiplier)
-                                  logEntry.accumulatedBeforeMultiplier = accumulatedDailyDCA;
-                                  // dailyDCA: DCA ต่อวัน (cfg.dca / (tradingDays/12))
-                                  logEntry.dailyDCA = dailyDCABase;
-                                  // daysAccumulated: จำนวนวันที่สะสมในรอบนี้
-                                  logEntry.daysAccumulated = daysSinceLastRebal;
-                                  logEntry.multiplier = dcaMultiplier;
-                                  logEntry.allocation = dcaAllocationPcts;
-                              }
-                              logs.push(logEntry);
-                          }
-
                       }
                       
                       let finalDailyEq = cash;
