@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-        <title>Global Portfolio Engine v54.3 — Liquid Alpha Edition (Full Docs)</title>
+        <title>Global Portfolio Engine v55.0 — Telegram Scheduler</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Advanced Quant Portfolio Backtesting Engine - Liquid Alpha Edition (Volume Filter Integrated)">
 
@@ -321,12 +321,13 @@ th.sortable:hover { color: #3b82f6; }
   <div class="max-w-[1800px] mx-auto px-4 h-14 flex justify-between items-center">
     <div class="flex items-center gap-3">
       <h1 class="font-bold text-base flex items-center gap-2 text-dark-900 dark:text-white">
-        <span class="text-xl">💧</span> GPE <span class="text-[9px] bg-gradient-to-r from-blue-500 to-purple-500 text-white px-1.5 py-0.5 rounded font-bold mono">v54.3</span>
+        <span class="text-xl">💧</span> GPE <span class="text-[9px] bg-gradient-to-r from-blue-500 to-purple-500 text-white px-1.5 py-0.5 rounded font-bold mono">v55.0</span>
       </h1>
       <nav class="hidden md:flex gap-1 ml-4">
           <button id="btn-tab-dashboard" onclick="UI.switchTab('dashboard')" class="px-3 py-1 text-[10px] font-bold rounded bg-white dark:bg-dark-800 shadow-sm text-stock-600 transition-all">DASHBOARD</button>
           <button id="btn-tab-tracker" onclick="UI.switchTab('tracker')" class="px-3 py-1 text-[10px] font-bold rounded text-gray-400 hover:text-stock-500 transition-all">PORTFOLIO TRACKER</button>
           <button id="btn-tab-docs" onclick="UI.switchTab('docs')" class="px-3 py-1 text-[10px] font-bold rounded text-gray-400 hover:text-stock-500 transition-all">DOCS & STRATEGIES (THAI)</button>
+          <button id="btn-tab-report" onclick="UI.switchTab('report')" class="px-3 py-1 text-[10px] font-bold rounded text-gray-400 hover:text-stock-500 transition-all"><i class="fas fa-broadcast-tower text-cyan-500 mr-1"></i>DAILY REPORT</button>
       </nav>
       <!-- Mobile Menu Button -->
       <button id="mobile-menu-btn" onclick="UI.toggleMobileMenu()" class="md:hidden w-10 h-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-dark-800 hover:bg-stock-500 hover:text-white transition-all">
@@ -396,6 +397,38 @@ th.sortable:hover { color: #3b82f6; }
     <button onclick="ConfigManager.showKeySettings()" id="btn-key-settings" class="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white py-2 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow flex items-center justify-center gap-1">
       <i class="fas fa-key"></i> 🔐 Key Settings
     </button>
+  </div>
+  
+  <!-- Telegram Settings -->
+  <div id="telegram-settings" class="opt-group bg-cyan-50/50 dark:bg-cyan-900/10 border-cyan-200 dark:border-cyan-800">
+    <span class="opt-group-label text-cyan-500"><i class="fas fa-broadcast-tower mr-1"></i>Telegram Bot</span>
+    <div class="space-y-2">
+      <div>
+        <label class="opt-label-mini">Bot Token</label>
+        <div class="relative">
+          <input id="cfg-telegram-token" type="password" placeholder="123456:ABC-DEF..." class="opt-input pr-8">
+          <button onclick="TelegramScheduler.toggleTokenVisibility()" class="absolute right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-cyan-500 text-xs">
+            <i class="fas fa-eye" id="telegram-token-eye"></i>
+          </button>
+        </div>
+      </div>
+      <div>
+        <label class="opt-label-mini">Chat ID</label>
+        <input id="cfg-telegram-chat" type="text" placeholder="-1001234567890" class="opt-input">
+      </div>
+      <div class="flex items-center justify-between pt-1 border-t dark:border-dark-700">
+        <label class="flex items-center gap-1 cursor-pointer">
+          <input type="checkbox" id="cfg-telegram-enabled" class="w-3 h-3 rounded">
+          <span class="text-[9px] text-gray-500">เปิดใช้งาน</span>
+        </label>
+        <button onclick="TelegramScheduler.sendTest()" id="btn-telegram-test" class="px-2 py-1 bg-cyan-500 hover:bg-cyan-600 text-white rounded text-[9px] font-bold transition-all">
+          <i class="fas fa-paper-plane mr-1"></i>Test
+        </button>
+      </div>
+      <div id="telegram-status" class="text-[9px] text-center hidden">
+        <span id="telegram-status-text" class="text-gray-500"></span>
+      </div>
+    </div>
   </div>
 
   <div class="opt-group bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800">
@@ -630,6 +663,117 @@ th.sortable:hover { color: #3b82f6; }
 
 <!-- MAIN CONTENT -->
 <div class="col-span-12 xl:col-span-10 space-y-6">
+
+    <!-- DAILY REPORT TAB -->
+    <div id="view-report" class="space-y-6 animate-fade-in hidden">
+        <div class="glass p-6 rounded-2xl">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-xl font-bold text-dark-900 dark:text-white flex items-center gap-2">
+                        <i class="fas fa-broadcast-tower text-cyan-500"></i> Daily Report
+                    </h2>
+                    <p class="text-xs text-gray-500 mt-1">สรุปผลการลงทุนรายวัน/รายสัปดาห์/รายเดือน พร้อมส่ง Telegram อัตโนมัติ</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="DailyReport.refreshReport()" class="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow">
+                        <i class="fas fa-sync-alt mr-2"></i>Refresh
+                    </button>
+                    <button onclick="TelegramScheduler.sendTest()" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow">
+                        <i class="fas fa-paper-plane mr-2"></i>Test Telegram
+                    </button>
+                </div>
+            </div>
+
+            <!-- Report Status -->
+            <div id="report-status" class="mb-6 p-4 bg-gray-50 dark:bg-dark-700 rounded-xl border border-gray-200 dark:border-dark-600">
+                <div class="flex items-center gap-3">
+                    <div id="telegram-indicator" class="w-3 h-3 rounded-full bg-gray-400"></div>
+                    <div>
+                        <div class="font-bold text-sm" id="telegram-status-label">Telegram Scheduler: <span class="text-gray-500">Not Connected</span></div>
+                        <div class="text-xs text-gray-500" id="telegram-last-run">Last run: Never</div>
+                    </div>
+                    <div class="ml-auto flex items-center gap-2">
+                        <span class="text-xs text-gray-500">Next run in:</span>
+                        <span id="next-run-timer" class="text-sm font-mono font-bold text-cyan-500">--:--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- P&L Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-4 text-white">
+                    <div class="text-xs opacity-80 mb-1">วันนี้ (Today)</div>
+                    <div id="report-pnl-today" class="text-2xl font-bold mono">$0.00</div>
+                    <div id="report-pnl-today-pct" class="text-sm opacity-90 mt-1">0.00%</div>
+                </div>
+                <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white">
+                    <div class="text-xs opacity-80 mb-1">7 วัน (7D)</div>
+                    <div id="report-pnl-7d" class="text-2xl font-bold mono">$0.00</div>
+                    <div id="report-pnl-7d-pct" class="text-sm opacity-90 mt-1">0.00%</div>
+                </div>
+                <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white">
+                    <div class="text-xs opacity-80 mb-1">30 วัน (30D)</div>
+                    <div id="report-pnl-30d" class="text-2xl font-bold mono">$0.00</div>
+                    <div id="report-pnl-30d-pct" class="text-sm opacity-90 mt-1">0.00%</div>
+                </div>
+                <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-4 text-white">
+                    <div class="text-xs opacity-80 mb-1">YTD</div>
+                    <div id="report-pnl-ytd" class="text-2xl font-bold mono">$0.00</div>
+                    <div id="report-pnl-ytd-pct" class="text-sm opacity-90 mt-1">0.00%</div>
+                </div>
+            </div>
+
+            <!-- Strategy Performance -->
+            <div class="mb-6">
+                <h3 class="text-md font-bold text-dark-900 dark:text-white mb-3 flex items-center gap-2">
+                    <i class="fas fa-trophy text-yellow-500"></i> Strategy Performance (Top 3)
+                </h3>
+                <div id="strategy-performance-list" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Holdings Overview -->
+            <div class="mb-6">
+                <h3 class="text-md font-bold text-dark-900 dark:text-white mb-3 flex items-center gap-2">
+                    <i class="fas fa-chart-pie text-stock-500"></i> Holdings Overview
+                </h3>
+                <div id="holdings-overview" class="bg-gray-50 dark:bg-dark-700 rounded-xl p-4 border border-gray-200 dark:border-dark-600">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <canvas id="holdings-pie-chart"></canvas>
+                        </div>
+                        <div>
+                            <table class="w-full text-xs">
+                                <thead class="bg-gray-100 dark:bg-dark-800">
+                                    <tr>
+                                        <th class="p-2 text-left">Asset</th>
+                                        <th class="p-2 text-right">Qty</th>
+                                        <th class="p-2 text-right">Value</th>
+                                        <th class="p-2 text-right">%</th>
+                                        <th class="p-2 text-right">P&L</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="holdings-table" class="divide-y dark:divide-dark-600">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Snapshots -->
+            <div>
+                <h3 class="text-md font-bold text-dark-900 dark:text-white mb-3 flex items-center gap-2">
+                    <i class="fas fa-history text-gray-500"></i> Recent Snapshots
+                </h3>
+                <div id="snapshots-list" class="space-y-2">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- DASHBOARD TAB -->
     <div id="view-dashboard" class="space-y-6 animate-fade-in">
@@ -3795,6 +3939,359 @@ const UI = {
 
 // Config Manager
 /* =========================================================
+   SNAPSHOT MANAGER - IndexedDB Daily NAV Storage
+========================================================= */
+const SnapshotManager = {
+    DB_NAME: 'GPE_Database',
+    DB_VERSION: 2,
+    STORE_NAME: 'snapshots',
+    db: null,
+
+    async init() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = (e) => { this.db = e.target.result; resolve(); };
+            request.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(this.STORE_NAME)) {
+                    const store = db.createObjectStore(this.STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                    store.createIndex('date', 'date', { unique: true });
+                    store.createIndex('portfolio', 'portfolio', { unique: false });
+                }
+            };
+        });
+    },
+
+    async saveDailySnapshot(portfolio, data) {
+        if (!this.db) await this.init();
+        return new Promise((resolve, reject) => {
+            const tx = this.db.transaction(this.STORE_NAME, 'readwrite');
+            const store = tx.objectStore(this.STORE_NAME);
+            const snapshot = {
+                date: new Date().toISOString().slice(0, 10),
+                portfolio,
+                totalInvested: data.totalInvested || 0,
+                marketValue: data.marketValue || 0,
+                cashBalance: data.cashBalance || 0,
+                holdings: data.holdings || {},
+                strategyResults: data.strategyResults || null,
+                createdAt: Date.now()
+            };
+            const req = store.put(snapshot);
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+    },
+
+    async getSnapshotByDate(date, portfolio) {
+        if (!this.db) await this.init();
+        return new Promise((resolve) => {
+            const tx = this.db.transaction(this.STORE_NAME, 'readonly');
+            const store = tx.objectStore(this.STORE_NAME);
+            const index = store.index('date');
+            const req = index.getAll(date);
+            req.onsuccess = () => {
+                const results = req.result.filter(s => s.portfolio === portfolio);
+                resolve(results[0] || null);
+            };
+            req.onerror = () => resolve(null);
+        });
+    },
+
+    async getHistoricalRange(startDate, endDate, portfolio) {
+        if (!this.db) await this.init();
+        return new Promise((resolve) => {
+            const tx = this.db.transaction(this.STORE_NAME, 'readonly');
+            const store = tx.objectStore(this.STORE_NAME);
+            const req = store.getAll();
+            req.onsuccess = () => {
+                const filtered = req.result
+                    .filter(s => s.portfolio === portfolio && s.date >= startDate && s.date <= endDate)
+                    .sort((a, b) => a.date.localeCompare(b.date));
+                resolve(filtered);
+            };
+            req.onerror = () => resolve([]);
+        });
+    },
+
+    async calculatePnLDelta(date1, date2, portfolio) {
+        const snap1 = await this.getSnapshotByDate(date1, portfolio);
+        const snap2 = await this.getSnapshotByDate(date2, portfolio);
+        if (!snap1 || !snap2) return null;
+        return {
+            pnlDollar: snap2.marketValue - snap1.marketValue,
+            pnlPct: snap1.marketValue > 0 ? ((snap2.marketValue - snap1.marketValue) / snap1.marketValue * 100) : 0,
+            startValue: snap1.marketValue,
+            endValue: snap2.marketValue
+        };
+    }
+};
+
+/* =========================================================
+   TELEGRAM SCHEDULER - Auto Send Daily Reports
+========================================================= */
+const TelegramScheduler = {
+    LOCK_KEY: 'gpe_telegram_lock',
+    CONFIG_KEY: 'gpe_telegram_config',
+    intervalId: null,
+    LOCK_TIMEOUT: 10 * 60 * 1000, // 10 minutes
+    REPORT_INTERVAL: 5 * 60 * 1000, // 5 minutes
+
+    getConfig() {
+        const stored = localStorage.getItem(this.CONFIG_KEY);
+        return stored ? JSON.parse(stored) : { enabled: false, token: '', chatId: '' };
+    },
+
+    saveConfig(config) {
+        localStorage.setItem(this.CONFIG_KEY, JSON.stringify(config));
+    },
+
+    getDecryptedToken() {
+        const config = this.getConfig();
+        if (!config.token) return '';
+        if (CryptoUtils.isEncrypted(config.token)) {
+            return CryptoUtils.decrypt(config.token, CryptoUtils.getKey());
+        }
+        return config.token;
+    },
+
+    toggleTokenVisibility() {
+        const input = document.getElementById('cfg-telegram-token');
+        const eye = document.getElementById('telegram-token-eye');
+        if (input.type === 'password') {
+            input.type = 'text';
+            eye.className = 'fas fa-eye-slash';
+        } else {
+            input.type = 'password';
+            eye.className = 'fas fa-eye';
+        }
+    },
+
+    initUI() {
+        const config = this.getConfig();
+        document.getElementById('cfg-telegram-token').value = config.token ? '••••••••' : '';
+        document.getElementById('cfg-telegram-chat').value = config.chatId || '';
+        document.getElementById('cfg-telegram-enabled').checked = config.enabled;
+        document.getElementById('cfg-telegram-token').oninput = (e) => {
+            const config = this.getConfig();
+            config.token = e.target.value;
+            this.saveConfig(config);
+        };
+        document.getElementById('cfg-telegram-chat').oninput = (e) => {
+            const config = this.getConfig();
+            config.chatId = e.target.value;
+            this.saveConfig(config);
+        };
+        document.getElementById('cfg-telegram-enabled').onchange = (e) => {
+            const config = this.getConfig();
+            config.enabled = e.target.checked;
+            this.saveConfig(config);
+            if (config.enabled) this.start(); else this.stop();
+        };
+        if (config.enabled && config.token) this.start();
+    },
+
+    acquireLock() {
+        const lock = this.getLock();
+        const now = Date.now();
+        if (lock && (now - lock.timestamp) < this.LOCK_TIMEOUT) return false;
+        localStorage.setItem(this.LOCK_KEY, JSON.stringify({
+            instanceId: Date.now().toString(36),
+            timestamp: now
+        }));
+        return true;
+    },
+
+    releaseLock() {
+        localStorage.removeItem(this.LOCK_KEY);
+    },
+
+    getLock() {
+        const stored = localStorage.getItem(this.LOCK_KEY);
+        return stored ? JSON.parse(stored) : null;
+    },
+
+    start() {
+        if (this.intervalId) return;
+        this.intervalId = setInterval(() => this.tick(), this.REPORT_INTERVAL);
+        this.tick(); // Run immediately
+    },
+
+    stop() {
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = null;
+        }
+        this.releaseLock();
+    },
+
+    async tick() {
+        if (!this.acquireLock()) {
+            console.log('[Telegram] Another instance is running, skipping...');
+            return;
+        }
+        try {
+            await this.runDailyReport();
+        } finally {
+            setTimeout(() => this.releaseLock(), 1000);
+        }
+    },
+
+    async runDailyReport() {
+        const config = this.getConfig();
+        if (!config.enabled || !config.token || !config.chatId) return;
+        
+        const now = new Date();
+        const today = now.toISOString().slice(0, 10);
+        const portfolio = ConfigManager.getLastUsedConfig() || 'Default';
+        
+        // Get P&L data
+        const txns = PortfolioTracker.getAllTransactions().filter(t => t.portfolio === portfolio);
+        if (txns.length === 0) return;
+
+        // Calculate current holdings
+        const holdings = {};
+        let cashBalance = 0;
+        let totalInvested = 0;
+        txns.forEach(t => {
+            if (t.type === 'capital') { cashBalance += t.total; totalInvested += t.total; }
+            else if (t.type === 'buy') { cashBalance -= t.total; if (!holdings[t.asset]) holdings[t.asset] = { qty: 0, cost: 0 }; holdings[t.asset].qty += t.quantity; holdings[t.asset].cost += t.total; }
+            else if (t.type === 'sell') { cashBalance += t.total; if (holdings[t.asset]) { holdings[t.asset].qty += t.quantity; holdings[t.asset].cost = Math.max(0, holdings[t.asset].cost - (t.total / Math.abs(t.quantity)) * Math.abs(t.quantity)); } }
+        });
+
+        // Get market values
+        let marketValue = 0;
+        const assetList = Object.keys(holdings).filter(a => a !== 'CASH' && holdings[a].qty > 0);
+        assetList.forEach(asset => {
+            if (Engine.marketData[asset]?.prices?.length) {
+                const price = Engine.marketData[asset].prices[Engine.marketData[asset].prices.length - 1];
+                if (price > 0) marketValue += holdings[asset].qty * price;
+            }
+        });
+        
+        marketValue += Math.max(cashBalance, 0);
+        const pnl = marketValue - totalInvested;
+        const pnlPct = totalInvested > 0 ? (pnl / totalInvested * 100) : 0;
+
+        // Get historical P&L (7d, 30d)
+        let pnl7d = null, pnl30d = null;
+        try {
+            const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate() - 7);
+            const monthAgo = new Date(now); monthAgo.setDate(monthAgo.getDate() - 30);
+            pnl7d = await SnapshotManager.calculatePnLDelta(weekAgo.toISOString().slice(0, 10), today, portfolio);
+            pnl30d = await SnapshotManager.calculatePnLDelta(monthAgo.toISOString().slice(0, 10), today, portfolio);
+        } catch (e) {}
+
+        // Save snapshot
+        try {
+            await SnapshotManager.saveDailySnapshot(portfolio, { totalInvested, marketValue, cashBalance, holdings });
+        } catch (e) {}
+
+        // Get strategy performance if available
+        let strategyText = '';
+        if (Engine.results?.length > 0) {
+            const top = Engine.results.slice(0, 3);
+            strategyText = top.map((r, i) => `${i + 1}. *${r.stratFull}*: ${r.cagr}% CAGR, Sharpe ${r.sharpe}`).join('\n');
+        }
+
+        // Build message
+        const pnlEmoji = pnl >= 0 ? '📈' : '📉';
+        const pnlSign = pnl >= 0 ? '+' : '';
+        let message = `*📊 GPE Daily Report - ${today}*\n\n`;
+        message += `${pnlEmoji} *P&L Summary*\n`;
+        message += `• วันนี้: ${pnlSign}$${Math.abs(pnl).toFixed(2)} (${pnlSign}${pnlPct.toFixed(2)}%)\n`;
+        if (pnl7d) message += `• 7 วัน: ${pnl7d.pnlDollar >= 0 ? '+' : ''}$${Math.abs(pnl7d.pnlDollar).toFixed(2)} (${pnl7d.pnlDollar >= 0 ? '+' : ''}${pnl7d.pnlPct.toFixed(2)}%)\n`;
+        if (pnl30d) message += `• 30 วัน: ${pnl30d.pnlDollar >= 0 ? '+' : ''}$${Math.abs(pnl30d.pnlDollar).toFixed(2)} (${pnl30d.pnlDollar >= 0 ? '+' : ''}${pnl30d.pnlPct.toFixed(2)}%)\n`;
+        message += `• มูลค่ารวม: $${marketValue.toFixed(2)}\n\n`;
+        
+        if (assetList.length > 0) {
+            message += `*📦 Top Holdings*\n`;
+            const topAssets = assetList.slice(0, 5);
+            topAssets.forEach(asset => {
+                const price = Engine.marketData[asset]?.prices?.[Engine.marketData[asset].prices.length - 1] || 0;
+                const value = holdings[asset].qty * price;
+                const pct = marketValue > 0 ? (value / marketValue * 100).toFixed(1) : '0';
+                message += `• ${asset}: ${holdings[asset].qty.toFixed(4)} @ $${price.toFixed(2)} = $${value.toFixed(2)} (${pct}%)\n`;
+            });
+            message += '\n';
+        }
+        
+        if (strategyText) {
+            message += `*🏆 Strategy Performance*\n${strategyText}\n\n`;
+        }
+        
+        message += `_ส่งอัตโนมัติโดย GPE v55.0_`;
+
+        // Send to Telegram
+        await this.sendMessage(message);
+    },
+
+    async sendMessage(text) {
+        const token = this.getDecryptedToken();
+        const chatId = this.getConfig().chatId;
+        if (!token || !chatId) return;
+
+        const statusEl = document.getElementById('telegram-status');
+        const statusTextEl = document.getElementById('telegram-status-text');
+        statusEl.classList.remove('hidden');
+        statusTextEl.textContent = 'กำลังส่ง...';
+        statusTextEl.className = 'text-cyan-500';
+
+        try {
+            const url = `https://api.telegram.org/bot${token}/sendMessage`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' })
+            });
+            const result = await response.json();
+            if (result.ok) {
+                statusTextEl.textContent = '✓ ส่งสำเร็จ ' + new Date().toLocaleTimeString('th-TH');
+                statusTextEl.className = 'text-acc-green';
+            } else {
+                throw new Error(result.description || 'Send failed');
+            }
+        } catch (e) {
+            statusTextEl.textContent = '✗ ผิดพลาด: ' + e.message;
+            statusTextEl.className = 'text-acc-red';
+        }
+    },
+
+    async sendTest() {
+        const token = this.getDecryptedToken();
+        const chatId = document.getElementById('cfg-telegram-chat').value.trim();
+        
+        if (!token || token === '••••••••') {
+            alert('กรุณากรอก Bot Token ก่อน');
+            return;
+        }
+        if (!chatId) {
+            alert('กรุณากรอก Chat ID ก่อน');
+            return;
+        }
+
+        const btn = document.getElementById('btn-telegram-test');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+        try {
+            await this.sendMessage(`✅ *ทดสอบ Telegram*\n\nGPE สามารถส่งข้อความไปยัง Bot นี้ได้แล้ว!\n\n⏰ เวลา: ${new Date().toLocaleString('th-TH')}`);
+            const config = this.getConfig();
+            config.chatId = chatId;
+            this.saveConfig(config);
+            document.getElementById('cfg-telegram-chat').value = chatId;
+            alert('ส่ง Test Message สำเร็จ!');
+        } catch (e) {
+            alert('ส่งล้มเหลว: ' + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane mr-1"></i>Test';
+        }
+    }
+};
+
+/* =========================================================
    ENCRYPTION KEY MANAGER
 ========================================================= */
 const EncryptionKeyManager = {
@@ -5276,15 +5773,53 @@ const PortfolioTracker = {
     }
 };
 
-const RebaถlanceCalculator = {
+/* =========================================================
+   REBALANCE TARGET MANAGER - Save/Load Target Allocations
+========================================================= */
+const RebalanceTargetManager = {
+    STORAGE_KEY: 'gpe_rebalance_targets',
+    
+    getAllTargets() {
+        const stored = localStorage.getItem(this.STORAGE_KEY);
+        return stored ? JSON.parse(stored) : {};
+    },
+    
+    getTarget(portfolioName) {
+        const targets = this.getAllTargets();
+        return targets[portfolioName] || null;
+    },
+    
+    saveTarget(portfolioName, targets) {
+        const all = this.getAllTargets();
+        all[portfolioName] = { targets: targets, savedAt: new Date().toISOString() };
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(all));
+    },
+    
+    deleteTarget(portfolioName) {
+        const all = this.getAllTargets();
+        delete all[portfolioName];
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(all));
+    },
+    
+    getAssetTarget(portfolioName, asset) {
+        const target = this.getTarget(portfolioName);
+        return target?.targets?.[asset] ?? null;
+    }
+};
+
+/* =========================================================
+   REBALANCE CALCULATOR - With Save/Load Integration
+========================================================= */
+const RebalanceCalculator = {
     currentPortfolio: null,
     currentHoldings: {},
+    isDirty: false,
     
     openModal(portfolioName, holdings) {
         this.currentPortfolio = portfolioName;
         this.currentHoldings = holdings;
+        this.isDirty = false;
         
-        // Get current prices
         const marketData = Engine.marketData;
         let totalValue = 0;
         let hasValidPrices = false;
@@ -5304,28 +5839,30 @@ const RebaถlanceCalculator = {
             return;
         }
         
-        // Update modal header
         document.getElementById('rebalance-portfolio-name').textContent = portfolioName;
         document.getElementById('rebalance-total-value').textContent = `$${totalValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
         
-        // Count active assets
         const activeAssets = Object.entries(holdings).filter(([_, h]) => Math.abs(h.quantity) > 0.0001);
         document.getElementById('rebalance-asset-count').textContent = activeAssets.length;
         
-        // Render asset list
         this.renderAssetList(holdings, marketData, totalValue);
         
-        // Show modal
         document.getElementById('rebalance-modal').classList.remove('hidden');
-        
-        // Hide actions initially
         document.getElementById('rebalance-actions').classList.add('hidden');
     },
     
     closeModal() {
+        if (this.isDirty && this.currentPortfolio) {
+            const targets = this.collectTargets();
+            if (this.validateTargets(targets)) {
+                RebalanceTargetManager.saveTarget(this.currentPortfolio, targets);
+                console.log(`[Rebalance] Saved targets for ${this.currentPortfolio}`);
+            }
+        }
         document.getElementById('rebalance-modal').classList.add('hidden');
         this.currentPortfolio = null;
         this.currentHoldings = {};
+        this.isDirty = false;
     },
     
     getLatestPrice(asset, marketData) {
@@ -5339,17 +5876,24 @@ const RebaถlanceCalculator = {
     
     renderAssetList(holdings, marketData, totalValue) {
         const activeHoldings = Object.entries(holdings).filter(([_, h]) => Math.abs(h.quantity) > 0.0001);
+        const savedTarget = this.currentPortfolio ? RebalanceTargetManager.getTarget(this.currentPortfolio) : null;
         
         const listHtml = activeHoldings.map(([asset, data]) => {
             const currentPrice = this.getLatestPrice(asset, marketData);
             const currentValue = data.quantity * currentPrice;
             const currentPct = (currentValue / totalValue * 100);
+            const savedPct = savedTarget?.targets?.[asset];
+            const defaultValue = savedPct !== null && savedPct !== undefined ? savedPct.toFixed(1) : currentPct.toFixed(1);
+            const savedBadge = savedPct !== null && savedPct !== undefined ? '<span class="text-[9px] bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded font-bold">✓ Saved</span>' : '';
             
             return `
                 <div class="bg-gray-50 dark:bg-dark-700 rounded-lg p-3 border border-gray-200 dark:border-dark-600">
                     <div class="flex items-center justify-between mb-2">
                         <div class="flex-1">
-                            <div class="font-bold text-gray-800 dark:text-gray-200 text-sm">${asset}</div>
+                            <div class="flex items-center gap-2">
+                                <div class="font-bold text-gray-800 dark:text-gray-200 text-sm">${asset}</div>
+                                ${savedBadge}
+                            </div>
                             <div class="text-xs text-gray-500 dark:text-gray-400">
                                 ถือ: ${data.quantity.toFixed(4)} × $${currentPrice.toFixed(2)} = $${currentValue.toFixed(2)}
                             </div>
@@ -5364,12 +5908,13 @@ const RebaถlanceCalculator = {
                         <input 
                             type="number" 
                             id="target-${asset}" 
-                            value="${currentPct.toFixed(1)}" 
+                            value="${defaultValue}" 
                             step="0.1" 
                             min="0" 
                             max="100"
-                            onchange="RebalanceCalculator.updateTotalTarget()"
-                            class="flex-1 px-2 py-1 bg-white dark:bg-dark-800 border border-gray-300 dark:border-dark-600 rounded text-sm font-bold text-center mono focus:border-stock-500 focus:ring-1 focus:ring-stock-500 outline-none"
+                            onchange="RebalanceCalculator.onTargetChange()"
+                            oninput="RebalanceCalculator.markDirty()"
+                            class="flex-1 px-2 py-1 bg-white dark:bg-dark-800 border border-gray-300 dark:border-dark-600 rounded text-sm font-bold text-center mono focus:border-stock-500 focus:ring-1 focus:ring-stock-500 outline-none ${savedPct !== null && savedPct !== undefined ? 'border-purple-300 dark:border-purple-600' : ''}"
                         >
                         <span class="text-xs text-gray-500">%</span>
                     </div>
@@ -5381,16 +5926,34 @@ const RebaถlanceCalculator = {
         this.updateTotalTarget();
     },
     
-    updateTotalTarget() {
+    markDirty() { this.isDirty = true; },
+    
+    onTargetChange() {
+        this.isDirty = true;
+        this.updateTotalTarget();
+    },
+    
+    collectTargets() {
+        const targets = {};
         const activeHoldings = Object.entries(this.currentHoldings).filter(([_, h]) => Math.abs(h.quantity) > 0.0001);
-        let total = 0;
-        
         activeHoldings.forEach(([asset, _]) => {
             const input = document.getElementById(`target-${asset}`);
             if (input) {
-                total += parseFloat(input.value) || 0;
+                const val = parseFloat(input.value);
+                if (!isNaN(val) && val >= 0) targets[asset] = val;
             }
         });
+        return targets;
+    },
+    
+    validateTargets(targets) {
+        const total = Object.values(targets).reduce((sum, val) => sum + val, 0);
+        return Math.abs(total - 100) <= 0.1;
+    },
+    
+    updateTotalTarget() {
+        const targets = this.collectTargets();
+        const total = Object.values(targets).reduce((sum, val) => sum + val, 0);
         
         const totalEl = document.getElementById('rebalance-total-target');
         const warningEl = document.getElementById('rebalance-target-warning');
@@ -5408,28 +5971,67 @@ const RebaถlanceCalculator = {
         }
     },
     
-    calculateRebalance() {
-        // Check if total equals 100%
-        const activeHoldings = Object.entries(this.currentHoldings).filter(([_, h]) => Math.abs(h.quantity) > 0.0001);
-        let totalTarget = 0;
+    saveTargets() {
+        if (!this.currentPortfolio) return;
+        const targets = this.collectTargets();
+        if (!this.validateTargets(targets)) {
+            alert('Target รวมต้องเท่ากับ 100%');
+            return;
+        }
+        RebalanceTargetManager.saveTarget(this.currentPortfolio, targets);
+        this.isDirty = false;
+        alert(`บันทึก Target สำเร็จ!\n\n${Object.entries(targets).map(([a, v]) => `${a}: ${v.toFixed(1)}%`).join('\n')}`);
+    },
+    
+    loadSavedTargets() {
+        if (!this.currentPortfolio) return;
+        const saved = RebalanceTargetManager.getTarget(this.currentPortfolio);
+        if (!saved) { alert('ไม่พบ Target ที่บันทึกไว้'); return; }
         
+        const activeHoldings = Object.entries(this.currentHoldings).filter(([_, h]) => Math.abs(h.quantity) > 0.0001);
         activeHoldings.forEach(([asset, _]) => {
             const input = document.getElementById(`target-${asset}`);
+            const savedVal = saved.targets?.[asset];
+            if (input && savedVal !== null && savedVal !== undefined) input.value = savedVal.toFixed(1);
+        });
+        this.updateTotalTarget();
+        this.isDirty = true;
+        alert(`โหลด Target สำเร็จ!\nบันทึกเมื่อ: ${new Date(saved.savedAt).toLocaleString('th-TH')}`);
+    },
+    
+    resetToCurrent() {
+        const marketData = Engine.marketData;
+        let totalValue = 0;
+        const activeHoldings = Object.entries(this.currentHoldings).filter(([_, h]) => Math.abs(h.quantity) > 0.0001);
+        activeHoldings.forEach(([asset, data]) => {
+            const price = this.getLatestPrice(asset, marketData);
+            totalValue += data.quantity * price;
+        });
+        activeHoldings.forEach(([asset, data]) => {
+            const input = document.getElementById(`target-${asset}`);
             if (input) {
-                totalTarget += parseFloat(input.value) || 0;
+                const price = this.getLatestPrice(asset, marketData);
+                const currentPct = (data.quantity * price / totalValue * 100);
+                input.value = currentPct.toFixed(1);
             }
         });
+        this.updateTotalTarget();
+        this.isDirty = true;
+    },
+    
+    calculateRebalance() {
+        const targets = this.collectTargets();
+        const totalTarget = Object.values(targets).reduce((sum, val) => sum + val, 0);
         
         if (Math.abs(totalTarget - 100) > 0.1) {
-            alert('Target รวมต้องเท่ากับ 100%\nปัจจุบัน: ' + totalTarget.toFixed(1) + '%');
+            alert('Target รวมต้องเท่ากับ 100%');
             return;
         }
         
-        // Calculate current portfolio value
         const marketData = Engine.marketData;
         let totalValue = 0;
-        
         const currentValues = {};
+        const activeHoldings = Object.entries(this.currentHoldings).filter(([_, h]) => Math.abs(h.quantity) > 0.0001);
         activeHoldings.forEach(([asset, data]) => {
             const price = this.getLatestPrice(asset, marketData);
             const value = data.quantity * price;
@@ -5437,43 +6039,32 @@ const RebaถlanceCalculator = {
             totalValue += value;
         });
         
-        // Calculate rebalance actions
         const actions = [];
-        let totalBuy = 0;
-        let totalSell = 0;
+        let totalBuy = 0, totalSell = 0;
         
         activeHoldings.forEach(([asset, _]) => {
-            const targetPct = parseFloat(document.getElementById(`target-${asset}`).value) || 0;
+            const targetPct = targets[asset] || 0;
             const targetValue = totalValue * (targetPct / 100);
             const currentValue = currentValues[asset].value;
             const diff = targetValue - currentValue;
             
-            if (Math.abs(diff) > 0.01) { // Only show if difference > $0.01
-                const action = {
-                    asset: asset,
-                    currentPct: (currentValue / totalValue * 100),
-                    targetPct: targetPct,
-                    currentValue: currentValue,
-                    targetValue: targetValue,
-                    diff: diff,
-                    price: currentValues[asset].price,
-                    quantity: diff / currentValues[asset].price,
-                    type: diff > 0 ? 'buy' : 'sell'
-                };
-                actions.push(action);
-                
-                if (diff > 0) totalBuy += diff;
-                else totalSell += Math.abs(diff);
+            if (Math.abs(diff) > 0.01) {
+                actions.push({
+                    asset, currentPct: (currentValue / totalValue * 100), targetPct,
+                    currentValue, targetValue, diff, price: currentValues[asset].price,
+                    quantity: diff / currentValues[asset].price, type: diff > 0 ? 'buy' : 'sell'
+                });
+                if (diff > 0) totalBuy += diff; else totalSell += Math.abs(diff);
             }
         });
         
-        // Render actions
         this.renderActions(actions, totalBuy, totalSell);
-        
-        // Show actions section
         document.getElementById('rebalance-actions').classList.remove('hidden');
         
-        // Scroll to actions
+        // Auto-save targets
+        RebalanceTargetManager.saveTarget(this.currentPortfolio, targets);
+        this.isDirty = false;
+        
         document.getElementById('rebalance-actions').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     },
     
@@ -5491,7 +6082,6 @@ const RebaถlanceCalculator = {
             return;
         }
         
-        // Sort: sells first, then buys
         actions.sort((a, b) => {
             if (a.type !== b.type) return a.type === 'sell' ? -1 : 1;
             return Math.abs(b.diff) - Math.abs(a.diff);
@@ -5504,28 +6094,22 @@ const RebaถlanceCalculator = {
             const icon = action.type === 'buy' ? 'fa-arrow-up' : 'fa-arrow-down';
             const label = action.type === 'buy' ? 'ซื้อ' : 'ขาย';
             
-            return `
-                <div class="${bgColor} ${borderColor} border rounded-lg p-3">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <div class="${color} text-2xl">
-                                <i class="fas ${icon}"></i>
-                            </div>
-                            <div>
-                                <div class="font-bold text-gray-800 dark:text-gray-200">${action.asset}</div>
-                                <div class="text-xs text-gray-500 dark:text-gray-400">
-                                    ${action.currentPct.toFixed(1)}% → ${action.targetPct.toFixed(1)}%
-                                </div>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <div class="${color} font-bold text-lg mono">${label}</div>
-                            <div class="text-sm font-bold ${color}">${Math.abs(action.quantity).toFixed(4)} units</div>
-                            <div class="text-xs text-gray-600 dark:text-gray-400">≈ $${Math.abs(action.diff).toFixed(2)}</div>
+            return `<div class="${bgColor} ${borderColor} border rounded-lg p-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="${color} text-2xl"><i class="fas ${icon}"></i></div>
+                        <div>
+                            <div class="font-bold text-gray-800 dark:text-gray-200">${action.asset}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">${action.currentPct.toFixed(1)}% → ${action.targetPct.toFixed(1)}%</div>
                         </div>
                     </div>
+                    <div class="text-right">
+                        <div class="${color} font-bold text-lg mono">${label}</div>
+                        <div class="text-sm font-bold ${color}">${Math.abs(action.quantity).toFixed(4)} units</div>
+                        <div class="text-xs text-gray-600 dark:text-gray-400">≈ $${Math.abs(action.diff).toFixed(2)}</div>
+                    </div>
                 </div>
-            `;
+            </div>`;
         }).join('');
         
         document.getElementById('rebalance-actions-list').innerHTML = actionsHtml;
