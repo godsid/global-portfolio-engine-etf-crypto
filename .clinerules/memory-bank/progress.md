@@ -82,3 +82,25 @@
 
 1. **Telegram Bot Testing** - ทดสอบการส่งข้อความจริง
 2. **Push Notification** - เพิ่ม push notification สำหรับ portfolio alerts
+
+---
+
+## 📅 Recent Updates (2026-06-14 Evening)
+
+### Bug Fixes & Improvements
+
+**Status:** ✅ COMPLETED
+**Files Modified:** `index.html`
+
+**Tasks:**
+- [x] Fix DailyReport.refreshReport() bug (Priority: สูง)
+- [x] Fix TelegramScheduler.initUI() not called (Priority: สูง)
+- [x] Add Save/Load/Reset Targets buttons in Rebalance Modal (Priority: กลาง)
+- [ ] Add Snapshot cleanup old data (Priority: ต่ำ)
+- [ ] Replace XOR with Web Crypto API (AES-GCM) (Priority: กลาง)
+
+**Details:**
+1. **DailyReport.refreshReport()** - ทำให้ method ทำงานได้ถูกต้อง (เรียก updatePnLCards, updateStrategyPerformance, updateHoldingsOverview, updateRecentSnapshots)
+2. **TelegramScheduler.initUI()** - ถูกเรียกใน DailyReport.init() เพื่อ bind event handlers สำหรับ settings inputs
+3. **Rebalance Modal Buttons** - เพิ่ม Load, Save, Reset buttons เพื่อให้ user จัดการ target % ได้สะดวก
+4. **Git commit:** `2055ad3` - feat: add Load/Save/Reset buttons in Rebalance Modal for target % management
