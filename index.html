@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<title>Global Portfolio Engine v54.0 — Liquid Alpha Edition (Full Docs)</title>
+<title>Global Portfolio Engine v54.1 — Liquid Alpha Edition (Full Docs)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Advanced Quant Portfolio Backtesting Engine - Liquid Alpha Edition (Volume Filter Integrated)">
 
@@ -321,7 +321,7 @@ th.sortable:hover { color: #3b82f6; }
   <div class="max-w-[1800px] mx-auto px-4 h-14 flex justify-between items-center">
     <div class="flex items-center gap-3">
       <h1 class="font-bold text-base flex items-center gap-2 text-dark-900 dark:text-white">
-        <span class="text-xl">💧</span> GPE <span class="text-[9px] bg-gradient-to-r from-blue-500 to-purple-500 text-white px-1.5 py-0.5 rounded font-bold mono">v53.0</span>
+        <span class="text-xl">💧</span> GPE <span class="text-[9px] bg-gradient-to-r from-blue-500 to-purple-500 text-white px-1.5 py-0.5 rounded font-bold mono">v54.1</span>
       </h1>
       <nav class="hidden md:flex gap-1 ml-4">
           <button id="btn-tab-dashboard" onclick="UI.switchTab('dashboard')" class="px-3 py-1 text-[10px] font-bold rounded bg-white dark:bg-dark-800 shadow-sm text-stock-600 transition-all">DASHBOARD</button>
@@ -2213,6 +2213,12 @@ class QuantEngine {
                     let cash = cfg.initial * (1 - cfg.frontEndFee / 100);
                     let shares = {}; activeUniverse.forEach(k => shares[k] = 0);
                     let curve = [], logs = [], totalTO = 0, rebCount = 0, dcaCount = 0;
+                    // DCA ต่อวัน: แบ่ง monthly ตาม tradingDays
+                    // 252 trading days ≈ 21 วัน/เดือน, 250 ≈ 20.83 วัน/เดือน
+                    const dailyDCABase = cfg.dca > 0 ? cfg.dca / (this.tradingDays / 12) : 0;
+                    let accumulatedDailyDCA = 0; // ยอด DCA สะสมตั้งแต่ rebalance ครั้งก่อน
+                    let daysSinceLastRebal = 0; // นับจำนวนวันที่สะสม DCA
+
                     
                     const t0 = startIdx;
                     let initWeights = {};
@@ -2268,26 +2274,26 @@ class QuantEngine {
                           const dayPrices = Object.fromEntries(activeUniverse.map(k => [k, this.marketData[k].prices[t]]));
 
                           // --- DCA inflow added to NAV before rebalance ---
-                          // cfg.dca = monthly budget; allocate per-cycle budget = monthlyBudget / cyclesInMonth
+                          // Logic ใหม่: cfg.dca เป็น monthly budget
+                          // แปลงเป็น daily budget = cfg.dca / (tradingDays / 12)
+                          // ทุกวัน DCA จะสะสมเข้า accumulatedDailyDCA
+                          // วัน rebalance นำ accumulatedDailyDCA × dcaMultiplier มาใช้
                           let dcaInflow = 0, dcaMultiplier = 1.0, dcaAllocationPcts = {};
                           if (cfg.dca > 0) {
-                              const currentDate = this.dates[t];
-                              const currentMonth = currentDate?.slice(0, 7); // "YYYY-MM"
-                              // Count rebalance cycles in current month for this rb value
-                              const monthStartIdx = this.dates.findIndex(d => d.startsWith(currentMonth));
-                              let cyclesInMonth = 0;
-                              for (let ti = monthStartIdx; ti < this.dates.length && this.dates[ti].startsWith(currentMonth); ti++) {
-                                  if ((ti - startIdx) > 0 && (ti - startIdx) % rb === 0) cyclesInMonth++;
-                              }
-                              cyclesInMonth = Math.max(cyclesInMonth, 1);
-                              const perCycleBudget = cfg.dca / cyclesInMonth;
+                              // สะสม DCA ต่อวัน (เพิ่มก่อนถึงวัน rebalance)
+                              // เพราะ rebalance จะนำยอดสะสมตั้งแต่ rebalance ครั้งก่อนมาใช้
+                              accumulatedDailyDCA += dailyDCABase;
+                              daysSinceLastRebal++;
+
                               const benchmarkPrices = this.marketData[cfg.bench]?.prices || this.marketData[activeUniverse[0]].prices;
                               dcaMultiplier = this.calculateDCAMultiplier(cfg, benchmarkPrices, t);
-                              dcaInflow = perCycleBudget * dcaMultiplier;
+                              // DCA จริง = ยอดสะสม × multiplier (dynamic)
+                              dcaInflow = accumulatedDailyDCA * dcaMultiplier;
                               cash += dcaInflow;
                               totalNav += dcaInflow;
                               dcaCount++;
                           }
+
 
                           // --- Rebalance ---
                           let diffPct = {}, realTO = 0, buySellAmounts = {};
@@ -2329,6 +2335,15 @@ class QuantEngine {
                               didRebal = true;
                           }
 
+                          // --- Reset DCA accumulation หลัง rebalance (เสร็จสิ้น 1 รอบ) ---
+                          // วัน rebalance จะนำ accumulatedDailyDCA × multiplier มาใช้แล้ว
+                          // จากนั้น reset เพื่อเริ่มสะสมรอบใหม่
+                          if (cfg.dca > 0 && (t - startIdx) > 0 && (t - startIdx) % rb === 0) {
+                              accumulatedDailyDCA = 0;
+                              daysSinceLastRebal = 0;
+                          }
+
+
                           // --- Combined sharesChange (DCA + Rebal) vs pre-event state ---
                           const combinedSharesChange = {};
                           activeUniverse.forEach(k => { combinedSharesChange[k] = shares[k] - sharesBefore[k]; });
@@ -2368,11 +2383,18 @@ class QuantEngine {
                               if (cfg.dca > 0) {
                                   logEntry.inflow = dcaInflow;
                                   logEntry.baseDCA = cfg.dca;
+                                  // accumulatedBeforeMultiplier: ยอดสะสมที่ใช้ในรอบนี้ (ก่อนคูณ multiplier)
+                                  logEntry.accumulatedBeforeMultiplier = accumulatedDailyDCA;
+                                  // dailyDCA: DCA ต่อวัน (cfg.dca / (tradingDays/12))
+                                  logEntry.dailyDCA = dailyDCABase;
+                                  // daysAccumulated: จำนวนวันที่สะสมในรอบนี้
+                                  logEntry.daysAccumulated = daysSinceLastRebal;
                                   logEntry.multiplier = dcaMultiplier;
                                   logEntry.allocation = dcaAllocationPcts;
                               }
                               logs.push(logEntry);
                           }
+
                       }
                       
                       let finalDailyEq = cash;
@@ -3053,12 +3075,28 @@ const UI = {
                 const multiplierBadge = dca.multiplier && dca.multiplier !== 1.0
                     ? `<span class="inline-block px-2 py-1 rounded-md ${dca.multiplier > 1.0 ? 'bg-acc-green/20 text-acc-green' : 'bg-acc-red/20 text-acc-red'} text-[9px] font-bold ml-2"><i class="fas fa-chart-line"></i> ${(dca.multiplier * 100).toFixed(0)}% (×${dca.multiplier.toFixed(2)})</span>`
                     : '';
-                const dcaInfo = dca.baseDCA && dca.multiplier
-                    ? `<div class="mt-1 text-[9px] text-gray-500">Base: $${dca.baseDCA.toFixed(0)} × ${dca.multiplier.toFixed(2)} = $${dca.inflow.toFixed(0)}</div>`
-                    : '';
+                // แสดงข้อมูล DCA แบบละเอียด:
+                // 1. ยอดสะสมก่อน multiplier
+                // 2. จำนวนวันที่สะสม
+                // 3. DCA ต่อวัน
+                // 4. Base × Multiplier = Final
+                let dcaInfo = '';
+                if (dca.daysAccumulated && dca.dailyDCA && dca.accumulatedBeforeMultiplier !== undefined) {
+                    // มีข้อมูลสะสม - แสดงแบบเต็ม
+                    dcaInfo = `<div class="mt-1 text-[9px] text-gray-500">สะสม ${dca.daysAccumulated} วัน × $${dca.dailyDCA.toFixed(2)}/วัน = $${dca.accumulatedBeforeMultiplier.toFixed(0)}</div>`;
+                    if (dca.multiplier && dca.multiplier !== 1.0) {
+                        dcaInfo += `<div class="mt-1 text-[9px] text-gray-500">× ${dca.multiplier.toFixed(2)} <i class="fas fa-arrow-right mx-1"></i> <span class="text-acc-green font-bold">$${dca.inflow.toFixed(0)}</span></div>`;
+                    } else {
+                        dcaInfo += `<div class="mt-1 text-[9px] text-gray-500">× 1.00 = <span class="text-acc-green font-bold">$${dca.inflow.toFixed(0)}</span></div>`;
+                    }
+                } else if (dca.baseDCA && dca.multiplier) {
+                    // Fallback: แสดงแบบเก่า
+                    dcaInfo = `<div class="mt-1 text-[9px] text-gray-500">Base: $${dca.baseDCA.toFixed(0)} × ${dca.multiplier.toFixed(2)} = $${dca.inflow.toFixed(0)}</div>`;
+                }
 
                 actionHTML += `<div class="text-acc-green">Injection: +$${dca.inflow.toFixed(0)} ${multiplierBadge}</div>${dcaInfo}`;
             }
+
 
             if (rebal) {
                 actionHTML += `${actionHTML ? '<div class="mt-2"></div>' : ''}<div class="text-blue-500">Rebalance</div>`;
@@ -5232,7 +5270,7 @@ const PortfolioTracker = {
     }
 };
 
-const RebalanceCalculator = {
+const RebaถlanceCalculator = {
     currentPortfolio: null,
     currentHoldings: {},
     
