@@ -49,6 +49,20 @@ gh project item-list 2 --owner godsid
 gh project item-view <item-id> --owner godsid
 ```
 
+### GitHub Issue Workflow
+```bash
+# After completing a task:
+# 1. Update GitHub Issue status to "In Review"
+# 2. Move issue to "In Review" column on Project Board
+
+# Using GitHub API (if gh CLI not available):
+curl -s "https://api.github.com/repos/godsid/global-portfolio-engine-etf-crypto/issues?state=all"
+curl -X PATCH "https://api.github.com/repos/godsid/global-portfolio-engine-etf-crypto/issues/4" \
+  -H "Accept: application/vnd.github+json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"state":"closed","labels":["done"]}'
+```
+
 ### Version Bumping (SemVer)
 ```bash
 # PATCH: Bug fixes
@@ -79,7 +93,7 @@ start index.html
 | `TelegramScheduler` | Scheduled reports |
 | `DailyReportGenerator` | P&L reports |
 | `RebalanceTargetManager` | Target allocation |
-| `CryptoUtils` | Encryption (XOR-based) |
+| `CryptoUtils` | Encryption (AES-GCM with PBKDF2) |
 
 ### Coding Standards
 1. **No external dependencies** - Vanilla JS only
