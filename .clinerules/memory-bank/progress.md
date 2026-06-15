@@ -80,8 +80,10 @@
 
 ## 🔲 Next Tasks
 
-1. **Telegram Bot Testing** - ทดสอบการส่งข้อความจริง
-2. **Push Notification** - เพิ่ม push notification สำหรับ portfolio alerts
+1. **Telegram Bot Testing** - ทดสอบการส่งข้อความจริง ✅ GitHub Issue #1
+2. **Push Notification** - เพิ่ม push notification สำหรับ portfolio alerts ✅ GitHub Issue #2
+3. **Snapshot cleanup old data** - ลบข้อมูล snapshot เก่า ✅ GitHub Issue #3
+4. **Replace XOR with Web Crypto API (AES-GCM)** - เปลี่ยน encryption เป็น AES-GCM ✅ GitHub Issue #4
 
 ---
 
