@@ -4058,11 +4058,11 @@ const TelegramScheduler = {
         localStorage.setItem(this.CONFIG_KEY, JSON.stringify(config));
     },
 
-    getDecryptedToken() {
+    async getDecryptedToken() {
         const config = this.getConfig();
         if (!config.token) return '';
         if (CryptoUtils.isEncrypted(config.token)) {
-            return CryptoUtils.decrypt(config.token, CryptoUtils.getKey());
+            return await CryptoUtils.decrypt(config.token, CryptoUtils.getKey());
         }
         return config.token;
     },
@@ -4261,7 +4261,7 @@ const TelegramScheduler = {
     },
 
     async sendMessage(text) {
-        const token = this.getDecryptedToken();
+        const token = await this.getDecryptedToken();
         const chatId = this.getConfig().chatId;
         if (!token || !chatId) return;
 
@@ -4292,7 +4292,7 @@ const TelegramScheduler = {
     },
 
     async sendTest() {
-        const token = this.getDecryptedToken();
+        const token = await this.getDecryptedToken();
         const chatId = document.getElementById('cfg-telegram-chat').value.trim();
         
         if (!token || token === '••••••••') {
@@ -4407,8 +4407,8 @@ const EncryptionKeyManager = {
     },
     
     // Try to decrypt with a given key
-    tryDecrypt(encryptedData, key) {
-        const decrypted = CryptoUtils.decrypt(encryptedData, key);
+    async tryDecrypt(encryptedData, key) {
+        const decrypted = await CryptoUtils.decrypt(encryptedData, key);
         if (decrypted && this.isValidJson(decrypted)) {
             return { success: true, data: JSON.parse(decrypted) };
         }
@@ -4848,7 +4848,7 @@ const ConfigManager = {
         this.showLoadDialog(); // Refresh the list
     },
 
-    exportAllConfigs() {
+    async exportAllConfigs() {
         const configs = this.getAllConfigs();
         const transactions = PortfolioTracker.getAllTransactions();
         
@@ -4952,7 +4952,7 @@ const ConfigManager = {
             event.target.value = '';
         };
         
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             try {
                 let importedData;
                 const rawContent = e.target.result;
@@ -4961,7 +4961,7 @@ const ConfigManager = {
                 if (CryptoUtils.isEncrypted(rawContent)) {
                     // Decrypt the data
                     const encryptedContent = CryptoUtils.getEncryptedContent(rawContent);
-                    const decryptedJson = CryptoUtils.decrypt(encryptedContent, CryptoUtils.getKey());
+                    const decryptedJson = await CryptoUtils.decrypt(encryptedContent, CryptoUtils.getKey());
                     
                     if (!decryptedJson) {
                         throw new Error('Failed to decrypt file. Wrong key or corrupted file.');
