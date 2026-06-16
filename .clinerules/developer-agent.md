@@ -117,27 +117,24 @@ start index.html
 | Medium | 🟡 | New features, improvements |
 | Low | 🟢 | Nice-to-have, cleanup |
 
-## 📋 GitHub Project Board
+## 🎯 Active Issues
 
-**Project:** @godsid's Portfolio Tracking  
-**URL:** https://github.com/users/godsid/projects/2
+See GitHub: https://github.com/godsid/global-portfolio-engine-etf-crypto/issues
 
-### Current Tasks (from Project Board)
-| # | Title | Type | Repository |
-|---|-------|------|------------|
-| 1 | Telegram Bot Testing | Issue | global-portfolio-engine-etf-crypto |
-| 2 | Push Notification for Portfolio Alerts | Issue | global-portfolio-engine-etf-crypto |
-| 3 | Snapshot cleanup old data | Issue | global-portfolio-engine-etf-crypto |
-| 4 | Replace XOR with Web Crypto API (AES-GCM) | Issue | global-portfolio-engine-etf-crypto |
+| # | Issue | Priority |
+|---|-------|----------|
+| 1 | Telegram Bot Testing | Medium |
+| 2 | Push Notification for Portfolio Alerts | Medium |
+| 3 | Snapshot cleanup old data | Low |
+| 4 | Replace XOR with Web Crypto API (AES-GCM) | Medium |
 
 ## 🚀 Quick Start
 
 1. Read `.clinerules/memory-bank/progress.md` for current status
-2. Check open GitHub issues: `rtk gh issue list`
-3. Check Project Board: `gh project item-list 2 --owner godsid`
-4. Implement features following workflow rules
-5. Test in browser (`start index.html`)
-6. Commit with proper prefix
+2. Check open GitHub issues
+3. Implement features following workflow rules
+4. Test in browser (`start index.html`)
+5. Commit with proper prefix
 
 ## 💡 Tips
 
