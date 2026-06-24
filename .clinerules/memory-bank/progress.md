@@ -1,33 +1,41 @@
 # 📋 Global Portfolio Engine - Progress Tracker
 
 **Project:** global-portfolio-engine-etf-crypto
-**Last Updated:** 2026-06-15
-**Status:** AES-GCM Async Fix (v55.0) - All Bugs Fixed
+**Last Updated:** 2026-06-24
+**Status:** v55.0 - XOR Encryption (Stable)
 
-## 📅 Recent Updates (2026-06-15)
+## 📅 Recent Updates (2026-06-24)
 
-### AES-GCM Encryption Implementation
+### XOR Encryption Implementation (Reverted from AES-GCM)
 
 **Status:** ✅ COMPLETED
 **Priority:** 🔴 High
 **Files Modified:** `index.html`
-**Git Commit:** `310750c` (รวมอยู่ใน commit ล่าสุด)
+**Current Git Commit:** `c1c03db`
 
 **Tasks:**
-- [x] Replace XOR with Web Crypto API (AES-GCM) - เปลี่ยน encryption เป็น AES-GCM
+- [x] XOR Encryption Implementation - Simple XOR + Base64 encryption
 
 **Details:**
-1. **AES-GCM Implementation**
-   - ใช้ PBKDF2 เพื่อ derive key จาก password (100,000 iterations)
-   - สุ่ม IV (12 bytes) และ Salt (16 bytes) สำหรับแต่ละครั้งที่ encrypt
-   - บันทึก Salt + IV + encrypted data ลงใน file
-   - Prefix `GPEAES::` สำหรับ AES-GCM encrypted data
+1. **XOR Encryption (Current)**
+   - Prefix: `GPEENC::` สำหรับ encrypted data
+   - Synchronous encrypt/decrypt operations
+   - Key stored in localStorage (`gpe_encryption_key`)
+   - Simple XOR cipher + Base64 encoding
 
-2. **Export Flow Update**
-   - `ConfigManager.exportAllConfigs()` ต้องเป็น async เพื่อรอ `CryptoUtils.encrypt()` ซึ่งเป็น async operation
-   - Update callers ทั้งหมดให้ใช้ `await`
-   - ถ้ายังไม่มี key จะ prompt user ให้ตั้งค่าก่อน
+2. **Export/Import Flow**
+   - `ConfigManager.exportAllConfigs()` - synchronous
+   - File format: `.gpe` (encrypted)
+   - Supports both encrypted (`.gpe`) and legacy unencrypted (`.json`) files
 
-3. **Backward Compatibility**
-   - อ่านไฟล์ที่ encrypt ด้วย XOR (prefix `GPEENC::`) ได้เหมือนเดิม
-   - ไฟล์ใหม่จะใช้ AES-GCM เสมอ
+3. **Security Note**
+   - XOR encryption is basic obfuscation, not military-grade security
+   - Suitable for protecting against casual access
+   - For sensitive data, consider AES-GCM in future
+
+## 🔒 Security History
+
+| Date | Status | Implementation |
+|------|--------|----------------|
+| 2026-06-15 | Proposed AES-GCM | PBKDF2 + AES-GCM (not deployed) |
+| 2026-06-24 | Current | XOR + Base64 (stable) |

@@ -4417,11 +4417,10 @@ const EncryptionKeyManager = {
 };
 
 /* =========================================================
-   CRYPTO UTILITIES - XOR Cipher + Base64
+    CRYPTO UTILITIES - XOR Cipher + Base64
 ========================================================= */
 const CryptoUtils = {
     ENCRYPTION_PREFIX: 'GPEENC::',
-    AES_PREFIX: 'GPEAES::',  // New prefix for AES-GCM encrypted data
     STORAGE_KEY: 'gpe_encryption_key',
     DEFAULT_KEY: '',
     
@@ -4442,134 +4441,50 @@ const CryptoUtils = {
         localStorage.removeItem(this.STORAGE_KEY);
     },
     
-    // Convert string to ArrayBuffer
-    _stringToBuffer(str) {
-        return new TextEncoder().encode(str);
-    },
-    
-    // Convert ArrayBuffer to string
-    _bufferToString(buffer) {
-        return new TextDecoder().decode(buffer);
-    },
-    
-    // Derive AES key from password using PBKDF2
-    async _deriveKey(password, salt) {
-        const passwordBuffer = this._stringToBuffer(password);
-        const baseKey = await crypto.subtle.importKey(
-            'raw',
-            passwordBuffer,
-            'PBKDF2',
-            false,
-            ['deriveKey']
-        );
-        return crypto.subtle.deriveKey(
-            {
-                name: 'PBKDF2',
-                salt: salt,
-                iterations: 100000,
-                hash: 'SHA-256'
-            },
-            baseKey,
-            { name: 'AES-GCM', length: 256 },
-            false,
-            ['encrypt', 'decrypt']
-        );
-    },
-    
-    // Encrypt string using AES-GCM (Web Crypto API)
-    async encrypt(data, key) {
+    // Simple XOR encryption (synchronous)
+    encrypt(data, key) {
         const k = key || this.getKey();
-        if (!k) throw new Error('Encryption key is required');
-        
-        try {
-            // Generate random IV (12 bytes for AES-GCM)
-            const iv = crypto.getRandomValues(new Uint8Array(12));
-            // Generate random salt (16 bytes)
-            const salt = crypto.getRandomValues(new Uint8Array(16));
-            
-            // Derive key from password
-            const aesKey = await this._deriveKey(k, salt);
-            
-            // Encrypt
-            const encrypted = await crypto.subtle.encrypt(
-                { name: 'AES-GCM', iv: iv },
-                aesKey,
-                this._stringToBuffer(data)
-            );
-            
-            // Combine salt + iv + encrypted data
-            const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
-            combined.set(salt, 0);
-            combined.set(iv, salt.length);
-            combined.set(new Uint8Array(encrypted), salt.length + iv.length);
-            
-            // Return as base64
-            return btoa(String.fromCharCode(...combined));
-        } catch (e) {
-            console.error('AES encryption failed:', e);
-            throw e;
+        if (!k) return data;
+        let result = '';
+        for (let i = 0; i < data.length; i++) {
+            result += String.fromCharCode(data.charCodeAt(i) ^ k.charCodeAt(i % k.length));
         }
+        return btoa(result);
     },
     
-    // Decrypt string using AES-GCM (Web Crypto API)
-    async decrypt(encryptedData, key) {
+    // Simple XOR decryption (synchronous)
+    decrypt(encryptedData, key) {
         const k = key || this.getKey();
-        if (!k) throw new Error('Encryption key is required');
-        
+        if (!k) return encryptedData;
         try {
-            // Decode base64
-            const combined = new Uint8Array(
-                atob(encryptedData).split('').map(c => c.charCodeAt(0))
-            );
-            
-            // Extract salt (16 bytes), iv (12 bytes), and encrypted data
-            const salt = combined.slice(0, 16);
-            const iv = combined.slice(16, 28);
-            const encrypted = combined.slice(28);
-            
-            // Derive key from password
-            const aesKey = await this._deriveKey(k, salt);
-            
-            // Decrypt
-            const decrypted = await crypto.subtle.decrypt(
-                { name: 'AES-GCM', iv: iv },
-                aesKey,
-                encrypted
-            );
-            
-            return this._bufferToString(decrypted);
+            const decoded = atob(encryptedData);
+            let result = '';
+            for (let i = 0; i < decoded.length; i++) {
+                result += String.fromCharCode(decoded.charCodeAt(i) ^ k.charCodeAt(i % k.length));
+            }
+            return result;
         } catch (e) {
-            console.error('AES decryption failed:', e);
             return null;
         }
     },
     
-    // Sync wrapper for backward compatibility - wraps async encrypt
+    // Sync wrappers (same as above since XOR is sync)
     encryptSync(data, key) {
         return this.encrypt(data, key);
     },
     
-    // Sync wrapper for backward compatibility - wraps async decrypt
     decryptSync(encryptedData, key) {
         return this.decrypt(encryptedData, key);
     },
     
-    // Check if data is encrypted format (both old XOR and new AES)
+    // Check if data is encrypted format
     isEncrypted(data) {
         if (!data || typeof data !== 'string') return false;
-        return data.startsWith(this.ENCRYPTION_PREFIX) || data.startsWith(this.AES_PREFIX);
-    },
-    
-    // Check if data is new AES format
-    isAESEncrypted(data) {
-        return data && typeof data === 'string' && data.startsWith(this.AES_PREFIX);
+        return data.startsWith(this.ENCRYPTION_PREFIX);
     },
     
     // Remove prefix and get encrypted content
     getEncryptedContent(data) {
-        if (data.startsWith(this.AES_PREFIX)) {
-            return data.substring(this.AES_PREFIX.length);
-        }
         if (data.startsWith(this.ENCRYPTION_PREFIX)) {
             return data.substring(this.ENCRYPTION_PREFIX.length);
         }
@@ -4880,7 +4795,7 @@ const ConfigManager = {
         await this._doExport(configs, transactions, CryptoUtils.getKey());
     },
     
-    async _doExport(configs, transactions, key) {
+    _doExport(configs, transactions, key) {
         // Create export object with both configs and transactions
         const exportData = {
             configs: configs,
@@ -4892,9 +4807,8 @@ const ConfigManager = {
         // Create JSON string with pretty formatting
         const jsonString = JSON.stringify(exportData, null, 2);
         
-        // Encrypt the data with the provided key (AES-GCM is async)
-        const encryptedData = await CryptoUtils.encrypt(jsonString, key);
-        const encrypted = CryptoUtils.AES_PREFIX + encryptedData;
+        // Encrypt the data with the provided key (simple XOR - sync)
+        const encrypted = CryptoUtils.ENCRYPTION_PREFIX + CryptoUtils.encrypt(jsonString, key);
         
         // Create blob and download as .gpe (encrypted) file
         const blob = new Blob([encrypted], { type: 'text/plain' });
@@ -4907,7 +4821,7 @@ const ConfigManager = {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
         
-        alert(`✅ Exported ${Object.keys(configs).length} configuration(s) and ${transactions.length} transaction(s)\n\n🔐 File is encrypted with AES-GCM.\n📁 Saved as: gpe_configs_${new Date().toISOString().slice(0,10)}.gpe\n\n⚠️ จดจำ Key ของคุณไว้: ${key}`);
+        alert(`✅ Exported ${Object.keys(configs).length} configuration(s) and ${transactions.length} transaction(s)\n\n🔐 File is encrypted.\n📁 Saved as: gpe_configs_${new Date().toISOString().slice(0,10)}.gpe\n\n⚠️ จดจำ Key ของคุณไว้: ${key}`);
     },
     
     showKeySettings() {
