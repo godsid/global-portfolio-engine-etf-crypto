@@ -1,37 +1,28 @@
 # 📋 Global Portfolio Engine - Progress Tracker
 
 **Project:** global-portfolio-engine-etf-crypto
-**Last Updated:** 2026-06-24
-**Status:** v55.0 - XOR Encryption (Stable)
+**Last Updated:** 2026-06-29
+**Status:** v55.1 - Transaction Logs Fix (Stable)
 
-## 📅 Recent Updates (2026-06-24)
+## 📅 Recent Updates (2026-06-29)
 
-### XOR Encryption Implementation (Reverted from AES-GCM)
+### Transaction Logs Not Displaying Fix
 
 **Status:** ✅ COMPLETED
 **Priority:** 🔴 High
 **Files Modified:** `index.html`
-**Current Git Commit:** `c1c03db`
+**Version:** v55.0 → v55.1
 
 **Tasks:**
-- [x] XOR Encryption Implementation - Simple XOR + Base64 encryption
+- [x] Transaction Logs not displaying when DCA = 0
 
-**Details:**
-1. **XOR Encryption (Current)**
-   - Prefix: `GPEENC::` สำหรับ encrypted data
-   - Synchronous encrypt/decrypt operations
-   - Key stored in localStorage (`gpe_encryption_key`)
-   - Simple XOR cipher + Base64 encoding
+**Root Cause:**
+1. The `logs.push()` was inside an `if (cfg.dca > 0)` block. Since DCA defaults to `0`, no log entries were ever created for pure rebalance strategies, leaving the Transaction Logs panel empty.
+2. The `sharesChange`/`diff` update for the last log entry was also guarded by `cfg.dca > 0`, so even if a log existed it would have no Buy/Sell adjustments or drift data.
 
-2. **Export/Import Flow**
-   - `ConfigManager.exportAllConfigs()` - synchronous
-   - File format: `.gpe` (encrypted)
-   - Supports both encrypted (`.gpe`) and legacy unencrypted (`.json`) files
-
-3. **Security Note**
-   - XOR encryption is basic obfuscation, not military-grade security
-   - Suitable for protecting against casual access
-   - For sensitive data, consider AES-GCM in future
+**Fix Applied:**
+1. Added an `else` branch that creates a `REBAL` type log entry when `DCA = 0` so rebalance events are visible in the Transaction Logs panel.
+2. Removed the `cfg.dca > 0` guard on the `sharesChange`/`diff` update so pure rebalance events also show Buy/Sell adjustments and % drift.
 
 ## 🔒 Security History
 
