@@ -1,10 +1,28 @@
 # 📋 Global Portfolio Engine - Progress Tracker
 
 **Project:** global-portfolio-engine-etf-crypto
-**Last Updated:** 2026-06-29
-**Status:** v55.1 - Transaction Logs Fix (Stable)
+**Last Updated:** 2026-07-02
+**Status:** v55.2 - Daily Report Tab Visibility Fix (Stable)
 
-## 📅 Recent Updates (2026-06-29)
+## 📅 Recent Updates (2026-07-02)
+
+### Daily Report Tab Content Not Hidden When Switching Tabs
+
+**Status:** ✅ COMPLETED
+**Priority:** 🟡 Medium
+**Files Modified:** `index.html`
+**Version:** v55.1 → v55.2
+
+**Tasks:**
+- [x] Daily Report content remains visible when switching to other tabs
+
+**Root Cause:**
+The `UI.switchTab()` function hides other tab content elements by their IDs, but `'report'` was missing from the array of IDs to hide. The Daily Report content lives in `#view-report`, so it was never hidden when navigating away.
+
+**Fix Applied:**
+Added `'report'` to the hide list in `UI.switchTab()` so that `#view-report` gets the `hidden` class applied when switching to any other tab.
+
+## 📅 Previous Updates (2026-06-29)
 
 ### Transaction Logs Not Displaying Fix
 
