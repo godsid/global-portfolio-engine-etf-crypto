@@ -1,10 +1,36 @@
 # 📋 Global Portfolio Engine - Progress Tracker
 
 **Project:** global-portfolio-engine-etf-crypto
-**Last Updated:** 2026-07-02
-**Status:** v55.2 - Daily Report Tab Visibility Fix (Stable)
+**Last Updated:** 2026-07-14
+**Status:** v55.3 - Recalculate & Send Daily Report Button (Stable)
 
-## 📅 Recent Updates (2026-07-02)
+## 📅 Recent Updates (2026-07-14)
+
+### Recalculate & Send Daily Report Button
+
+**Status:** ✅ COMPLETED
+**Priority:** 🟡 Medium
+**Files Modified:** `index.html`
+**Version:** v55.2 → v55.3
+
+**Tasks:**
+- [x] Add "Recalculate & Send" button to Daily Report tab
+- [x] Add `force` parameter to `runDailyReport()` for manual sends
+- [x] Add `recalculateAndSend()` method to `DailyReport` object
+- [x] Version bump v55.2 → v55.3
+
+**Changes:**
+1. **New Button**: Added a green "Recalculate & Send" button next to "Refresh" and "Test Telegram" in the Daily Report tab header.
+2. **`force` parameter**: Modified `TelegramScheduler.runDailyReport()` to accept `force = false` parameter. When `true`, bypasses the `config.enabled` check so manual sends work even when the scheduler is disabled.
+3. **`recalculateAndSend()` method**: New method on `DailyReport` that:
+   - Checks Telegram config (token + chatId) and alerts if missing
+   - Calls `refreshReport()` to recalculate P&L data
+   - Calls `runDailyReport(true)` to generate and send the report
+   - Shows loading state → success/error state on the button
+   - Updates Telegram status area with success/error message
+   - Auto-resets button after 2.5 seconds
+
+## 📅 Previous Updates (2026-07-02)
 
 ### Daily Report Tab Content Not Hidden When Switching Tabs
 
