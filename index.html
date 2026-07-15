@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<title>Global Portfolio Engine v55.3 — Telegram Scheduler</title>
+<title>Global Portfolio Engine v55.4 — Multi-Portfolio Daily Report</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Advanced Quant Portfolio Backtesting Engine - Liquid Alpha Edition (Volume Filter Integrated)">
 
@@ -321,7 +321,7 @@ th.sortable:hover { color: #3b82f6; }
   <div class="max-w-[1800px] mx-auto px-4 h-14 flex justify-between items-center">
     <div class="flex items-center gap-3">
       <h1 class="font-bold text-base flex items-center gap-2 text-dark-900 dark:text-white">
-        <span class="text-xl">💧</span> GPE <span class="text-[9px] bg-gradient-to-r from-blue-500 to-purple-500 text-white px-1.5 py-0.5 rounded font-bold mono">v55.3</span>
+        <span class="text-xl">💧</span> GPE <span class="text-[9px] bg-gradient-to-r from-blue-500 to-purple-500 text-white px-1.5 py-0.5 rounded font-bold mono">v55.4</span>
       </h1>
       <nav class="hidden md:flex gap-1 ml-4">
           <button id="btn-tab-dashboard" onclick="UI.switchTab('dashboard')" class="px-3 py-1 text-[10px] font-bold rounded bg-white dark:bg-dark-800 shadow-sm text-stock-600 transition-all">DASHBOARD</button>
@@ -4207,33 +4207,58 @@ const TelegramScheduler = {
         const today = now.toISOString().slice(0, 10);
         const portfolio = ConfigManager.getLastUsedConfig() || 'Default';
         
-        // Get P&L data
-        const txns = PortfolioTracker.getAllTransactions().filter(t => t.portfolio === portfolio);
-        if (txns.length === 0) return;
+        // Get ALL transactions across ALL portfolios
+        const allTxns = PortfolioTracker.getAllTransactions();
+        if (allTxns.length === 0) return;
 
-        // Calculate current holdings
-        const holdings = {};
-        let cashBalance = 0;
-        let totalInvested = 0;
-        txns.forEach(t => {
-            if (t.type === 'capital') { cashBalance += t.total; totalInvested += t.total; }
-            else if (t.type === 'buy') { cashBalance -= t.total; if (!holdings[t.asset]) holdings[t.asset] = { qty: 0, cost: 0 }; holdings[t.asset].qty += t.quantity; holdings[t.asset].cost += t.total; }
-            else if (t.type === 'sell') { cashBalance += t.total; if (holdings[t.asset]) { holdings[t.asset].qty += t.quantity; holdings[t.asset].cost = Math.max(0, holdings[t.asset].cost - (t.total / Math.abs(t.quantity)) * Math.abs(t.quantity)); } }
+        // Aggregate per portfolio
+        const portfolioSummary = {};
+        allTxns.forEach(t => {
+            const p = t.portfolio || 'Default';
+            if (!portfolioSummary[p]) portfolioSummary[p] = { holdings: {}, cashBalance: 0, totalInvested: 0 };
+            const ps = portfolioSummary[p];
+            if (t.type === 'capital') { ps.cashBalance += t.total; ps.totalInvested += t.total; }
+            else if (t.type === 'buy') { ps.cashBalance -= t.total; if (!ps.holdings[t.asset]) ps.holdings[t.asset] = { qty: 0, cost: 0 }; ps.holdings[t.asset].qty += t.quantity; ps.holdings[t.asset].cost += t.total; }
+            else if (t.type === 'sell') { ps.cashBalance += t.total; if (ps.holdings[t.asset]) { ps.holdings[t.asset].qty += t.quantity; ps.holdings[t.asset].cost = Math.max(0, ps.holdings[t.asset].cost - (t.total / Math.abs(t.quantity)) * Math.abs(t.quantity)); } }
         });
 
-        // Get market values
-        let marketValue = 0;
-        const assetList = Object.keys(holdings).filter(a => a !== 'CASH' && holdings[a].qty > 0);
-        assetList.forEach(asset => {
-            if (Engine.marketData[asset]?.prices?.length) {
-                const price = Engine.marketData[asset].prices[Engine.marketData[asset].prices.length - 1];
-                if (price > 0) marketValue += holdings[asset].qty * price;
-            }
+        // Calculate market value per portfolio + combined totals
+        let grandTotalInvested = 0, grandTotalValue = 0;
+        const allAssetAgg = {}; // Combined asset aggregation
+        Object.entries(portfolioSummary).forEach(([pName, ps]) => {
+            let pMarketValue = 0;
+            Object.entries(ps.holdings).forEach(([asset, h]) => {
+                if (asset !== 'CASH' && h.qty > 0 && Engine.marketData[asset]?.prices?.length) {
+                    const price = Engine.marketData[asset].prices[Engine.marketData[asset].prices.length - 1];
+                    if (price > 0) {
+                        const value = h.qty * price;
+                        pMarketValue += value;
+                        // Aggregate across all portfolios
+                        if (!allAssetAgg[asset]) allAssetAgg[asset] = { qty: 0, cost: 0 };
+                        allAssetAgg[asset].qty += h.qty;
+                        allAssetAgg[asset].cost += h.cost;
+                    }
+                }
+            });
+            pMarketValue += Math.max(ps.cashBalance, 0);
+            ps.marketValue = pMarketValue;
+            ps.pnl = pMarketValue - ps.totalInvested;
+            ps.pnlPct = ps.totalInvested > 0 ? (ps.pnl / ps.totalInvested * 100) : 0;
+            grandTotalInvested += ps.totalInvested;
+            grandTotalValue += pMarketValue;
         });
-        
-        marketValue += Math.max(cashBalance, 0);
-        const pnl = marketValue - totalInvested;
-        const pnlPct = totalInvested > 0 ? (pnl / totalInvested * 100) : 0;
+
+        const grandPnl = grandTotalValue - grandTotalInvested;
+        const grandPnlPct = grandTotalInvested > 0 ? (grandPnl / grandTotalInvested * 100) : 0;
+
+        // Also keep single-portfolio variables for snapshot saving (backward compat)
+        const txns = allTxns.filter(t => t.portfolio === portfolio);
+        const holdings = portfolioSummary[portfolio]?.holdings || {};
+        let cashBalance = portfolioSummary[portfolio]?.cashBalance || 0;
+        let totalInvested = portfolioSummary[portfolio]?.totalInvested || 0;
+        let marketValue = portfolioSummary[portfolio]?.marketValue || 0;
+        const pnl = grandPnl;
+        const pnlPct = grandPnlPct;
 
         // Get historical P&L (7d, 30d)
         let pnl7d = null, pnl30d = null;
@@ -4256,24 +4281,49 @@ const TelegramScheduler = {
             strategyText = top.map((r, i) => `${i + 1}. *${r.stratFull}*: ${r.cagr}% CAGR, Sharpe ${r.sharpe}`).join('\n');
         }
 
-        // Build message
-        const pnlEmoji = pnl >= 0 ? '📈' : '📉';
-        const pnlSign = pnl >= 0 ? '+' : '';
+        // Build message - Multi-level P&L Summary
+        const pnlEmoji = grandPnl >= 0 ? '📈' : '📉';
+        const pnlSign = grandPnl >= 0 ? '+' : '';
         let message = `*📊 GPE Daily Report - ${today}*\n\n`;
-        message += `${pnlEmoji} *P&L Summary*\n`;
-        message += `• วันนี้: ${pnlSign}$${Math.abs(pnl).toFixed(2)} (${pnlSign}${pnlPct.toFixed(2)}%)\n`;
+
+        // Section 1: Combined Summary (รวมทุก Portfolio)
+        message += `${pnlEmoji} *รวมทุก Portfolio (All)*\n`;
+        message += `• ลงทุนรวม: $${grandTotalInvested.toFixed(2)}\n`;
+        message += `• มูลค่ารวม: $${grandTotalValue.toFixed(2)}\n`;
+        message += `• P&L: ${pnlSign}$${Math.abs(grandPnl).toFixed(2)} (${pnlSign}${grandPnlPct.toFixed(2)}%)\n`;
         if (pnl7d) message += `• 7 วัน: ${pnl7d.pnlDollar >= 0 ? '+' : ''}$${Math.abs(pnl7d.pnlDollar).toFixed(2)} (${pnl7d.pnlDollar >= 0 ? '+' : ''}${pnl7d.pnlPct.toFixed(2)}%)\n`;
         if (pnl30d) message += `• 30 วัน: ${pnl30d.pnlDollar >= 0 ? '+' : ''}$${Math.abs(pnl30d.pnlDollar).toFixed(2)} (${pnl30d.pnlDollar >= 0 ? '+' : ''}${pnl30d.pnlPct.toFixed(2)}%)\n`;
-        message += `• มูลค่ารวม: $${marketValue.toFixed(2)}\n\n`;
-        
-        if (assetList.length > 0) {
-            message += `*📦 Top Holdings*\n`;
-            const topAssets = assetList.slice(0, 5);
-            topAssets.forEach(asset => {
+        message += '\n';
+
+        // Section 2: Per Portfolio (ราย Portfolio)
+        const portfolioNames = Object.keys(portfolioSummary);
+        if (portfolioNames.length > 1 || (portfolioNames.length === 1 && portfolioNames[0] !== portfolio)) {
+            message += `*📦 ราย Portfolio*\n`;
+            Object.entries(portfolioSummary).forEach(([pName, ps]) => {
+                const pPnlSign = ps.pnl >= 0 ? '+' : '';
+                message += `• ${pName}: $${ps.marketValue.toFixed(2)} (${pPnlSign}${ps.pnlPct.toFixed(2)}%)\n`;
+            });
+            message += '\n';
+        }
+
+        // Section 3: Per Asset (ราย Asset - Top 5)
+        const assetEntries = Object.entries(allAssetAgg)
+            .filter(([asset, h]) => asset !== 'CASH' && h.qty > 0)
+            .map(([asset, h]) => {
                 const price = Engine.marketData[asset]?.prices?.[Engine.marketData[asset].prices.length - 1] || 0;
-                const value = holdings[asset].qty * price;
-                const pct = marketValue > 0 ? (value / marketValue * 100).toFixed(1) : '0';
-                message += `• ${asset}: ${holdings[asset].qty.toFixed(4)} @ $${price.toFixed(2)} = $${value.toFixed(2)} (${pct}%)\n`;
+                const value = h.qty * price;
+                const assetPnl = value - h.cost;
+                const assetPnlPct = h.cost > 0 ? (assetPnl / h.cost * 100) : 0;
+                return { asset, qty: h.qty, price, value, cost: h.cost, assetPnl, assetPnlPct };
+            })
+            .sort((a, b) => b.value - a.value);
+
+        if (assetEntries.length > 0) {
+            message += `*🎯 ราย Asset (Top ${Math.min(5, assetEntries.length)})*\n`;
+            assetEntries.slice(0, 5).forEach(a => {
+                const pct = grandTotalValue > 0 ? (a.value / grandTotalValue * 100).toFixed(1) : '0';
+                const aPnlSign = a.assetPnl >= 0 ? '+' : '';
+                message += `• ${a.asset}: $${a.value.toFixed(2)} (${pct}%) ${aPnlSign}${a.assetPnlPct.toFixed(1)}%\n`;
             });
             message += '\n';
         }
@@ -4282,7 +4332,7 @@ const TelegramScheduler = {
             message += `*🏆 Strategy Performance*\n${strategyText}\n\n`;
         }
         
-        message += `_ส่งอัตโนมัติโดย GPE v55.3_`;
+        message += `_ส่งอัตโนมัติโดย GPE v55.4_`;
 
         // Send to Telegram
         await this.sendMessage(message);
@@ -6911,12 +6961,16 @@ const DailyReport = {
         btn.className = 'bg-gray-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow cursor-not-allowed';
 
         try {
+            // Step 0: Fetch fresh market data first (always before sending report)
+            btn.innerHTML = '<i class="fas fa-cloud-download-alt fa-spin mr-2"></i>กำลังโหลดข้อมูล...';
+            await Engine.fetchData();
+
             // Step 1: Refresh report data (recalculate P&L, holdings, etc.)
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>กำลังคำนวณ...';
+            btn.innerHTML = '<i class="fas fa-calculator fa-spin mr-2"></i>กำลังคำนวณ...';
             await this.refreshReport();
 
             // Step 2: Send to Telegram (force = true, bypass enabled check)
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>กำลังส่ง...';
+            btn.innerHTML = '<i class="fas fa-paper-plane fa-spin mr-2"></i>กำลังส่ง...';
             await TelegramScheduler.runDailyReport(true);
 
             // Success feedback
