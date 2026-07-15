@@ -1,10 +1,31 @@
 # 📋 Global Portfolio Engine - Progress Tracker
 
 **Project:** global-portfolio-engine-etf-crypto
-**Last Updated:** 2026-07-14
-**Status:** v55.3 - Recalculate & Send Daily Report Button (Stable)
+**Last Updated:** 2026-07-15
+**Status:** v55.4 - Multi-Portfolio Daily Report with Auto-Fetch (Stable)
 
-## 📅 Recent Updates (2026-07-14)
+## 📅 Recent Updates (2026-07-15)
+
+### Auto-Fetch Data + Multi-Portfolio P&L in Daily Report
+
+**Status:** ✅ COMPLETED
+**Priority:** 🟡 Medium
+**Files Modified:** `index.html`
+**Version:** v55.3 → v55.4
+
+**Tasks:**
+- [x] Daily report now auto-fetches market data before sending
+- [x] P&L Summary split into 3 sections: All Portfolios / Per Portfolio / Per Asset
+
+**Changes:**
+1. **Auto-Fetch**: `recalculateAndSend()` now calls `Engine.fetchData()` as Step 0 before calculating and sending the report.
+2. **Multi-Level P&L Message**: The Telegram message now includes:
+   - **Section 1**: รวมทุก Portfolio (All) — total invested, market value, P&L, 7d/30d
+   - **Section 2**: ราย Portfolio — per-portfolio market value and P&L%
+   - **Section 3**: ราย Asset (Top 5) — aggregated across all portfolios with value%, P&L%
+3. **Data Aggregation**: `runDailyReport()` now processes ALL transactions across ALL portfolios, aggregates per-portfolio and per-asset totals, and calculates grand totals.
+
+## 📅 Previous Updates (2026-07-14)
 
 ### Recalculate & Send Daily Report Button
 
