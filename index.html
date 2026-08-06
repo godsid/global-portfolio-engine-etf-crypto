@@ -4527,7 +4527,9 @@ const CryptoUtils = {
         for (let i = 0; i < data.length; i++) {
             result += String.fromCharCode(data.charCodeAt(i) ^ k.charCodeAt(i % k.length));
         }
-        return btoa(result);
+        const bytes = new TextEncoder().encode(result);
+        const encoded = btoa(String.fromCharCode(...bytes));
+        return encoded;
     },
     
     // Simple XOR decryption (synchronous)
@@ -4535,7 +4537,10 @@ const CryptoUtils = {
         const k = key || this.getKey();
         if (!k) return encryptedData;
         try {
-            const decoded = atob(encryptedData);
+            // Decode back from Base64 to UTF-8 string:
+            const binary = atob(encryptedData);
+            const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+            const decoded = new TextDecoder().decode(bytes);
             let result = '';
             for (let i = 0; i < decoded.length; i++) {
                 result += String.fromCharCode(decoded.charCodeAt(i) ^ k.charCodeAt(i % k.length));
